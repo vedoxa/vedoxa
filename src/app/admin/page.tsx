@@ -15,7 +15,6 @@ export default function AdminDashboard() {
   const [loginError, setLoginError] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  // Form States
   const [title, setTitle] = useState("");
   const [basePrice, setBasePrice] = useState(0);
   const [discount, setDiscount] = useState(0);
@@ -64,8 +63,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#060608] text-gray-300 flex font-sans">
-      
-      {/* Sidebar */}
       <aside className="w-72 bg-[#09090b] border-r border-white/5 p-8 flex flex-col sticky top-0 h-screen">
         <div className="flex items-center gap-3 mb-12 group cursor-pointer">
           <div className="p-2 bg-yellow-500/10 rounded-lg group-hover:bg-yellow-500/20 transition">
@@ -91,7 +88,6 @@ export default function AdminDashboard() {
         </button>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-12 overflow-y-auto">
         <header className="flex justify-between items-center mb-12">
           <div>
