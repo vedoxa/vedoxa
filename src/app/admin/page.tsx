@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import { ShieldCheck, Upload, Users, IndianRupee, BookOpen, Settings, Lock, Percent, Eye, Trash2 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Naya Supabase Connection Code (Build Error Bypass ke sath)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy-url-to-bypass-build-error.supabase.co";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key-to-bypass-build-error";
 const supabase = createClient(supabaseUrl, supabaseKey);
+
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
