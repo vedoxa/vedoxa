@@ -13,9 +13,9 @@
     "react-dom": "latest",
     "lucide-react": "latest",
     "framer-motion": "latest",
+    "@supabase/supabase-js": "latest",
     "typescript": "latest",
     "@types/node": "latest",
     "@types/react": "latest"
   }
 }
-
