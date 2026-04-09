@@ -12,7 +12,9 @@
     "react": "latest",
     "react-dom": "latest",
     "lucide-react": "latest",
-    "framer-motion": "latest"
+    "framer-motion": "latest",
+    "typescript": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest"
   }
 }
-
