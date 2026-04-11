@@ -24,10 +24,11 @@ interface Book {
 }
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// ─── Supabase Connection (With Build Fallback) ───
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy-url.supabase.co";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 
 // ─── Razorpay Script Loader ───────────────────────────────────────────────────
 function loadRazorpayScript(): Promise<boolean> {
