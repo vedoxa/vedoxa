@@ -1,9 +1,6 @@
 // @ts-nocheck
 "use client";
 import { useState, useEffect, useRef } from "react";
-// ... baaki tumhara pura code waise ka waisa hi rahega ...
-"use client";
-import { useState, useEffect, useRef } from "react";
 import {
   ShieldCheck, Upload, BookOpen, Lock, Percent, Users, Settings,
   LogOut, Eye, EyeOff, Trash2, Edit2, Plus, X, Check, AlertCircle,
