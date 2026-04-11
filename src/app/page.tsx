@@ -1,513 +1,543 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { ShieldCheck, Globe, Search, ShoppingCart, Star, BookOpen, Menu, X, ChevronDown, Lock, Zap, Heart } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  ShieldCheck, Globe, BookOpen, Lock, X,
+  Star, Zap, ChevronRight, AlertCircle, RefreshCw,
+} from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
-/* ─── Google Font via style injection ─── */
-const fontStyle = `
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:wght@300;400;500;700&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html { scroll-behavior: smooth; }
-
-  body { 
-    background: #060608; 
-    color: #e2e2e5; 
-    font-family: 'DM Sans', sans-serif;
-    overflow-x: hidden;
-  }
-
-  ::selection { background: #eab308; color: #000; }
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: #0a0a0d; }
-  ::-webkit-scrollbar-thumb { background: #eab308; border-radius: 99px; }
-
-  /* ── Keyframe Animations ── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(32px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-12px); }
-  }
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(234,179,8,0.3); }
-    50%       { box-shadow: 0 0 45px rgba(234,179,8,0.6); }
-  }
-  @keyframes shimmer {
-    0%   { background-position: -200% center; }
-    100% { background-position: 200% center; }
-  }
-  @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-  @keyframes marquee {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-  @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.92); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-
-  .anim-fade-up   { animation: fadeUp 0.75s ease both; }
-  .anim-fade-up-2 { animation: fadeUp 0.75s 0.15s ease both; }
-  .anim-fade-up-3 { animation: fadeUp 0.75s 0.3s ease both; }
-  .anim-fade-up-4 { animation: fadeUp 0.75s 0.45s ease both; }
-  .anim-scale-in  { animation: scaleIn 0.6s 0.2s ease both; }
-  .anim-fade-in   { animation: fadeIn 1s ease both; }
-
-  .float { animation: float 4s ease-in-out infinite; }
-  .float-2 { animation: float 5s 1s ease-in-out infinite; }
-  .float-3 { animation: float 6s 2s ease-in-out infinite; }
-
-  /* ── Gradient Text ── */
-  .gold-text {
-    background: linear-gradient(135deg, #f59e0b, #eab308, #fcd34d, #d97706);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: shimmer 3s linear infinite;
-  }
-
-  /* ── Card hover lift ── */
-  .card-hover {
-    transition: transform 0.35s cubic-bezier(.22,.68,0,1.2), box-shadow 0.35s ease;
-  }
-  .card-hover:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 24px 60px rgba(234,179,8,0.15);
-  }
-
-  /* ── Button styles ── */
-  .btn-gold {
-    background: linear-gradient(135deg, #eab308, #d97706);
-    color: #000;
-    border: none;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 700;
-    transition: all 0.25s ease;
-    animation: pulse-glow 2.5s ease-in-out infinite;
-  }
-  .btn-gold:hover {
-    background: linear-gradient(135deg, #fbbf24, #eab308);
-    transform: translateY(-2px);
-    animation: none;
-    box-shadow: 0 8px 30px rgba(234,179,8,0.5);
-  }
-
-  .btn-outline {
-    background: transparent;
-    color: #e2e2e5;
-    border: 1px solid rgba(255,255,255,0.15);
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    transition: all 0.25s ease;
-  }
-  .btn-outline:hover {
-    background: rgba(234,179,8,0.1);
-    border-color: #eab308;
-    color: #eab308;
-  }
-
-  /* ── Noise texture overlay ── */
-  .noise::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    opacity: 0.35;
-  }
-
-  /* ── Marquee strip ── */
-  .marquee-wrapper { overflow: hidden; }
-  .marquee-track {
-    display: flex;
-    width: max-content;
-    animation: marquee 25s linear infinite;
-  }
-
-  /* ── Mobile menu ── */
-  .mobile-menu {
-    transition: all 0.35s cubic-bezier(.22,.68,0,1.2);
-  }
-
-  /* ── Review card ── */
-  .review-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-    border: 1px solid rgba(255,255,255,0.08);
-    transition: border-color 0.3s ease, transform 0.3s ease;
-  }
-  .review-card:hover {
-    border-color: rgba(234,179,8,0.3);
-    transform: translateY(-4px);
-  }
-
-  /* ── Section divider ── */
-  .section-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(234,179,8,0.4), transparent);
-    margin: 0 auto;
-    max-width: 600px;
-  }
-`;
-
-/* ─── DATA ─── */
-const BOOKS = [
-  {
-    id: 1,
-    title: "The Mind's Blueprint",
-    titleHi: "मन का नक्शा",
-    desc: "Master your emotions using ancient psychology and modern neuroscience.",
-    descHi: "प्राचीन मनोविज्ञान और आधुनिक विज्ञान से अपनी भावनाओं पर नियंत्रण पाएं।",
-    price: 499,
-    original: 999,
-    color: "#1a1208",
-    accent: "#d97706",
-    tag: "Bestseller",
-    rating: 4.9,
-    sales: "2.1k+",
-  },
-  {
-    id: 2,
-    title: "Karma & Consciousness",
-    titleHi: "कर्म और चेतना",
-    desc: "Unlock the hidden laws of the universe that shape your destiny every day.",
-    descHi: "ब्रह्मांड के छिपे नियमों को समझें जो आपकी नियति को आकार देते हैं।",
-    price: 599,
-    original: 1199,
-    color: "#0d1a0d",
-    accent: "#16a34a",
-    tag: "New",
-    rating: 4.8,
-    sales: "980+",
-  },
-  {
-    id: 3,
-    title: "Vedic Life Codes",
-    titleHi: "वैदिक जीवन सूत्र",
-    desc: "5000-year-old Vedic principles decoded for the modern seeker's daily life.",
-    descHi: "5000 साल पुराने वैदिक सिद्धांतों को आधुनिक जीवन के लिए डिकोड किया गया।",
-    price: 699,
-    original: 1499,
-    color: "#150d1a",
-    accent: "#9333ea",
-    tag: "Premium",
-    rating: 5.0,
-    sales: "1.4k+",
-  },
-];
-
-const REVIEWS = [
-  { name: "Arjun Mehta", loc: "Mumbai", text: "Vedoxa ne meri soch hi badal di. Books genuinely transformative hain.", rating: 5, avatar: "AM" },
-  { name: "Priya Sharma", loc: "Delhi", text: "Authentic content, secure payment, instant delivery. 10/10 experience!", rating: 5, avatar: "PS" },
-  { name: "Rahul Verma", loc: "Bangalore", text: "Finally ek platform jo real spiritual knowledge deta hai, bina scam ke.", rating: 5, avatar: "RV" },
-  { name: "Sneha Joshi", loc: "Pune", text: "The Mind's Blueprint book ne mujhe anxiety se bahar nikala. Life-changing!", rating: 5, avatar: "SJ" },
-  { name: "Vikram Nair", loc: "Chennai", text: "Vedic Life Codes padh ke samjha ki success ka asli matlab kya hai.", rating: 5, avatar: "VN" },
-  { name: "Anjali Gupta", loc: "Jaipur", text: "Certified aur original — yahi toh sabse badi baat hai. Highly recommended.", rating: 4, avatar: "AG" },
-];
-
-const FEATURES = [
-  { icon: ShieldCheck, title: "100% Verified", titleHi: "100% सत्यापित", desc: "Every book personally verified by Vedoxa experts.", descHi: "हर किताब Vedoxa विशेषज्ञों द्वारा प्रमाणित।" },
-  { icon: Lock, title: "Secure Payments", titleHi: "सुरक्षित भुगतान", desc: "Bank-grade encryption on every transaction.", descHi: "हर लेनदेन पर बैंक-स्तरीय एन्क्रिप्शन।" },
-  { icon: Zap, title: "Instant Access", titleHi: "तुरंत एक्सेस", desc: "Read anywhere, anytime — PDF delivered instantly.", descHi: "PDF तुरंत डिलीवर — कहीं भी, कभी भी पढ़ें।" },
-  { icon: Heart, title: "Life-Changing", titleHi: "जीवन बदलने वाली", desc: "Real transformation backed by 10,000+ readers.", descHi: "10,000+ पाठकों द्वारा समर्थित वास्तविक परिवर्तन।" },
-];
-
-/* ─── STAR RATING ─── */
-function Stars({ count }: { count: number }) {
-  return (
-    <div style={{ display: "flex", gap: 2 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} size={14} fill={i <= count ? "#eab308" : "none"} color={i <= count ? "#eab308" : "#555"} />
-      ))}
-    </div>
-  );
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Book {
+  id: string;
+  title: string;
+  description: string;
+  author: string;
+  base_price: number;
+  final_price: number;
+  discount: number;
+  pages: number;
+  language: string;
+  cover_url?: string;
+  tags?: string[];
+  is_active: boolean;
+  created_at: string;
 }
 
-/* ─── BOOK COVER ─── */
-function BookCover({ book }: { book: any }) {
+// ─── Supabase ────────────────────────────────────────────────────────────────
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// ─── Razorpay Script Loader ───────────────────────────────────────────────────
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+interface Toast { id: number; message: string; type: "success" | "error" | "info" }
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const add = useCallback((message: string, type: Toast["type"] = "info") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
+  return { toasts, add };
+}
+
+// ─── Translations ─────────────────────────────────────────────────────────────
+const TRANSLATIONS = {
+  EN: {
+    badge: "India's Most Trusted Spiritual Platform",
+    heroTitle1: "Awaken Your",
+    heroTitle2: "Consciousness",
+    heroSub: "100% original, verified digital books on spirituality & psychology. Wisdom you won't find anywhere else.",
+    libraryTitle1: "Premium",
+    libraryTitle2: "Library",
+    loading: "Connecting to Vault...",
+    empty: "No books available right now. Admin is updating the vault.",
+    buy: "Buy Securely",
+    close: "Close",
+    pages: "Pages",
+    author: "Author",
+    language: "Language",
+    off: "OFF",
+    originalPrice: "Original",
+    payFail: "Payment gateway failed to load. Please check your connection.",
+    paySuccess: "Payment Successful! 🎉",
+    retry: "Retry",
+    fetchError: "Failed to load books. Please try again.",
+    details: "View Details",
+    trusted: "256-bit Secure",
+    instant: "Instant PDF",
+    rated: "Highly Rated",
+  },
+  HI: {
+    badge: "भारत का सबसे विश्वसनीय आध्यात्मिक मंच",
+    heroTitle1: "जागाएं अपनी",
+    heroTitle2: "चेतना",
+    heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल किताबें।",
+    libraryTitle1: "प्रीमियम",
+    libraryTitle2: "संग्रह",
+    loading: "वॉल्ट से जुड़ रहे हैं...",
+    empty: "अभी कोई किताब उपलब्ध नहीं है। एडमिन जल्द अपडेट करेंगे।",
+    buy: "सुरक्षित खरीदें",
+    close: "बंद करें",
+    pages: "पृष्ठ",
+    author: "लेखक",
+    language: "भाषा",
+    off: "छूट",
+    originalPrice: "मूल मूल्य",
+    payFail: "पेमेंट गेटवे लोड नहीं हुआ। कनेक्शन जांचें।",
+    paySuccess: "भुगतान सफल! 🎉",
+    retry: "पुनः प्रयास",
+    fetchError: "किताबें लोड नहीं हुईं। दोबारा कोशिश करें।",
+    details: "विवरण देखें",
+    trusted: "256-बिट सुरक्षित",
+    instant: "तुरंत PDF",
+    rated: "उच्च रेटेड",
+  },
+};
+
+// ─── Skeleton Card ─────────────────────────────────────────────────────────────
+function SkeletonCard() {
   return (
     <div style={{
-      width: 160, height: 220,
-      background: `linear-gradient(145deg, ${book.color}, #0a0a0a)`,
-      borderRadius: 10,
-      border: `1px solid ${book.accent}33`,
-      boxShadow: `0 20px 50px ${book.accent}22, inset 0 1px 0 ${book.accent}44`,
-      position: "relative",
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      gap: 8,
+      background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
+      borderRadius: 20, padding: 28, animation: "pulse 1.8s ease-in-out infinite",
     }}>
-      <div style={{ position: "absolute", left: 12, top: 0, bottom: 0, width: 2, background: `${book.accent}55`, borderRadius: 2 }} />
-      <div style={{
-        width: 60, height: 60, borderRadius: "50%",
-        border: `2px solid ${book.accent}66`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: 4,
-      }}>
-        <BookOpen size={26} color={book.accent} />
-      </div>
-      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: book.accent, textAlign: "center", lineHeight: 1.4, letterSpacing: 1 }}>
-        VEDOXA
-      </div>
-      <div style={{
-        position: "absolute", top: 8, right: 8,
-        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)",
-        borderRadius: "50%", padding: 5,
-        border: "1px solid rgba(234,179,8,0.4)",
-      }}>
-        <ShieldCheck size={14} color="#eab308" />
-      </div>
-      <div style={{
-        position: "absolute", bottom: 10,
-        background: `${book.accent}22`, border: `1px solid ${book.accent}55`,
-        borderRadius: 4, padding: "2px 8px",
-        fontSize: 10, fontWeight: 700, color: book.accent, letterSpacing: 1,
-      }}>
-        {book.tag}
+      <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)", margin: "0 auto 20px" }} />
+      <div style={{ height: 20, background: "rgba(255,255,255,0.05)", borderRadius: 8, marginBottom: 10 }} />
+      <div style={{ height: 14, background: "rgba(255,255,255,0.04)", borderRadius: 8, width: "70%", margin: "0 auto 24px" }} />
+      <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ width: 60, height: 30, background: "rgba(255,255,255,0.05)", borderRadius: 8 }} />
+        <div style={{ width: 120, height: 44, background: "rgba(234,179,8,0.08)", borderRadius: 12 }} />
       </div>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-export default function VedoxaHome() {
-  const [lang, setLang] = useState("EN");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-  const [addedMap, setAddedMap] = useState<Record<number, boolean>>({});
+// ─── Book Detail Modal ─────────────────────────────────────────────────────────
+function BookModal({
+  book, lang, onClose, onBuy,
+}: { book: Book; lang: "EN" | "HI"; onClose: () => void; onBuy: (b: Book) => void }) {
+  const t = TRANSLATIONS[lang];
 
-  const t = (en: string, hi: string) => lang === "EN" ? en : hi;
-
-  function addToCart(bookId: number) {
-    setCartCount(c => c + 1);
-    setAddedMap(m => ({ ...m, [bookId]: true }));
-    setTimeout(() => setAddedMap(m => ({ ...m, [bookId]: false })), 1800);
-  }
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handleKey);
+    return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", handleKey); };
+  }, [onClose]);
 
   return (
-    <>
-      <style>{fontStyle}</style>
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        animation: "fadeIn 0.2s ease",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#0d0d10", border: "1px solid rgba(234,179,8,0.2)",
+          borderRadius: 24, padding: 36, maxWidth: 520, width: "100%",
+          maxHeight: "90vh", overflowY: "auto",
+          boxShadow: "0 40px 100px rgba(0,0,0,0.8), 0 0 0 1px rgba(234,179,8,0.1)",
+          animation: "slideUp 0.25s cubic-bezier(.22,.68,0,1.2)",
+          position: "relative",
+        }}
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute", top: 16, right: 16, background: "rgba(255,255,255,0.07)",
+            border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#888", transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(234,179,8,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#eab308"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}
+        >
+          <X size={16} />
+        </button>
 
-      <div style={{ minHeight: "100vh", background: "#060608", color: "#e2e2e5", fontFamily: "'DM Sans', sans-serif", overflowX: "hidden" }}>
-
-        <nav style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          padding: "16px 24px",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "rgba(6,6,8,0.85)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
+        {/* Book Icon */}
+        <div style={{
+          width: 100, height: 100, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(234,179,8,0.1) 0%, rgba(234,179,8,0.02) 100%)",
+          border: "1px solid rgba(234,179,8,0.25)", display: "flex", alignItems: "center",
+          justifyContent: "center", margin: "0 auto 24px",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <ShieldCheck color="#eab308" size={30} />
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 22, fontWeight: 900, letterSpacing: 4, color: "#fff" }}>VEDOXA</span>
-          </div>
+          <BookOpen size={46} color="#eab308" />
+        </div>
 
-          <div style={{ display: "flex", gap: 32, alignItems: "center" }} className="desktop-nav">
-            {[["#books", t("Books", "किताबें")], ["#features", t("Features", "विशेषताएं")], ["#about", t("Our Vision", "हमारा विज़न")], ["#reviews", t("Reviews", "समीक्षाएं")]].map(([href, label]) => (
-              <a key={href} href={href} style={{ color: "#aaa", textDecoration: "none", fontWeight: 500, fontSize: 15, transition: "color 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.color = "#eab308"}
-                onMouseLeave={e => e.currentTarget.style.color = "#aaa"}>
-                {label}
-              </a>
-            ))}
-          </div>
+        {/* Discount Badge */}
+        <div style={{ textAlign: "center", marginBottom: 8 }}>
+          <span style={{
+            background: "rgba(234,179,8,0.12)", color: "#eab308", padding: "4px 14px",
+            borderRadius: 99, fontSize: 12, fontWeight: 700, border: "1px solid rgba(234,179,8,0.25)",
+          }}>
+            {book.discount}% {t.off}
+          </span>
+        </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              onClick={() => setLang(l => l === "EN" ? "HI" : "EN")}
-              className="btn-outline"
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 99, fontSize: 13 }}>
-              <Globe size={14} /> {lang}
-            </button>
+        {/* Title */}
+        <h2 style={{
+          fontFamily: "'Cinzel', serif", fontSize: 26, fontWeight: 900,
+          textAlign: "center", color: "#fff", marginBottom: 16, lineHeight: 1.3,
+        }}>
+          {book.title}
+        </h2>
 
-            <div style={{ position: "relative" }}>
-              <button className="btn-outline" style={{ padding: "8px 12px", borderRadius: 10, display: "flex", alignItems: "center" }}>
-                <ShoppingCart size={18} />
-              </button>
-              {cartCount > 0 && (
-                <div style={{
-                  position: "absolute", top: -6, right: -6,
-                  background: "#eab308", color: "#000",
-                  borderRadius: "50%", width: 18, height: 18,
-                  fontSize: 11, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {cartCount}
-                </div>
-              )}
-            </div>
-
-            <button className="btn-gold" style={{ padding: "8px 20px", borderRadius: 8, fontSize: 14 }}>
-              {t("Login", "लॉगिन")}
-            </button>
-
-            <button onClick={() => setMenuOpen(o => !o)} className="btn-outline"
-              style={{ padding: "8px 10px", borderRadius: 8, display: "none" }}
-              id="hamburger">
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-        </nav>
-
-        {menuOpen && (
-          <div style={{
-            position: "fixed", top: 69, left: 0, right: 0, zIndex: 99,
-            background: "rgba(6,6,8,0.97)", borderBottom: "1px solid rgba(255,255,255,0.08)",
-            padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16,
-          }} className="mobile-menu anim-scale-in">
-            {[["#books", t("Books", "किताबें")], ["#features", t("Features", "विशेषताएं")], ["#about", t("Our Vision", "हमारा विज़न")], ["#reviews", t("Reviews", "समीक्षाएं")]].map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)}
-                style={{ color: "#e2e2e5", textDecoration: "none", fontWeight: 600, fontSize: 18, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                {label}
-              </a>
+        {/* Tags */}
+        {book.tags && book.tags.length > 0 && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 20 }}>
+            {book.tags.map((tag) => (
+              <span key={tag} style={{
+                background: "rgba(255,255,255,0.05)", color: "#aaa",
+                padding: "3px 12px", borderRadius: 99, fontSize: 12, border: "1px solid rgba(255,255,255,0.08)",
+              }}>{tag}</span>
             ))}
           </div>
         )}
 
-        <section style={{
-          position: "relative", minHeight: "100vh",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          textAlign: "center", padding: "120px 24px 80px",
-          overflow: "hidden",
-        }} className="noise">
-          <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 700, background: "radial-gradient(circle, rgba(234,179,8,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-          
-          <div style={{ position: "absolute", left: "5%", top: "30%", opacity: 0.35 }} className="float">
-            <BookCover book={BOOKS[0]} />
-          </div>
-          <div style={{ position: "absolute", right: "5%", top: "25%", opacity: 0.35 }} className="float-2">
-            <BookCover book={BOOKS[2]} />
-          </div>
-
-          <div className="anim-fade-up" style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.3)",
-            padding: "6px 16px", borderRadius: 99, marginBottom: 28,
-            fontSize: 13, fontWeight: 600, color: "#eab308",
-          }}>
-            <ShieldCheck size={14} /> {t("India's Most Trusted Spiritual Book Platform", "भारत का सबसे विश्वसनीय आध्यात्मिक पुस्तक मंच")}
-          </div>
-
-          <h1 className="anim-fade-up-2" style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: "clamp(36px, 7vw, 80px)",
-            fontWeight: 900, lineHeight: 1.15,
-            marginBottom: 24, maxWidth: 800,
-            color: "#fff", position: "relative", zIndex: 2,
-          }}>
-            {t("Awaken Your", "जागाएं अपनी")}{" "}
-            <span className="gold-text">{t("Consciousness", "चेतना")}</span>
-          </h1>
-
-          <p className="anim-fade-up-3" style={{ fontSize: "clamp(15px, 2vw, 19px)", color: "#888", maxWidth: 600, lineHeight: 1.7, marginBottom: 40, position: "relative", zIndex: 2 }}>
-            {t(
-              "100% original, Vedoxa-verified digital books on spirituality, psychology & life wisdom. Profound knowledge you won't find anywhere else.",
-              "आध्यात्मिकता, मनोविज्ञान और जीवन ज्ञान पर 100% मूल, Vedoxa-सत्यापित डिजिटल किताबें। गहरा ज्ञान जो आपको कहीं और नहीं मिलेगा।"
-            )}
+        {/* Description */}
+        {book.description && (
+          <p style={{ color: "#888", fontSize: 14, lineHeight: 1.8, marginBottom: 24, textAlign: "center" }}>
+            {book.description}
           </p>
+        )}
 
-          <div className="anim-fade-up-4" style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 2 }}>
-            <a href="#books" style={{ textDecoration: "none" }}>
-              <button className="btn-gold" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 32px", borderRadius: 99, fontSize: 16 }}>
-                <Search size={20} /> {t("Explore Books", "किताबें देखें")}
-              </button>
-            </a>
-          </div>
-
-          <div className="anim-fade-in" style={{ display: "flex", gap: 48, marginTop: 72, flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 2 }}>
-            {[["10,000+", t("Happy Readers", "खुश पाठक")], ["50+", t("Verified Books", "सत्यापित पुस्तकें")], ["100%", t("Secure & Original", "सुरक्षित और मूल")]].map(([num, label]) => (
-              <div key={label} style={{ textAlign: "center" }}>
-                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 28, fontWeight: 900, color: "#eab308" }}>{num}</div>
-                <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div style={{ background: "#eab308", padding: "12px 0", overflow: "hidden" }} className="marquee-wrapper">
-          <div className="marquee-track">
-            {Array(2).fill([
-              "⚡ Instant PDF Delivery", "🔒 100% Secure Payment", "📖 Vedoxa Verified", "✨ Ancient Wisdom", "🧠 Deep Psychology", "🌿 Vedic Principles", "⭐ 10,000+ Readers", "🛡️ Money-Back Guarantee"
-            ]).flat().map((item, i) => (
-              <span key={i} style={{ color: "#000", fontWeight: 700, fontSize: 14, padding: "0 32px", whiteSpace: "nowrap", letterSpacing: 1 }}>
-                {item}
-              </span>
-            ))}
-          </div>
+        {/* Meta Info */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 28,
+          background: "rgba(255,255,255,0.02)", borderRadius: 14,
+          border: "1px solid rgba(255,255,255,0.06)", padding: 16,
+        }}>
+          {[
+            { label: t.author, value: book.author || "VEDOXA" },
+            { label: t.pages, value: book.pages ? `${book.pages}` : "—" },
+            { label: t.language, value: book.language || "Hindi" },
+          ].map((item) => (
+            <div key={item.label} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>{item.label}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e2e5" }}>{item.value}</div>
+            </div>
+          ))}
         </div>
 
-        <section id="books" style={{ padding: "100px 24px", maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 700, marginBottom: 16 }}>
-              {t("Top Rated", "सर्वश्रेष्ठ")} <span className="gold-text">{t("Wisdom", "ज्ञान")}</span>
-            </h2>
+        {/* Price + CTA */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#555", textDecoration: "line-through" }}>₹{book.base_price}</div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", lineHeight: 1 }}>₹{book.final_price}</div>
+          </div>
+          <button
+            onClick={() => onBuy(book)}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+              gap: 10, padding: "14px 24px", borderRadius: 14, fontSize: 15,
+              fontWeight: 700, background: "linear-gradient(135deg, #eab308, #d97706)",
+              color: "#000", border: "none", cursor: "pointer", transition: "all 0.25s ease",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 30px rgba(234,179,8,0.45)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ""; (e.currentTarget as HTMLButtonElement).style.boxShadow = ""; }}
+          >
+            <Lock size={16} /> {t.buy}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function VedoxaHome() {
+  const [lang, setLang] = useState<"EN" | "HI">("EN");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const { toasts, add: addToast } = useToast();
+
+  const t = TRANSLATIONS[lang];
+
+  // Fetch Books
+  const fetchBooks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: err } = await supabase
+      .from("books")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (err) {
+      setError(t.fetchError);
+    } else {
+      setBooks(data as Book[]);
+    }
+    setLoading(false);
+  }, [t.fetchError]);
+
+  useEffect(() => { fetchBooks(); }, [fetchBooks]);
+
+  // Razorpay Payment
+  const handlePayment = async (book: Book) => {
+    if (payingId) return;
+    setPayingId(book.id);
+
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      addToast(t.payFail, "error");
+      setPayingId(null);
+      return;
+    }
+
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount: Math.round(book.final_price * 100),
+      currency: "INR",
+      name: "VEDOXA",
+      description: book.title,
+      theme: { color: "#eab308" },
+      modal: { ondismiss: () => setPayingId(null) },
+      handler: (response: { razorpay_payment_id: string }) => {
+        addToast(`${t.paySuccess} ID: ${response.razorpay_payment_id}`, "success");
+        setSelectedBook(null);
+        setPayingId(null);
+        // TODO: Call your backend API to verify payment & trigger PDF delivery
+      },
+    };
+
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", () => {
+        addToast("Payment failed. Please try again.", "error");
+        setPayingId(null);
+      });
+      rzp.open();
+    } catch {
+      addToast(t.payFail, "error");
+      setPayingId(null);
+    }
+  };
+
+  const trust = [
+    { icon: <ShieldCheck size={18} />, label: t.trusted },
+    { icon: <Zap size={18} />, label: t.instant },
+    { icon: <Star size={18} />, label: t.rated },
+  ];
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: #06060a; color: #e2e2e5; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0d0d12; }
+        ::-webkit-scrollbar-thumb { background: rgba(234,179,8,0.3); border-radius: 3px; }
+
+        .gold-text { background: linear-gradient(135deg, #f59e0b 0%, #eab308 40%, #fcd34d 70%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .card { background: rgba(255,255,255,0.018); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 28px; position: relative; cursor: pointer; transition: transform 0.3s cubic-bezier(.22,.68,0,1.1), box-shadow 0.3s ease, border-color 0.3s ease; }
+        .card:hover { transform: translateY(-8px); box-shadow: 0 24px 60px rgba(234,179,8,0.12); border-color: rgba(234,179,8,0.25); }
+        .btn-gold { background: linear-gradient(135deg, #eab308, #d97706); color: #000; border: none; cursor: pointer; font-weight: 700; font-family: 'DM Sans', sans-serif; transition: all 0.25s ease; }
+        .btn-gold:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(234,179,8,0.45); }
+        .btn-gold:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-outline { background: transparent; color: #e2e2e5; border: 1px solid rgba(255,255,255,0.12); cursor: pointer; font-weight: 600; font-family: 'DM Sans', sans-serif; transition: all 0.25s ease; }
+        .btn-outline:hover { background: rgba(234,179,8,0.08); border-color: #eab308; color: #eab308; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+        .spinner { animation: spin 0.8s linear infinite; }
+        .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 700px; height: 700px; background: radial-gradient(circle, rgba(234,179,8,0.06) 0%, transparent 70%); pointer-events: none; }
+      `}</style>
+
+      {/* Toast Notifications */}
+      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 2000, display: "flex", flexDirection: "column", gap: 10 }}>
+        {toasts.map((toast) => (
+          <div key={toast.id} style={{
+            padding: "12px 20px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+            background: toast.type === "success" ? "rgba(16,185,129,0.15)" : toast.type === "error" ? "rgba(239,68,68,0.15)" : "rgba(234,179,8,0.12)",
+            border: `1px solid ${toast.type === "success" ? "rgba(16,185,129,0.3)" : toast.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(234,179,8,0.3)"}`,
+            color: toast.type === "success" ? "#34d399" : toast.type === "error" ? "#f87171" : "#fcd34d",
+            backdropFilter: "blur(12px)", animation: "toastIn 0.25s ease",
+            maxWidth: 340, boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          }}>
+            {toast.message}
+          </div>
+        ))}
+      </div>
+
+      {/* Book Detail Modal */}
+      {selectedBook && (
+        <BookModal
+          book={selectedBook}
+          lang={lang}
+          onClose={() => setSelectedBook(null)}
+          onBuy={handlePayment}
+        />
+      )}
+
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+
+        {/* ─── Navbar ─── */}
+        <nav style={{
+          padding: "14px 32px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: "rgba(6,6,10,0.80)", borderBottom: "1px solid rgba(255,255,255,0.06)",
+          position: "sticky", top: 0, zIndex: 500, backdropFilter: "blur(24px)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <ShieldCheck color="#eab308" size={28} />
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 900, letterSpacing: 5, color: "#fff" }}>VEDOXA</span>
+          </div>
+          <button
+            onClick={() => setLang((l) => l === "EN" ? "HI" : "EN")}
+            className="btn-outline"
+            style={{ padding: "6px 16px", borderRadius: 99, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <Globe size={14} /> {lang === "EN" ? "हिंदी" : "English"}
+          </button>
+        </nav>
+
+        {/* ─── Hero ─── */}
+        <section style={{ textAlign: "center", padding: "90px 24px 60px", position: "relative", overflow: "hidden" }}>
+          <div className="hero-glow" />
+
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)", padding: "6px 18px", borderRadius: 99, marginBottom: 30, fontSize: 13, fontWeight: 600, color: "#eab308" }}>
+            <ShieldCheck size={13} /> {t.badge}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 28 }}>
-            {BOOKS.map((book) => (
-              <div key={book.id} className="card-hover" style={{
-                background: "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 20, padding: 28,
-                display: "flex", flexDirection: "column", alignItems: "center",
-                position: "relative", overflow: "hidden",
-              }}>
-                <div style={{ marginBottom: 20 }} className="float">
-                  <BookCover book={book} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <Stars count={Math.round(book.rating)} />
-                  <span style={{ fontSize: 13, color: "#666" }}>{book.rating}</span>
-                </div>
-                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>
-                  {t(book.title, book.titleHi)}
-                </h3>
-                <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-                  <div>
-                    <span style={{ fontSize: 22, fontWeight: 800, color: "#fff" }}>₹{book.price}</span>
-                  </div>
-                  <button
-                    onClick={() => addToCart(book.id)}
-                    className={addedMap[book.id] ? "btn-gold" : "btn-outline"}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, fontSize: 14 }}>
-                    <ShoppingCart size={16} />
-                    {addedMap[book.id] ? t("Added ✓", "जोड़ा ✓") : t("Buy Now", "अभी खरीदें")}
-                  </button>
-                </div>
+          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: "clamp(34px, 7vw, 68px)", fontWeight: 900, lineHeight: 1.15, marginBottom: 22, letterSpacing: "-0.5px" }}>
+            {t.heroTitle1}&nbsp;<span className="gold-text">{t.heroTitle2}</span>
+          </h1>
+
+          <p style={{ color: "#777", maxWidth: 580, margin: "0 auto 44px", fontSize: 16, lineHeight: 1.75 }}>
+            {t.heroSub}
+          </p>
+
+          {/* Trust Badges */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
+            {trust.map((item) => (
+              <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", fontSize: 13, fontWeight: 500 }}>
+                <span style={{ color: "#eab308" }}>{item.icon}</span> {item.label}
               </div>
             ))}
           </div>
         </section>
 
-      </div>
+        {/* ─── Books Grid ─── */}
+        <section style={{ padding: "20px 24px 100px", maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+          <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: 30, fontWeight: 700, marginBottom: 40, textAlign: "center" }}>
+            {t.libraryTitle1} <span className="gold-text">{t.libraryTitle2}</span>
+          </h2>
 
-      <style>{`
-        @media (max-width: 768px) {
-          .desktop-nav { display: none !important; }
-          #hamburger { display: flex !important; }
-          div[style*="position: absolute; left: 5%"],
-          div[style*="position: absolute; right: 5%"] {
-            display: none !important;
-          }
-        }
-      `}</style>
+          {loading ? (
+            <div>
+              <div style={{ textAlign: "center", color: "#eab308", fontSize: 13, letterSpacing: 2, fontWeight: 600, marginBottom: 32 }}>{t.loading}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 24 }}>
+                {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+              </div>
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: "center", padding: "60px 24px" }}>
+              <AlertCircle size={40} color="#ef4444" style={{ margin: "0 auto 16px" }} />
+              <p style={{ color: "#888", marginBottom: 20 }}>{error}</p>
+              <button onClick={fetchBooks} className="btn-gold" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 22px", borderRadius: 10, fontSize: 14 }}>
+                <RefreshCw size={15} /> {t.retry}
+              </button>
+            </div>
+          ) : books.length === 0 ? (
+            <div style={{ textAlign: "center", color: "#555", padding: "60px 24px", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 20 }}>
+              {t.empty}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 24 }}>
+              {books.map((book) => (
+                <div key={book.id} className="card" onClick={() => setSelectedBook(book)}>
+                  {/* Discount Badge */}
+                  <div style={{ position: "absolute", top: 16, right: 16, background: "rgba(234,179,8,0.1)", color: "#eab308", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "1px solid rgba(234,179,8,0.2)" }}>
+                    {book.discount}% {t.off}
+                  </div>
+
+                  {/* Icon */}
+                  <div style={{ width: 76, height: 76, borderRadius: "50%", background: "radial-gradient(circle, rgba(234,179,8,0.08), transparent)", border: "1px solid rgba(234,179,8,0.18)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+                    <BookOpen size={34} color="#eab308" />
+                  </div>
+
+                  {/* Title */}
+                  <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 700, marginBottom: 8, textAlign: "center", color: "#fff", lineHeight: 1.3 }}>
+                    {book.title}
+                  </h3>
+
+                  {/* Short description */}
+                  {book.description && (
+                    <p style={{ color: "#666", fontSize: 13, textAlign: "center", lineHeight: 1.6, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {book.description}
+                    </p>
+                  )}
+
+                  {/* View Details hint */}
+                  <div style={{ textAlign: "center", marginTop: 8, marginBottom: 4 }}>
+                    <span style={{ color: "#eab308", fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4, opacity: 0.8 }}>
+                      {t.details} <ChevronRight size={12} />
+                    </span>
+                  </div>
+
+                  {/* Price + CTA */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: "#555", textDecoration: "line-through" }}>₹{book.base_price}</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "#fff" }}>₹{book.final_price}</div>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handlePayment(book); }}
+                      disabled={payingId === book.id}
+                      className="btn-gold"
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 18px", borderRadius: 12, fontSize: 14 }}
+                    >
+                      {payingId === book.id
+                        ? <RefreshCw size={15} className="spinner" />
+                        : <Lock size={15} />}
+                      {t.buy}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ─── Footer ─── */}
+        <footer style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "28px 24px", textAlign: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
+            <ShieldCheck color="#eab308" size={18} />
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 900, letterSpacing: 4, color: "#fff" }}>VEDOXA</span>
+          </div>
+          <p style={{ color: "#444", fontSize: 12 }}>© {new Date().getFullYear()} VEDOXA. All rights reserved. Payments secured by Razorpay.</p>
+        </footer>
+
+      </div>
     </>
   );
 }
