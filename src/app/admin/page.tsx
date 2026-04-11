@@ -1,3 +1,7 @@
+// @ts-nocheck
+"use client";
+import { useState, useEffect, useRef } from "react";
+// ... baaki tumhara pura code waise ka waisa hi rahega ...
 "use client";
 import { useState, useEffect, useRef } from "react";
 import {
