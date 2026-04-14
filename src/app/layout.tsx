@@ -3,6 +3,9 @@ import Script from 'next/script';
 export const metadata = {
   title: 'Vedoxa Premium Library',
   description: 'Awaken Your Consciousness',
+  verification: {
+    google: 'VyrJe14oANu7UifdZIx8nDyZNb72fhACt3dv2m9AqM8',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
