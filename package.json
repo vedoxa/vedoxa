@@ -16,6 +16,8 @@
     "@supabase/supabase-js": "latest",
     "typescript": "latest",
     "@types/node": "latest",
-    "@types/react": "latest"
+    "@types/react": "latest",
+    "razorpay": "latest",
+    "nprogress": "latest"
   }
 }
