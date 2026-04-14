@@ -1,42 +1,44 @@
-import './globals.css'; 
-import Script from 'next/script';
-import Footer from '../components/Footer'; // YAHAN CHANGE KIYA HAI (@/ hata kar ../ lagaya hai)
+import Link from 'next/link';
 
-export const metadata = {
-  title: 'Vedoxa Premium Library',
-  description: 'Awaken Your Consciousness',
-  verification: {
-    google: 'VyrJe14oANu7UifdZIx8nDyZNb72fhACt3dv2m9AqM8',
-  },
+const Footer = () => {
+  return (
+    <footer className="bg-black border-t border-gray-800 py-12 mt-20">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+          
+          {/* Brand Name & Copyright */}
+          <div className="text-center md:text-left">
+            <h2 className="text-2xl font-bold text-yellow-500 tracking-wider">VEDOXA</h2>
+            <p className="text-gray-500 text-sm mt-2">
+              © {new Date().getFullYear()} Vedoxa Premium Library. All rights reserved.
+            </p>
+          </div>
+
+          {/* Legal Links - Razorpay Approval ke liye zaroori */}
+          <div className="flex flex-wrap justify-center gap-6 text-sm">
+            <Link href="/contact" className="text-gray-400 hover:text-yellow-500 transition-colors">
+              Contact Us
+            </Link>
+            <Link href="/terms" className="text-gray-400 hover:text-yellow-500 transition-colors">
+              Terms & Conditions
+            </Link>
+            <Link href="/privacy" className="text-gray-400 hover:text-yellow-500 transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/refund" className="text-gray-400 hover:text-yellow-500 transition-colors">
+              Refund & Cancellation
+            </Link>
+          </div>
+
+        </div>
+
+        {/* Disclaimer for Digital Goods */}
+        <div className="mt-8 pt-8 border-t border-gray-900 text-center text-xs text-gray-600">
+          <p>Strict No-Refund Policy applies to all digital library assets once accessed.</p>
+        </div>
+      </div>
+    </footer>
+  );
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body className="bg-black text-white flex flex-col min-h-screen">
-        
-        {/* Main Content */}
-        <main className="flex-grow">
-          {children}
-        </main>
-        
-        {/* Footer */}
-        <Footer />
-        
-        {/* Google Analytics Script */}
-        <Script 
-          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`} 
-          strategy="afterInteractive" 
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
-          `}
-        </Script>
-      </body>
-    </html>
-  );
-}
+export default Footer;
