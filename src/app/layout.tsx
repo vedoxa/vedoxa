@@ -1,6 +1,6 @@
-import './globals.css'; // Tailwind CSS load karne ke liye
+import './globals.css'; 
 import Script from 'next/script';
-import Footer from '@/components/Footer';
+import Footer from '../components/Footer'; // YAHAN CHANGE KIYA HAI (@/ hata kar ../ lagaya hai)
 
 export const metadata = {
   title: 'Vedoxa Premium Library',
@@ -13,7 +13,6 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      {/* flex-col aur min-h-screen ensure karega ki chote pages par bhi Footer sabse niche rahe */}
       <body className="bg-black text-white flex flex-col min-h-screen">
         
         {/* Main Content */}
@@ -21,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         
-        {/* VEDOXA Footer with Legal Links */}
+        {/* Footer */}
         <Footer />
         
         {/* Google Analytics Script */}
