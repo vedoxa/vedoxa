@@ -19,7 +19,7 @@
     "@types/react": "latest",
     "razorpay": "latest",
     "nprogress": "latest",
-    "tailwindcss": "latest",
+    "tailwindcss": "^3.4.1",
     "postcss": "latest",
     "autoprefixer": "latest"
   }
