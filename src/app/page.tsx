@@ -2,8 +2,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import {
-  ShieldCheck, Globe, BookOpen, Lock, X, Star, Zap, 
-  ChevronRight, AlertCircle, RefreshCw, CheckCircle2, Tag,
+  ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
+  ChevronRight, RefreshCw, CheckCircle2,
   LogOut, UserCircle, Coins
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
@@ -24,7 +24,6 @@ function loadRazorpayScript() {
   });
 }
 
-// Translations
 const dict = {
   EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "256-bit Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close" },
   HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "256-बिट सुरक्षित", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें" }
@@ -113,7 +112,6 @@ export default function VedoxaHome() {
   if (useRewards && profile?.reward_points > 0) clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
   const earnedPoints = selectedBook ? Math.floor(selectedBook.final_price * 0.019) : 0;
 
-  // HACK-PROOF SECURE PAYMENT LOGIC
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
@@ -124,7 +122,6 @@ export default function VedoxaHome() {
     if (!loaded) { addToast("Payment gateway failed.", "error"); setIsProcessing(false); NProgress.done(); return; }
 
     try {
-      // Step 1: Ask Backend to create secure order ID and calculate real price
       const orderRes = await fetch('/api/payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,35 +130,23 @@ export default function VedoxaHome() {
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error("Order creation failed");
 
-      // Step 2: Open Razorpay Popup
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount * 100,
         currency: "INR",
         name: "VEDOXA",
         description: selectedBook.title,
-        order_id: orderData.rzpOrderId, // Secure ID from Backend
+        order_id: orderData.rzpOrderId,
         prefill: { name: checkoutData.name, email: user.email, contact: checkoutData.phone },
         theme: { color: "#eab308" },
         handler: async function (response) {
-          addToast("Verifying payment security...", "info");
-          
-          // Step 3: Verify Payment securely on Backend
+          addToast("Verifying payment...", "info");
           const verifyRes = await fetch('/api/payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              action: 'verify',
-              rzpOrderId: response.razorpay_order_id,
-              rzpPaymentId: response.razorpay_payment_id,
-              rzpSignature: response.razorpay_signature,
-              orderData: {
-                customer_id: user.id, customer_name: checkoutData.name, customer_email: user.email,
-                book_id: selectedBook.id, book_title: selectedBook.title,
-                base_price: selectedBook.base_price, final_price: orderData.amount,
-                coupon_used: appliedCoupon?.code || null, points_used: useRewards ? profile.reward_points : 0,
-                payment_method: 'razorpay'
-              }
+              action: 'verify', rzpOrderId: response.razorpay_order_id, rzpPaymentId: response.razorpay_payment_id, rzpSignature: response.razorpay_signature,
+              orderData: { customer_id: user.id, customer_name: checkoutData.name, customer_email: user.email, book_id: selectedBook.id, book_title: selectedBook.title, base_price: selectedBook.base_price, final_price: orderData.amount, coupon_used: appliedCoupon?.code || null, points_used: useRewards ? profile.reward_points : 0, payment_method: 'razorpay' }
             })
           });
 
@@ -171,19 +156,14 @@ export default function VedoxaHome() {
             setPurchasedBookIds(prev => [...prev, selectedBook.id]);
             openWebReader(selectedBook);
             setShowCheckout(false);
-          } else {
-            addToast("Security verification failed!", "error");
-          }
+          } else addToast("Security verification failed!", "error");
         }
       };
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", () => addToast("Payment failed.", "error"));
       rzp.open();
-    } catch (err) {
-      addToast(err.message, "error");
-    } finally {
-      setIsProcessing(false); NProgress.done();
-    }
+    } catch (err) { addToast(err.message, "error"); } 
+    finally { setIsProcessing(false); NProgress.done(); }
   };
 
   const openWebReader = async (book) => {
@@ -198,25 +178,20 @@ export default function VedoxaHome() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #06060a; color: #e2e2e5; font-family: 'DM Sans', sans-serif; overflow-x: hidden; scroll-behavior: smooth; }
-        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #06060a; } ::-webkit-scrollbar-thumb { background: rgba(234,179,8,0.3); border-radius: 10px; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
         .gold-text { background: linear-gradient(135deg, #f59e0b 0%, #eab308 40%, #fcd34d 70%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .btn-gold { background: linear-gradient(135deg, #eab308, #d97706); color: #000; border: none; cursor: pointer; font-weight: 700; transition: all 0.25s ease; position: relative; overflow: hidden; }
+        .btn-gold { background: linear-gradient(135deg, #eab308, #d97706); color: #000; transition: all 0.25s ease; box-shadow: 0 4px 15px rgba(234,179,8,0.2); }
         .btn-gold:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(234,179,8,0.45); }
-        .glass-panel { background: rgba(255,255,255,0.018); border: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(12px); }
         #nprogress .bar { background: #eab308 !important; height: 3px !important; }
         #nprogress .peg { box-shadow: 0 0 10px #eab308, 0 0 5px #eab308 !important; }
-        .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
       `}</style>
 
       {/* Floating Toasts */}
-      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3">
         <AnimatePresence>
           {toasts.map((toast) => (
-            <motion.div key={toast.id} initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              style={{ padding: "12px 20px", borderRadius: 12, fontSize: 14, fontWeight: 600, background: toast.type === "success" ? "rgba(16,185,129,0.15)" : toast.type === "error" ? "rgba(239,68,68,0.15)" : "rgba(234,179,8,0.12)", border: `1px solid ${toast.type === "success" ? "rgba(16,185,129,0.3)" : toast.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(234,179,8,0.3)"}`, color: toast.type === "success" ? "#34d399" : toast.type === "error" ? "#f87171" : "#fcd34d", backdropFilter: "blur(12px)" }}>
+            <motion.div key={toast.id} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+              className={`px-5 py-3 rounded-xl text-sm font-bold backdrop-blur-md border ${toast.type === "success" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : toast.type === "error" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-yellow-500/15 border-yellow-500/30 text-yellow-400"}`}>
               {toast.message}
             </motion.div>
           ))}
@@ -226,25 +201,25 @@ export default function VedoxaHome() {
       {/* Auth Modal */}
       <AnimatePresence>
         {showAuthModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="glass-panel" style={{ borderRadius: 24, padding: 36, maxWidth: 400, width: "100%", position: "relative", background: "#0a0a0d" }}>
-              <button onClick={() => setShowAuthModal(false)} style={{ position: "absolute", top: 16, right: 16, background: "rgba(255,255,255,0.07)", border: "none", borderRadius: "50%", width: 32, height: 32, color: "#888", cursor: "pointer" }}><X size={16} style={{margin:"0 auto"}}/></button>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 24, textAlign: "center" }}>{authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#0a0a0d] border border-white/10 rounded-3xl p-8 w-full max-w-md relative shadow-2xl">
+              <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition"><X size={18} /></button>
+              <h2 className="text-2xl font-extrabold text-white mb-6 text-center">{authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
               
-              <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <input required type="email" placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} style={{ width: "100%", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none" }} />
-                <input required type="password" placeholder="Password" value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} style={{ width: "100%", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none" }} />
-                <button type="submit" className="btn-gold" style={{ padding: "14px", borderRadius: 12, fontSize: 16 }}>{authForm.mode === 'login' ? 'Login' : 'Sign Up'}</button>
+              <form onSubmit={handleAuth} className="flex flex-col gap-4">
+                <input required type="email" placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
+                <input required type="password" placeholder="Password" value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
+                <button type="submit" className="btn-gold py-3 rounded-xl font-bold text-base mt-2">{authForm.mode === 'login' ? 'Login' : 'Sign Up'}</button>
               </form>
               
-              <div style={{ margin: "20px 0", textAlign: "center", color: "#666", fontSize: 12 }}>OR</div>
-              <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} style={{ width: "100%", padding: "12px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
+              <div className="my-5 text-center text-gray-500 text-xs font-bold uppercase tracking-widest">OR</div>
+              <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white flex justify-center items-center gap-3 hover:bg-white/10 transition">
                 <Globe size={18} /> Continue with Google
               </button>
               
-              <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#888" }}>
+              <p className="text-center mt-6 text-sm text-gray-400">
                 {authForm.mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                <span onClick={() => setAuthForm({...authForm, mode: authForm.mode === 'login' ? 'signup' : 'login'})} style={{ color: "#eab308", cursor: "pointer" }}>{authForm.mode === 'login' ? 'Sign Up' : 'Login'}</span>
+                <span onClick={() => setAuthForm({...authForm, mode: authForm.mode === 'login' ? 'signup' : 'login'})} className="text-yellow-500 font-bold cursor-pointer hover:underline">{authForm.mode === 'login' ? 'Sign Up' : 'Login'}</span>
               </p>
             </motion.div>
           </motion.div>
@@ -254,38 +229,38 @@ export default function VedoxaHome() {
       {/* Checkout Modal */}
       <AnimatePresence>
         {showCheckout && selectedBook && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 30 }} style={{ background: "#0d0d10", border: "1px solid rgba(234,179,8,0.2)", borderRadius: 24, padding: 36, maxWidth: 450, width: "100%", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.8)" }}>
-              <button onClick={() => setShowCheckout(false)} style={{ position: "absolute", top: 16, right: 16, background: "rgba(255,255,255,0.07)", border: "none", borderRadius: "50%", width: 32, height: 32, color: "#888", cursor: "pointer" }}><X size={16} style={{margin:"0 auto"}}/></button>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{t.checkout}</h2>
-              <p style={{ fontSize: 13, color: "#888", marginBottom: 24 }}>{t.brand}: <span style={{color:"#eab308"}}>{selectedBook.title}</span></p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }} className="bg-[#0d0d10] border border-yellow-500/20 rounded-3xl p-6 md:p-8 w-full max-w-md relative shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <button onClick={() => setShowCheckout(false)} className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition"><X size={18} /></button>
+              <h2 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t.checkout}</h2>
+              <p className="text-xs md:text-sm text-gray-400 mb-6">{t.brand}: <span className="text-yellow-500 font-bold">{selectedBook.title}</span></p>
 
-              <form onSubmit={handlePayment} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <input required placeholder="Full Name" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} style={{ width: "100%", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none" }} />
-                <input required type="tel" placeholder="Phone Number" value={checkoutData.phone} onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value})} style={{ width: "100%", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none" }} />
+              <form onSubmit={handlePayment} className="flex flex-col gap-4">
+                <input required placeholder="Full Name" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
+                <input required type="tel" placeholder="Phone Number" value={checkoutData.phone} onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
                 
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input placeholder={t.haveCoupon} value={checkoutData.coupon} onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, background: "rgba(234,179,8,0.05)", border: "1px dashed rgba(234,179,8,0.3)", color: "#eab308", outline: "none" }} />
-                  <button type="button" onClick={verifyCoupon} style={{ padding: "0 16px", borderRadius: 12, background: "rgba(234,179,8,0.15)", color: "#eab308", border: "none", cursor: "pointer", fontWeight: "bold" }}>{t.apply}</button>
+                <div className="flex gap-2">
+                  <input placeholder={t.haveCoupon} value={checkoutData.coupon} onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})} className="flex-1 px-4 py-3 rounded-xl bg-yellow-500/5 border border-dashed border-yellow-500/30 text-yellow-500 outline-none focus:border-yellow-500" />
+                  <button type="button" onClick={verifyCoupon} className="px-5 rounded-xl bg-yellow-500/15 text-yellow-500 font-bold hover:bg-yellow-500/25 transition">{t.apply}</button>
                 </div>
 
                 {profile?.reward_points > 0 && (
-                  <label style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(16,185,129,0.05)", padding: "12px", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", cursor: "pointer" }}>
-                    <input type="checkbox" checked={useRewards} onChange={(e) => setUseRewards(e.target.checked)} style={{ accentColor: "#10b981", width: 18, height: 18 }} />
-                    <span style={{ color: "#34d399", fontSize: 14, fontWeight: 500 }}>{t.redeemPoints} ({profile.reward_points} pts)</span>
+                  <label className="flex items-center gap-3 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/20 cursor-pointer">
+                    <input type="checkbox" checked={useRewards} onChange={(e) => setUseRewards(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
+                    <span className="text-emerald-400 text-sm font-medium">{t.redeemPoints} ({profile.reward_points} pts)</span>
                   </label>
                 )}
 
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: 16, borderRadius: 12, marginTop: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#888", fontSize: 14, marginBottom: 8 }}><span>Price:</span> <span>₹{selectedBook.final_price}</span></div>
-                  {appliedCoupon && <div style={{ display: "flex", justifyContent: "space-between", color: "#10b981", fontSize: 14, marginBottom: 8 }}><span>Coupon Discount:</span> <span>- ₹{selectedBook.final_price - (selectedBook.final_price - (selectedBook.final_price * appliedCoupon.discount / 100))}</span></div>}
-                  {useRewards && profile?.reward_points > 0 && <div style={{ display: "flex", justifyContent: "space-between", color: "#34d399", fontSize: 14, marginBottom: 8 }}><span>Points Applied:</span> <span>- ₹{profile.reward_points}</span></div>}
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#fff", fontSize: 18, fontWeight: 800, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}><span>Total to Pay:</span> <span>₹{clientFinalPrice}</span></div>
-                  <div style={{ textAlign: "right", fontSize: 12, color: "#eab308", marginTop: 6 }}>{t.rewardEarn}: {earnedPoints} pts</div>
+                <div className="bg-white/5 p-4 rounded-xl mt-2">
+                  <div className="flex justify-between text-gray-400 text-sm mb-2"><span>Price:</span> <span>₹{selectedBook.final_price}</span></div>
+                  {appliedCoupon && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Coupon Discount:</span> <span>- ₹{selectedBook.final_price - (selectedBook.final_price - (selectedBook.final_price * appliedCoupon.discount / 100))}</span></div>}
+                  {useRewards && profile?.reward_points > 0 && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Points Applied:</span> <span>- ₹{profile.reward_points}</span></div>}
+                  <div className="flex justify-between text-white text-lg font-extrabold border-t border-white/10 pt-2 mt-2"><span>Total to Pay:</span> <span>₹{clientFinalPrice}</span></div>
+                  <div className="text-right text-xs text-yellow-500 mt-1 font-medium">{t.rewardEarn}: {earnedPoints} pts</div>
                 </div>
 
-                <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: "100%", padding: "16px", borderRadius: 12, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, fontSize: 16 }}>
-                  {isProcessing ? <RefreshCw className="spinner" size={18} /> : <Lock size={18} />}
+                <button type="submit" disabled={isProcessing} className="btn-gold w-full py-4 rounded-xl flex justify-center items-center gap-2 text-base font-extrabold mt-2">
+                  {isProcessing ? <RefreshCw className="animate-spin" size={18} /> : <Lock size={18} />}
                   {isProcessing ? "Processing..." : `${t.pay} ₹${clientFinalPrice}`}
                 </button>
               </form>
@@ -297,92 +272,113 @@ export default function VedoxaHome() {
       {/* Web Reader Modal */}
       <AnimatePresence>
         {showReader && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#06060a", display: "flex", flexDirection: "column" }}>
-             <div style={{ padding: "16px 24px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}><BookOpen color="#eab308" /> <span style={{ fontWeight: "bold", color: "#fff" }}>{t.pdfReader}</span></div>
-                <button onClick={() => setShowReader(false)} style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "none", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}>{t.close}</button>
+          <motion.div initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-[3000] bg-[#06060a] flex flex-col">
+             <div className="px-4 py-4 md:px-6 md:py-4 bg-white/5 border-b border-white/10 flex justify-between items-center">
+                <div className="flex items-center gap-3"><BookOpen className="text-yellow-500" /> <span className="font-bold text-white text-lg">{t.pdfReader}</span></div>
+                <button onClick={() => setShowReader(false)} className="bg-red-500/10 text-red-400 px-4 py-2 rounded-lg font-bold hover:bg-red-500/20 transition">{t.close}</button>
              </div>
-             <iframe src={readerUrl} style={{ flex: 1, width: "100%", border: "none", background: "#fff" }} title="Web Reader" />
+             <iframe src={readerUrl} className="flex-1 w-full border-none bg-white" title="Web Reader" />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Navigation */}
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <nav style={{ padding: "14px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(6,6,10,0.80)", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, zIndex: 500, backdropFilter: "blur(24px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <ShieldCheck color="#eab308" size={28} />
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 900, letterSpacing: 5, color: "#fff" }}>{t.brand}</span>
+      {/* Main Layout */}
+      <div className="min-h-screen flex flex-col bg-[#06060a] text-gray-200 overflow-x-hidden selection:bg-yellow-500/30">
+        
+        {/* Responsive Navbar */}
+        <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
+          <div className="flex items-center gap-2 md:gap-3">
+            <ShieldCheck className="text-yellow-500 w-6 h-6 md:w-8 md:h-8" />
+            <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">{t.brand}</span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "4px 10px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: "bold" }}>
+          <div className="flex items-center gap-3 md:gap-6">
+            <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-white/10 transition">
               {lang === "EN" ? "हिन्दी" : "English"}
             </button>
             
             {user ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#eab308", background: "rgba(234,179,8,0.1)", padding: "6px 12px", borderRadius: 20, fontSize: 14, fontWeight: "bold" }}>
-                  <Coins size={16} /> {profile?.reward_points || 0}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold border border-yellow-500/20">
+                  <Coins size={14} /> {profile?.reward_points || 0}
                 </div>
-                <button onClick={handleLogout} style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer" }}><LogOut size={20} /></button>
+                <button onClick={handleLogout} className="text-gray-400 hover:text-white transition"><LogOut size={20} /></button>
               </div>
             ) : (
-              <button onClick={() => setShowAuthModal(true)} className="btn-gold" style={{ padding: "8px 16px", borderRadius: 20, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                <UserCircle size={18} /> {t.login}
+              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm flex items-center gap-2 font-bold">
+                <UserCircle size={16} /> <span className="hidden sm:inline">{t.login}</span><span className="sm:hidden">Login</span>
               </button>
             )}
           </div>
         </nav>
 
-        {/* Hero Section */}
-        <section style={{ textAlign: "center", padding: "90px 24px 60px", position: "relative" }}>
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1 }} style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: 700, height: 700, background: "radial-gradient(circle, rgba(234,179,8,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6 }} style={{ fontFamily: "'Cinzel', serif", fontSize: "clamp(34px, 7vw, 68px)", fontWeight: 900, lineHeight: 1.15, marginBottom: 22 }}>
+        {/* Hero Section with Snappy Animations */}
+        <section className="relative px-4 pt-16 pb-12 md:pt-28 md:pb-20 text-center flex flex-col items-center justify-center overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150vw] md:w-[800px] h-[300px] md:h-[600px] bg-yellow-500/10 blur-[100px] rounded-full pointer-events-none -z-10" />
+          
+          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-6 max-w-4xl mx-auto">
             {lang === "EN" ? <>{t.heroTitle.split(" ")[0]} <span className="gold-text">{t.heroTitle.split(" ")[1]}</span> {t.heroTitle.split(" ")[2]}</> : <><span className="gold-text">अपनी चेतना</span> को जागृत करें</>}
           </motion.h1>
-          <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }} style={{ color: "#777", maxWidth: 580, margin: "0 auto 44px", fontSize: 16, lineHeight: 1.75 }}>{t.heroSub}</motion.p>
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }} style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", fontSize: 13, fontWeight: 500 }}><ShieldCheck size={18} color="#eab308"/> {t.secure}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#666", fontSize: 13, fontWeight: 500 }}><Zap size={18} color="#eab308"/> {t.instant}</div>
+          
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="text-gray-400 max-w-2xl mx-auto mb-10 text-sm md:text-lg px-2">
+            {t.heroSub}
+          </motion.p>
+          
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex justify-center gap-6 md:gap-10 flex-wrap">
+            <div className="flex items-center gap-2 text-gray-300 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
+            <div className="flex items-center gap-2 text-gray-300 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><Zap size={16} className="text-yellow-500"/> {t.instant}</div>
           </motion.div>
         </section>
 
-        {/* Dynamic Book Library */}
-        <section style={{ padding: "20px 24px 100px", maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-          <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: 30, fontWeight: 700, marginBottom: 40, textAlign: "center" }}>{t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span></h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 32 }}>
+        {/* Dynamic Book Library - Responsive Grid */}
+        <section className="px-4 py-12 md:py-20 w-full max-w-7xl mx-auto">
+          <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="font-cinzel text-2xl md:text-4xl font-bold mb-10 md:mb-16 text-center">
+            {t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
+          </motion.h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {loading ? (
               [1, 2, 3].map((n) => (
-                <div key={n} className="glass-panel" style={{ height: 380, borderRadius: 20, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div className="skeleton" style={{ width: "100%", height: 180, borderRadius: 12 }} />
-                  <div className="skeleton" style={{ width: "80%", height: 24 }} />
-                  <div className="skeleton" style={{ width: "40%", height: 16 }} />
-                  <div className="skeleton" style={{ width: "100%", height: 45, marginTop: "auto" }} />
+                <div key={n} className="bg-white/5 border border-white/10 rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse">
+                  <div className="w-full h-44 bg-white/10 rounded-2xl" />
+                  <div className="w-3/4 h-6 bg-white/10 rounded mt-2" />
+                  <div className="w-1/2 h-4 bg-white/10 rounded" />
+                  <div className="w-full h-12 bg-white/10 rounded-xl mt-auto" />
                 </div>
               ))
             ) : (
               books.map((book, i) => {
                 const isPurchased = purchasedBookIds.includes(book.id);
                 return (
-                  <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} key={book.id} className="glass-panel" style={{ borderRadius: 20, padding: 28, position: "relative", display: "flex", flexDirection: "column", transition: "transform 0.3s ease", cursor: "pointer" }} whileHover={{ y: -8, boxShadow: "0 24px 60px rgba(234,179,8,0.12)", borderColor: "rgba(234,179,8,0.25)" }}>
-                    {book.discount > 0 && !isPurchased && <div style={{ position: "absolute", top: 16, right: 16, background: "rgba(234,179,8,0.1)", color: "#eab308", padding: "4px 12px", borderRadius: 8, fontSize: 12, fontWeight: 800, border: "1px solid rgba(234,179,8,0.2)" }}>{book.discount}% OFF</div>}
-                    <div style={{ width: "100%", height: 180, background: "linear-gradient(to bottom right, rgba(234,179,8,0.05), rgba(255,255,255,0.01))", borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24, overflow: "hidden", position: "relative" }}>
-                       <BookOpen size={60} color="rgba(234,179,8,0.5)" />
+                  <motion.div 
+                    initial={{ opacity: 0, y: 40 }} 
+                    whileInView={{ opacity: 1, y: 0 }} 
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.5, delay: i * 0.1 }} 
+                    key={book.id} 
+                    className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer hover:bg-white/10 hover:border-yellow-500/30 transition-all duration-300 hover:-translate-y-2 shadow-lg"
+                  >
+                    {book.discount > 0 && !isPurchased && <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30 z-10">{book.discount}% OFF</div>}
+                    
+                    <div className="w-full h-44 bg-gradient-to-br from-yellow-500/10 to-white/5 rounded-2xl border border-white/5 flex items-center justify-center mb-6 overflow-hidden relative group-hover:from-yellow-500/20 transition-all">
+                       <BookOpen className="w-16 h-16 text-yellow-500/50 group-hover:text-yellow-500/80 transition-all group-hover:scale-110 duration-500" />
                     </div>
-                    <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: 22, fontWeight: 800, marginBottom: 8, color: "#fff" }}>{book.title}</h3>
-                    <p style={{ color: "#888", fontSize: 14, marginBottom: 24 }}>by {book.author}</p>
-                    <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 20 }}>
+                    
+                    <h3 className="font-cinzel text-xl font-bold mb-2 text-white leading-snug">{book.title}</h3>
+                    <p className="text-gray-400 text-sm mb-6">by {book.author}</p>
+                    
+                    <div className="mt-auto flex justify-between items-end border-t border-white/10 pt-5">
                       <div>
-                        {book.discount > 0 && !isPurchased && <div style={{ fontSize: 12, color: "#555", textDecoration: "line-through" }}>₹{book.base_price}</div>}
-                        <div style={{ fontSize: 26, fontWeight: 900, color: isPurchased ? "#10b981" : "#fff" }}>{isPurchased ? 'Owned' : `₹${book.final_price}`}</div>
+                        {book.discount > 0 && !isPurchased && <div className="text-xs text-gray-500 line-through mb-1">₹{book.base_price}</div>}
+                        <div className={`text-2xl font-black ${isPurchased ? "text-emerald-400" : "text-white"}`}>{isPurchased ? 'Owned' : `₹${book.final_price}`}</div>
                       </div>
+                      
                       {isPurchased ? (
-                        <button onClick={() => openWebReader(book)} style={{ padding: "12px 20px", borderRadius: 12, fontSize: 14, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: "bold" }}>
+                        <button onClick={(e) => { e.stopPropagation(); openWebReader(book); }} className="px-5 py-2.5 rounded-xl text-sm bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-2 font-bold hover:bg-emerald-500/25 transition">
                           <CheckCircle2 size={16} /> {t.readNow}
                         </button>
                       ) : (
-                        <button onClick={() => { setSelectedBook(book); setShowCheckout(true); }} className="btn-gold" style={{ padding: "12px 20px", borderRadius: 12, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedBook(book); setShowCheckout(true); }} className="btn-gold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 font-bold">
                           {t.buyNow} <ChevronRight size={16} />
                         </button>
                       )}
