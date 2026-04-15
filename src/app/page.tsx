@@ -11,7 +11,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+// FIX: Build-time crash ko rokne ke liye safe initialization
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
