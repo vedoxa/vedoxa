@@ -578,5 +578,18 @@ export default function VedoxaHome() {
     </>
   );
 }
+          {/* Ye tumhare Book Grid section ka closing hai */}
+        </section>
 
-​<Link href="/about" className="hover:text-yellow-500 transition">About Us</Link>
+        {/* NAYA FOOTER YAHAN AAYEGA (Main div ke andar) */}
+        <footer className="py-8 w-full text-center border-t border-white/10 mt-auto">
+          <Link href="/about" className="text-sm font-bold text-gray-400 hover:text-yellow-500 transition">
+            About Us
+          </Link>
+        </footer>
+
+      </div> {/* Ye Main Layout wale div ka closing bracket hai */}
+    </>
+  );
+}
+
