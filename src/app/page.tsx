@@ -168,31 +168,11 @@ export default function VedoxaHome() {
   if (useRewards && profile?.reward_points > 0) clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
   const earnedPoints = selectedBook ? Math.floor(selectedBook.final_price * 0.019) : 0;
 
+  // 🔴 YAHAN CHANGE HUA HAI: STRICT RAZORPAY PAYMENT FLOW (Free logic blocked)
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
     if (!checkoutData.name || !checkoutData.phone) { addToast("Fill all details", "error"); return; }
-
-    if (clientFinalPrice === 0) {
-      setIsProcessing(true); NProgress.start();
-      try {
-        const res = await fetch('/api/free-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, bookId: selectedBook.id, couponCode: appliedCoupon?.code, pointsUsed: useRewards ? profile.reward_points : 0 })
-        });
-        const data = await res.json();
-        if (data.success) {
-          addToast("Free Book Unlocked! 🎉", "success");
-          setPurchasedBookIds(prev => [...prev, selectedBook.id]);
-          openWebReader(selectedBook);
-          setShowCheckout(false);
-          setShowBookDetails(false);
-        } else throw new Error(data.error);
-      } catch(err) { addToast(err.message || "Checkout failed", "error"); }
-      finally { setIsProcessing(false); NProgress.done(); }
-      return; 
-    }
 
     setIsProcessing(true); NProgress.start();
     const loaded = await loadRazorpayScript();
@@ -209,7 +189,7 @@ export default function VedoxaHome() {
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount * 100,
+        amount: orderData.amount * 100, // strictly in paise
         currency: "INR",
         name: "VEDOXA",
         description: selectedBook.title,
@@ -299,9 +279,24 @@ export default function VedoxaHome() {
 
             {/* Book Info Section */}
             <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center border-r border-white/10">
-               <div className="w-full h-64 md:h-96 bg-gradient-to-br from-yellow-500/10 to-white/5 rounded-3xl border border-white/10 flex items-center justify-center mb-8 shadow-2xl">
-                   <BookOpen className="w-32 h-32 text-yellow-500/60" />
+               
+               <div className="w-full h-64 md:h-96 mb-8 shadow-2xl">
+                 {/* DETAIL MODAL ME PHOTO WALA CODE ADD KIYA */}
+                 {selectedBook.cover_path ? (
+                   <div className="w-full h-full relative overflow-hidden rounded-3xl">
+                     <img 
+                       src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
+                       alt={selectedBook.title}
+                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                     />
+                   </div>
+                 ) : (
+                   <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-3xl border border-yellow-500/20">
+                     <BookOpen size={64} className="text-yellow-500 opacity-80" />
+                   </div>
+                 )}
                </div>
+
                <h1 className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4">{selectedBook.title}</h1>
                <p className="text-xl text-yellow-500 mb-6">by {selectedBook.author}</p>
                <p className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base">
@@ -378,7 +373,6 @@ export default function VedoxaHome() {
       <AnimatePresence>
         {showAuthModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            {/* Same UI as before, omitted for brevity but intact */}
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#0a0a0d] border border-white/10 rounded-3xl p-8 w-full max-w-md relative shadow-2xl">
               <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition"><X size={18} /></button>
               <h2 className="text-2xl font-extrabold text-white mb-6 text-center">{authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
@@ -538,8 +532,21 @@ export default function VedoxaHome() {
                   >
                     {book.discount > 0 && !isPurchased && <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30 z-10">{book.discount}% OFF</div>}
                     
-                    <div className="w-full h-44 bg-gradient-to-br from-yellow-500/10 to-white/5 rounded-2xl border border-white/5 flex items-center justify-center mb-6 overflow-hidden relative group-hover:from-yellow-500/20 transition-all">
-                       <BookOpen className="w-16 h-16 text-yellow-500/50 group-hover:text-yellow-500/80 transition-all group-hover:scale-110 duration-500" />
+                    <div className="w-full h-44 mb-6">
+                      {/* HOME PAGE GRID ME PHOTO WALA CODE ADD KIYA */}
+                      {book.cover_path ? (
+                        <div className="w-full h-full relative overflow-hidden rounded-xl">
+                          <img 
+                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} 
+                            alt={book.title}
+                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-xl border border-yellow-500/20">
+                          <BookOpen size={48} className="text-yellow-500 opacity-80" />
+                        </div>
+                      )}
                     </div>
                     
                     <h3 className="font-cinzel text-xl font-bold mb-2 text-white leading-snug">{book.title}</h3>
