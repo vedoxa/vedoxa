@@ -117,6 +117,28 @@ export default function VedoxaHome() {
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
     if (!checkoutData.name || !checkoutData.phone) { addToast("Fill all details", "error"); return; }
 
+    // --- NEW: ₹0 BYPASS LOGIC (Link to separate file) ---
+    if (clientFinalPrice === 0) {
+      setIsProcessing(true); NProgress.start();
+      try {
+        const res = await fetch('/api/free-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, bookId: selectedBook.id, couponCode: appliedCoupon?.code, pointsUsed: useRewards ? profile.reward_points : 0 })
+        });
+        const data = await res.json();
+        if (data.success) {
+          addToast("Free Book Unlocked! 🎉", "success");
+          setPurchasedBookIds(prev => [...prev, selectedBook.id]);
+          openWebReader(selectedBook);
+          setShowCheckout(false);
+        } else throw new Error(data.error);
+      } catch(err) { addToast(err.message, "error"); }
+      finally { setIsProcessing(false); NProgress.done(); }
+      return; // Stop function here, don't open Razorpay
+    }
+    // ----------------------------------------------------
+
     setIsProcessing(true); NProgress.start();
     const loaded = await loadRazorpayScript();
     if (!loaded) { addToast("Payment gateway failed.", "error"); setIsProcessing(false); NProgress.done(); return; }
