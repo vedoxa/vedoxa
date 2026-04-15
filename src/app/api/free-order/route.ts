@@ -1,12 +1,11 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Ye line Vercel ko error dene se rokegi
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request) {
   try {
-    // Supabase client ab function ke andar hai
+    // Supabase connection ab function ke ANDAR hai
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!, 
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -14,7 +13,6 @@ export async function POST(req: Request) {
 
     const { userId, bookId, couponCode, pointsUsed } = await req.json();
 
-    // Direct database insert bypassing Razorpay
     const { error } = await supabase.from('orders').insert({
       customer_id: userId,
       book_id: bookId,
