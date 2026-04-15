@@ -578,3 +578,5 @@ export default function VedoxaHome() {
     </>
   );
 }
+
+​<Link href="/about" className="hover:text-yellow-500 transition">About Us</Link>
