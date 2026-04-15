@@ -1,23 +1,27 @@
 import React from "react";
 import Link from "next/link";
+// UI Icons ke liye lucide-react
 import { 
   ShieldCheck, 
-  Instagram, 
-  Youtube, 
-  Twitter, 
-  Facebook, 
   MessageCircle, 
   ArrowLeft,
   BookOpen,
   Sparkles
 } from "lucide-react";
+// Social Media Icons ke liye react-icons (FontAwesome 6)
+import { 
+  FaInstagram, 
+  FaYoutube, 
+  FaXTwitter, 
+  FaFacebook 
+} from "react-icons/fa6";
 
 export default function AboutPage() {
   const socialLinks = [
-    { name: "Instagram", icon: <Instagram size={24} />, url: "https://www.instagram.com/vedoxa.shop?utm_source=qr&igsh=ZnNrbjUxeGI0NTM3", color: "hover:text-pink-500" },
-    { name: "YouTube", icon: <Youtube size={24} />, url: "https://www.youtube.com/@vedoxa1", color: "hover:text-red-500" },
-    { name: "X (Twitter)", icon: <Twitter size={24} />, url: "https://x.com/Vedoxa", color: "hover:text-blue-400" },
-    { name: "Facebook", icon: <Facebook size={24} />, url: "https://www.facebook.com/share/1AvX47PdWn/", color: "hover:text-blue-600" },
+    { name: "Instagram", icon: <FaInstagram size={24} />, url: "https://www.instagram.com/vedoxa.shop?utm_source=qr&igsh=ZnNrbjUxeGI0NTM3", color: "hover:text-pink-500" },
+    { name: "YouTube", icon: <FaYoutube size={24} />, url: "https://www.youtube.com/@vedoxa1", color: "hover:text-red-500" },
+    { name: "X (Twitter)", icon: <FaXTwitter size={24} />, url: "https://x.com/Vedoxa", color: "hover:text-blue-400" },
+    { name: "Facebook", icon: <FaFacebook size={24} />, url: "https://www.facebook.com/share/1AvX47PdWn/", color: "hover:text-blue-600" },
     { name: "ShareChat", icon: <MessageCircle size={24} />, url: "https://sharechat.com/profile/vedoxa?d=n", color: "hover:text-yellow-400" }
   ];
 
