@@ -39,7 +39,7 @@ export default function PremiumAdminDashboard() {
   const [basePrice, setBasePrice] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [file, setFile] = useState(null);
-  const [coverFile, setCoverFile] = useState(null); // NEW: Cover Image State
+  const [coverFile, setCoverFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [editingBookId, setEditingBookId] = useState(null);
@@ -66,7 +66,6 @@ export default function PremiumAdminDashboard() {
   const [customers, setCustomers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [searchCustomer, setSearchCustomer] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   
   // SETTINGS & SECURITY
   const [currentPassword, setCurrentPassword] = useState("");
@@ -168,18 +167,16 @@ export default function PremiumAdminDashboard() {
     setUploadStatus("🖼️ Uploading Cover Image...");
 
     try {
-      // 1. Upload Cover Image (if provided)
       let coverFileName = null;
       if (coverFile) {
         coverFileName = `${Date.now()}-cover-${Math.random().toString(36).substring(2)}.${coverFile.name.split('.').pop()}`;
         const { error: coverError } = await supabase.storage
-          .from('books-covers') // Ensure this bucket exists in your Supabase project
+          .from('books-covers')
           .upload(coverFileName, coverFile);
           
         if (coverError) throw coverError;
       }
 
-      // 2. Upload PDF File
       setUploadStatus("🔒 Securing and Uploading PDF...");
       const pdfFileName = `${Date.now()}-book-${Math.random().toString(36).substring(2)}.pdf`;
       const { error: storageError } = await supabase.storage
@@ -202,7 +199,7 @@ export default function PremiumAdminDashboard() {
         discount: discount,
         final_price: finalPrice,
         pdf_path: pdfFileName,
-        cover_path: coverFileName, // Storing cover path
+        cover_path: coverFileName,
         created_at: new Date().toISOString(),
         format: "pdf"
       };
@@ -237,7 +234,7 @@ export default function PremiumAdminDashboard() {
     setBasePrice(0);
     setDiscount(0);
     setFile(null);
-    setCoverFile(null); // Reset cover file
+    setCoverFile(null);
     setEditingBookId(null);
     setShowAddBookModal(false);
   };
@@ -398,20 +395,16 @@ export default function PremiumAdminDashboard() {
   const totalRevenue = orders.reduce((sum, order) => sum + (order.final_price || 0), 0);
   const totalOrders = orders.length;
   const totalCustomers = customers.length;
-  const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
 
-  // LOGIN PAGE
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 flex items-center justify-center p-4 font-sans overflow-hidden relative">
-        {/* Animated Colorful Background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse"></div>
           <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-gradient-to-r from-pink-500 to-rose-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse animation-delay-2000"></div>
           <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse animation-delay-4000"></div>
         </div>
 
-        {/* Login Card */}
         <div className="relative max-w-md w-full">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-purple-600/30 to-pink-600/30 rounded-3xl blur-2xl opacity-100"></div>
           
@@ -498,17 +491,14 @@ export default function PremiumAdminDashboard() {
     );
   }
 
-  // ADMIN DASHBOARD
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/40 to-slate-950 text-slate-200 font-sans">
-      {/* Floating Colorful Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
         <div className="absolute top-40 right-1/4 w-[30rem] h-[30rem] bg-purple-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse animation-delay-2000"></div>
         <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-pink-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse animation-delay-4000"></div>
       </div>
 
-      {/* HEADER */}
       <header className="relative border-b border-indigo-500/20 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-40 shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -527,10 +517,6 @@ export default function PremiumAdminDashboard() {
           </div>
           
           <div className="flex items-center gap-6">
-            <div className="relative p-2 hover:bg-slate-800 rounded-full transition">
-              <Bell className="text-indigo-300 cursor-pointer hover:text-white transition" size={22} />
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></span>
-            </div>
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 bg-gradient-to-r from-red-500/20 to-rose-600/20 hover:from-red-500/40 hover:to-rose-600/40 text-red-300 px-5 py-2.5 rounded-lg font-bold text-sm transition border border-red-500/30 hover:border-red-400/60 shadow-lg"
@@ -541,7 +527,6 @@ export default function PremiumAdminDashboard() {
         </div>
       </header>
 
-      {/* TABS NAVIGATION */}
       <div className="relative border-b border-indigo-500/20 bg-slate-900/40 backdrop-blur-md sticky top-[73px] z-30">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-2 overflow-x-auto hide-scrollbar">
@@ -569,9 +554,7 @@ export default function PremiumAdminDashboard() {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
       <div className="relative max-w-7xl mx-auto px-6 py-10 z-10">
-        {/* NOTIFICATIONS */}
         <div className="fixed bottom-6 right-6 space-y-3 z-50">
           {notifications.map(notif => (
             <div key={notif.id} className={`px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-3 backdrop-blur-xl border shadow-2xl ${
@@ -586,10 +569,8 @@ export default function PremiumAdminDashboard() {
           ))}
         </div>
 
-        {/* DASHBOARD TAB */}
         {activeTab === "dashboard" && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-blue-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(59,130,246,0.2)]">
                 <div className="flex items-center justify-between mb-4">
@@ -599,9 +580,6 @@ export default function PremiumAdminDashboard() {
                   </div>
                 </div>
                 <p className="text-4xl font-black text-white mb-2">{books.length}</p>
-                <p className="text-xs text-indigo-300 flex items-center gap-1 font-medium">
-                  <ArrowUpRight size={16} className="text-green-400" /> Available Now
-                </p>
               </div>
 
               <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-green-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(34,197,94,0.2)]">
@@ -612,9 +590,6 @@ export default function PremiumAdminDashboard() {
                   </div>
                 </div>
                 <p className="text-4xl font-black text-white mb-2">{totalOrders}</p>
-                <p className="text-xs text-indigo-300 flex items-center gap-1 font-medium">
-                  <ArrowUpRight size={16} className="text-green-400" /> This Month
-                </p>
               </div>
 
               <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-purple-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(168,85,247,0.2)]">
@@ -624,10 +599,7 @@ export default function PremiumAdminDashboard() {
                     <DollarSign className="text-white" size={22} />
                   </div>
                 </div>
-                <p className="text-4xl font-black text-white mb-2">₹{(totalRevenue/1000).toFixed(1)}K</p>
-                <p className="text-xs text-indigo-300 flex items-center gap-1 font-medium">
-                  <ArrowUpRight size={16} className="text-green-400" /> +12.5% Growth
-                </p>
+                <p className="text-4xl font-black text-white mb-2">₹{(totalRevenue).toFixed(0)}</p>
               </div>
 
               <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-pink-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(236,72,153,0.2)]">
@@ -638,93 +610,41 @@ export default function PremiumAdminDashboard() {
                   </div>
                 </div>
                 <p className="text-4xl font-black text-white mb-2">{totalCustomers}</p>
-                <p className="text-xs text-indigo-300 flex items-center gap-1 font-medium">
-                  <ArrowUpRight size={16} className="text-green-400" /> Active Users
-                </p>
               </div>
             </div>
 
-            {/* --- GOOGLE ANALYTICS INTEGRATION SECTION --- */}
             <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/40 rounded-3xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-              {/* Decorative blurs */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
               
               <div className="flex justify-between items-center mb-6 relative z-10">
                 <h3 className="text-2xl font-black text-white flex items-center gap-3">
                   <PieChart className="text-blue-400" size={28} /> Google Analytics 4 Dashboard
                 </h3>
-                <span className="bg-blue-500/20 border border-blue-400/50 text-blue-200 text-xs px-3 py-1.5 rounded-full font-bold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Live Tracking Active
-                </span>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
-                {/* Looker Studio Embed Container */}
-                <div className="lg:col-span-2 bg-slate-900/80 rounded-2xl border border-indigo-500/30 overflow-hidden min-h-[400px] flex flex-col">
+                <div className="lg:col-span-3 bg-slate-900/80 rounded-2xl border border-indigo-500/30 overflow-hidden min-h-[400px] flex flex-col">
                   <div className="p-3 bg-slate-800/80 border-b border-indigo-500/30 flex gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
                     <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
                     <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
                   </div>
-                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-opacity-5">
-                    {/* INSTRUCTIONS FOR DEV: Replace the below block with an actual iframe of Looker Studio */}
-                    <LineChart size={64} className="text-blue-500/40 mb-4" />
-                    <h4 className="text-lg font-bold text-indigo-300 mb-2">Connect Your GA4 Report Here</h4>
-                    <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
-                      To display your real-time traffic here, go to Google Looker Studio, create a report connected to your GA4 property, generate an embed link, and paste it inside the code iframe tag.
-                    </p>
-                    <button className="px-6 py-2 bg-blue-600/20 text-blue-300 border border-blue-500/50 rounded-lg text-sm font-bold hover:bg-blue-600/40 transition">
-                      Edit Code to Embed Iframe
-                    </button>
-                    {/* <iframe 
+                  <div className="flex-1 w-full bg-slate-900">
+                    {/* 👇 REPLACE 'YOUR_LOOKER_STUDIO_EMBED_URL' WITH YOUR ACTUAL GA4 LINK 👇 */}
+                    <iframe 
                         width="100%" 
                         height="100%" 
                         src="YOUR_LOOKER_STUDIO_EMBED_URL" 
                         frameBorder="0" 
-                        style={{ border: 0, minHeight: '400px' }} 
+                        style={{ border: 0, minHeight: '500px' }} 
                         allowFullScreen 
                         sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
-                      </iframe> 
-                    */}
-                  </div>
-                </div>
-
-                {/* Quick GA Stats Mockup */}
-                <div className="bg-slate-900/80 rounded-2xl border border-indigo-500/30 p-6">
-                  <h4 className="text-indigo-300 font-bold mb-4 flex items-center gap-2">
-                    <Activity size={18} className="text-green-400" /> Today's Highlights
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium">Page Views</p>
-                        <p className="text-xl font-black text-white">1,248</p>
-                      </div>
-                      <TrendingUp className="text-green-400" size={20} />
-                    </div>
-                    <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium">Unique Visitors</p>
-                        <p className="text-xl font-black text-white">856</p>
-                      </div>
-                      <Users className="text-blue-400" size={20} />
-                    </div>
-                    <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium">Bounce Rate</p>
-                        <p className="text-xl font-black text-white">42.3%</p>
-                      </div>
-                      <TrendingDown className="text-pink-400" size={20} />
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-6 border-t border-indigo-500/20 text-center">
-                     <p className="text-xs text-indigo-400">Data automatically synced via GA4 API Integration</p>
+                    </iframe> 
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Recent Orders */}
             <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 rounded-3xl p-8 backdrop-blur-xl shadow-2xl">
               <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
                 <Activity className="text-cyan-400" /> Recent Sales Activity
@@ -744,9 +664,6 @@ export default function PremiumAdminDashboard() {
                     {orders.slice(0, 8).map(order => (
                       <tr key={order.id} className="hover:bg-indigo-500/10 transition duration-200">
                         <td className="py-4 px-6 text-white font-bold text-sm flex items-center gap-3">
-                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs">
-                             {order.customer_name?.[0] || "G"}
-                           </div>
                            {order.customer_name || "Guest"}
                         </td>
                         <td className="py-4 px-6 text-slate-300 text-sm">{order.book_title || "—"}</td>
@@ -768,7 +685,6 @@ export default function PremiumAdminDashboard() {
           </div>
         )}
 
-        {/* BOOKS TAB */}
         {activeTab === "books" && (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-indigo-500/20 backdrop-blur-md">
@@ -789,7 +705,6 @@ export default function PremiumAdminDashboard() {
               </button>
             </div>
 
-            {/* Search */}
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
               <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-indigo-400" size={20} />
@@ -802,7 +717,6 @@ export default function PremiumAdminDashboard() {
               />
             </div>
 
-            {/* Add Book Modal with Cover Option */}
             {showAddBookModal && (
               <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-slate-900 border border-indigo-500/50 rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-[0_0_50px_rgba(99,102,241,0.2)]">
@@ -855,10 +769,9 @@ export default function PremiumAdminDashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-800/40 p-5 rounded-2xl border border-indigo-500/20">
-                      {/* FRONT PAGE / COVER UPLOAD */}
                       <div className="border-r border-indigo-500/20 pr-0 md:pr-4">
                         <label className="block text-xs font-black text-pink-400 mb-3 uppercase flex items-center gap-2">
-                          <BookOpen size={16} /> 1. Upload Cover Image (Front Page)
+                          <BookOpen size={16} /> 1. Upload Cover Image
                         </label>
                         <div className="relative">
                           <input
@@ -870,7 +783,6 @@ export default function PremiumAdminDashboard() {
                         </div>
                       </div>
 
-                      {/* PDF UPLOAD */}
                       <div className="pl-0 md:pl-4 mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-indigo-500/20">
                         <label className="block text-xs font-black text-blue-400 mb-3 uppercase flex items-center gap-2">
                           <Upload size={16} /> 2. Upload Book PDF *
@@ -916,16 +828,13 @@ export default function PremiumAdminDashboard() {
               </div>
             )}
 
-            {/* Books Grid with cover support */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredBooks.map(book => (
                 <div key={book.id} className="group bg-slate-900/60 border border-indigo-500/20 hover:border-blue-400/60 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 hover:shadow-[0_10px_40px_rgba(99,102,241,0.2)] transform hover:-translate-y-2 flex flex-col h-full relative overflow-hidden">
-                  {/* Decorative background glow */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-500 pointer-events-none"></div>
                   
                   <div className="flex justify-between items-start mb-4 relative z-10">
                     <div className="flex-1 flex gap-4">
-                      {/* Show cover thumbnail if exists, else a placeholder */}
                       <div className="w-16 h-20 bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center border border-indigo-500/30 overflow-hidden shadow-md">
                         {book.cover_path ? (
                           <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: `url(${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path})`}}></div>
@@ -979,8 +888,6 @@ export default function PremiumAdminDashboard() {
           </div>
         )}
 
-        {/* --- OTHER TABS REMAIN UNCHANGED IN LOGIC, JUST INJECTED WITH COLORFUL CLASSES --- */}
-        {/* DISCOUNTS TAB */}
         {activeTab === "discounts" && (
           <div className="space-y-6 animate-in fade-in duration-500">
              <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-green-500/20 backdrop-blur-md">
@@ -996,15 +903,140 @@ export default function PremiumAdminDashboard() {
                 <Plus size={20} /> Create Discount
               </button>
             </div>
-            {/* The rest of the Discounts tab logic is the same, simply mapping over items */}
-            {/* Omitted the inner UI mapping to save space since logic is identical, only bg colors would change */}
-            <div className="text-center p-10 bg-slate-900/40 rounded-2xl border border-indigo-500/20">
-               <p className="text-indigo-300">Discount view ready. (Functionality intact)</p>
+
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
+              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-green-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search discounts..."
+                value={discountSearch}
+                onChange={(e) => setDiscountSearch(e.target.value)}
+                className="relative w-full bg-slate-900/60 border border-green-500/30 hover:border-green-400/60 focus:border-green-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
+              />
+            </div>
+
+            {showAddDiscountModal && (
+              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-900 border border-green-500/50 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(34,197,94,0.2)]">
+                  <div className="flex justify-between items-center mb-6 border-b border-green-500/20 pb-4">
+                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">New Discount</h3>
+                    <button onClick={() => setShowAddDiscountModal(false)} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-bold text-green-300 mb-2 uppercase">Discount Name *</label>
+                      <input value={discountName} onChange={(e) => setDiscountName(e.target.value)} type="text" placeholder="Summer Sale" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-green-300 mb-2 uppercase">Percentage % *</label>
+                      <input value={discountPercentage} onChange={(e) => setDiscountPercentage(Number(e.target.value))} type="number" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-green-300 mb-2 uppercase">Start Date *</label>
+                        <input value={discountStartDate} onChange={(e) => setDiscountStartDate(e.target.value)} type="date" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-green-300 mb-2 uppercase">End Date *</label>
+                        <input value={discountEndDate} onChange={(e) => setDiscountEndDate(e.target.value)} type="date" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-green-300 mb-3 uppercase">Select Books</label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto bg-slate-800/40 p-3 rounded-xl border border-green-500/20">
+                        {books.map(book => (
+                          <label key={book.id} className="flex items-center gap-3 p-3 hover:bg-slate-800/80 rounded-lg cursor-pointer transition">
+                            <input
+                              type="checkbox"
+                              checked={selectedBooks.includes(book.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedBooks([...selectedBooks, book.id]);
+                                } else {
+                                  setSelectedBooks(selectedBooks.filter(id => id !== book.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded accent-green-500"
+                            />
+                            <span className="text-sm text-slate-300">{book.title}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-4 border-t border-green-500/20">
+                      <button
+                        onClick={handleAddDiscount}
+                        className="flex-[2] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg transform hover:scale-[1.02]"
+                      >
+                        Create Discount
+                      </button>
+                      <button
+                        onClick={() => setShowAddDiscountModal(false)}
+                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition border border-slate-600 uppercase"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredDiscounts.map(discount => {
+                const isActive = new Date() >= new Date(discount.startDate) && new Date() <= new Date(discount.endDate);
+                return (
+                  <div key={discount.id} className={`border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:shadow-lg ${
+                    isActive
+                      ? "bg-gradient-to-br from-green-900/40 to-emerald-900/20 border-green-500/40 hover:border-green-400/70 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                      : "bg-gradient-to-br from-slate-900/60 to-slate-800/40 border-slate-700/50 hover:border-slate-500/50"
+                  }`}>
+                    <div className="absolute top-4 right-4">
+                      {isActive ? (
+                        <span className="bg-green-500/20 text-green-300 text-xs font-black px-3 py-1.5 rounded-md border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]">✅ ACTIVE</span>
+                      ) : (
+                        <span className="bg-slate-700/50 text-slate-300 text-xs font-black px-3 py-1.5 rounded-md border border-slate-600/50">⏰ UPCOMING</span>
+                      )}
+                    </div>
+
+                    <div className="mb-4">
+                      <h3 className="font-black text-white text-xl">{discount.name}</h3>
+                    </div>
+
+                    <div className="flex items-end justify-between mb-6">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1 font-bold">DISCOUNT</p>
+                        <p className={`text-4xl font-black ${isActive ? "text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300" : "text-slate-300"}`}>{discount.percentage}%</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 mb-1 font-bold">BOOKS APPLIED</p>
+                        <p className="text-2xl font-black text-white">{discount.appliedBooks?.length || 0}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 text-xs text-slate-400 border-t border-slate-700/50 pt-4">
+                      <p className="flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700/30">
+                        <Calendar size={14} className={isActive ? "text-green-400" : ""} /> {new Date(discount.startDate).toLocaleDateString()}
+                      </p>
+                      <p className="flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700/30">
+                        <Calendar size={14} className={isActive ? "text-red-400" : ""} /> {new Date(discount.endDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* COUPONS TAB */}
         {activeTab === "coupons" && (
            <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-pink-500/20 backdrop-blur-md">
@@ -1020,13 +1052,125 @@ export default function PremiumAdminDashboard() {
                <Plus size={20} /> Generate Code
              </button>
            </div>
-           <div className="text-center p-10 bg-slate-900/40 rounded-2xl border border-indigo-500/20">
-               <p className="text-indigo-300">Coupons view ready. (Functionality intact)</p>
+
+           <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-rose-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
+              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-pink-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search coupons..."
+                value={couponSearch}
+                onChange={(e) => setCouponSearch(e.target.value)}
+                className="relative w-full bg-slate-900/60 border border-pink-500/30 hover:border-pink-400/60 focus:border-pink-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
+              />
+            </div>
+
+            {showAddCouponModal && (
+              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-900 border border-pink-500/50 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(236,72,153,0.2)]">
+                  <div className="flex justify-between items-center mb-6 border-b border-pink-500/20 pb-4">
+                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">New Coupon</h3>
+                    <button onClick={() => setShowAddCouponModal(false)} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Coupon Code *</label>
+                      <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} type="text" placeholder="SAVE20" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner font-black tracking-widest text-lg" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Discount %*</label>
+                        <input value={couponDiscount} onChange={(e) => setCouponDiscount(Number(e.target.value))} type="number" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Usage Limit *</label>
+                        <input value={couponLimit} onChange={(e) => setCouponLimit(Number(e.target.value))} type="number" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Expiry Date *</label>
+                      <input value={couponExpiry} onChange={(e) => setCouponExpiry(e.target.value)} type="date" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                    </div>
+
+                    <div className="flex gap-4 pt-4 border-t border-pink-500/20">
+                      <button
+                        onClick={handleAddCoupon}
+                        className="flex-[2] bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg transform hover:scale-[1.02]"
+                      >
+                        Create Coupon
+                      </button>
+                      <button
+                        onClick={() => setShowAddCouponModal(false)}
+                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition border border-slate-600 uppercase"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCoupons.map(coupon => {
+                const isExpired = new Date(coupon.expiry) < new Date();
+                const isExhausted = coupon.used >= coupon.limit_count;
+                const usagePercent = (coupon.used / coupon.limit_count) * 100;
+
+                return (
+                  <div key={coupon.id} className={`border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 ${
+                    isExpired || isExhausted
+                      ? "bg-slate-900/40 border-slate-700/30 opacity-60 grayscale hover:grayscale-0"
+                      : "bg-gradient-to-br from-pink-900/40 to-rose-900/20 border-pink-500/40 hover:border-pink-400/70 shadow-[0_0_15px_rgba(236,72,153,0.1)] hover:shadow-[0_0_25px_rgba(236,72,153,0.2)]"
+                  }`}>
+                    {isExpired && <div className="absolute top-3 right-3 bg-red-500/20 text-red-300 text-[10px] font-black px-2 py-1 rounded border border-red-500/30">EXPIRED</div>}
+                    {isExhausted && <div className="absolute top-3 right-3 bg-yellow-500/20 text-yellow-300 text-[10px] font-black px-2 py-1 rounded border border-yellow-500/30">EXHAUSTED</div>}
+
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-black text-white text-3xl tracking-widest">{coupon.code}</h3>
+                        <p className="text-sm text-pink-300 mt-1 font-bold">{coupon.discount}% Discount</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCoupon(coupon.id)}
+                        className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 mb-2">
+                      <div className="bg-slate-900/50 p-3 rounded-xl border border-pink-500/10">
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-slate-400 font-bold">Usage</span>
+                          <span className="text-white font-black">{coupon.used} / {coupon.limit_count}</span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-2.5 shadow-inner overflow-hidden border border-slate-700/50">
+                          <div
+                            className="bg-gradient-to-r from-pink-500 to-rose-500 h-full rounded-full transition-all duration-500 relative"
+                            style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                          >
+                             <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-400 flex items-center gap-2 bg-slate-800/50 px-3 py-2 rounded-md border border-slate-700/30 w-fit">
+                        <Calendar size={14} className={isExpired ? "text-red-400" : "text-pink-400"} /> Expires: {new Date(coupon.expiry).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
          </div>
         )}
 
-        {/* CUSTOMERS TAB */}
         {activeTab === "customers" && (
           <div className="space-y-6 animate-in fade-in duration-500">
              <div className="bg-slate-900/50 p-6 rounded-2xl border border-amber-500/20 backdrop-blur-md">
@@ -1034,23 +1178,210 @@ export default function PremiumAdminDashboard() {
                 <Users className="text-amber-400" /> Customer Database
               </h2>
             </div>
-            <div className="text-center p-10 bg-slate-900/40 rounded-2xl border border-indigo-500/20">
-               <p className="text-indigo-300">Customers view ready. (Functionality intact)</p>
+
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
+              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-amber-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchCustomer}
+                onChange={(e) => setSearchCustomer(e.target.value)}
+                className="relative w-full bg-slate-900/60 border border-amber-500/30 hover:border-amber-400/60 focus:border-amber-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {filteredCustomers.map(customer => {
+                const customerOrders = orders.filter(o => o.customer_id === customer.id);
+                const totalSpent = customerOrders.reduce((sum, o) => sum + (o.final_price || 0), 0);
+
+                return (
+                  <div key={customer.id} className="bg-gradient-to-r from-slate-900/80 to-slate-800/60 border border-amber-500/20 hover:border-amber-400/50 rounded-3xl p-8 backdrop-blur-xl transition-all duration-300 hover:shadow-[0_10px_30px_rgba(245,158,11,0.15)] relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center relative z-10">
+                      <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg border border-white/20 transform rotate-3">
+                          {customer.name?.[0] || "?"}
+                        </div>
+                        <div>
+                          <h3 className="font-black text-white text-xl">{customer.name || "Anonymous"}</h3>
+                          <p className="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
+                            <Mail size={14} className="text-amber-400/70" /> {customer.email || "No email"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/30">
+                        <p className="text-[10px] text-amber-300 font-bold uppercase tracking-widest">Contact Info</p>
+                        <p className="text-sm text-white flex items-center gap-2">
+                          <Phone size={14} className="text-slate-400" /> {customer.phone || "—"}
+                        </p>
+                        <p className="text-sm text-white flex items-center gap-2">
+                          <MapPin size={14} className="text-slate-400" /> {customer.city || "—"}
+                        </p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/20 rounded-2xl p-5 border border-green-500/30 shadow-inner">
+                        <p className="text-[10px] text-green-300 font-bold uppercase tracking-widest mb-2">Total Value</p>
+                        <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">₹{totalSpent.toFixed(0)}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-900/50 rounded-2xl p-4 border border-blue-500/20">
+                          <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">Orders</p>
+                          <p className="text-2xl font-black text-white mt-1">{customerOrders.length}</p>
+                        </div>
+                        <div className="bg-slate-900/50 rounded-2xl p-4 border border-purple-500/20">
+                          <p className="text-[10px] text-purple-300 font-bold uppercase tracking-widest">Joined</p>
+                          <p className="text-sm font-bold text-white mt-2">{new Date(customer.created_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {customerOrders.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-amber-500/10 relative z-10">
+                        <p className="text-xs font-bold text-amber-400/80 mb-4 uppercase tracking-widest flex items-center gap-2">
+                           <BookOpen size={14} /> Purchase History
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          {customerOrders.slice(0, 4).map((order, i) => (
+                            <div key={i} className="bg-slate-900/80 border border-slate-700/50 hover:border-amber-500/40 rounded-xl px-4 py-2.5 text-sm transition-colors duration-300 flex items-center gap-3">
+                              <span className="text-white font-bold">{order.book_title}</span>
+                              <span className="text-green-400 bg-green-500/10 px-2 py-0.5 rounded text-xs font-black">₹{order.final_price}</span>
+                            </div>
+                          ))}
+                          {customerOrders.length > 4 && (
+                            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-sm text-amber-300 font-bold flex items-center">
+                              +{customerOrders.length - 4} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* SETTINGS TAB */}
         {activeTab === "settings" && (
-          <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
-             <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-500/20 backdrop-blur-md">
-              <h2 className="text-3xl font-black text-white flex items-center gap-2">
-                <Settings className="text-slate-400" /> System Settings
+          <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl">
+             <div className="bg-slate-900/50 p-6 rounded-2xl border border-red-500/20 backdrop-blur-md">
+              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400 flex items-center gap-2">
+                <Settings className="text-red-400" /> Settings & Security
               </h2>
             </div>
-            {/* Settings content intact */}
-            <div className="text-center p-10 bg-slate-900/40 rounded-2xl border border-indigo-500/20">
-               <p className="text-indigo-300">Settings view ready. (Functionality intact)</p>
+
+            <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/60 border border-red-500/30 rounded-3xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
+              
+              <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3 relative z-10">
+                <Lock className="text-orange-400" /> Change Password
+              </h3>
+
+              <div className="space-y-6 relative z-10">
+                <div>
+                  <label className="block text-xs font-bold text-orange-300 mb-2 uppercase tracking-wide">Current Password</label>
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
+                    <input
+                      type={showCurrentPass ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="relative w-full bg-slate-900/80 border border-red-500/30 focus:border-orange-400 rounded-xl px-5 py-4 text-white outline-none transition duration-300 pr-12 shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition"
+                    >
+                      {showCurrentPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-orange-300 mb-2 uppercase tracking-wide">New Password</label>
+                    <div className="relative group">
+                      <input
+                        type={showNewPass ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full bg-slate-900/80 border border-red-500/30 focus:border-orange-400 rounded-xl px-5 py-4 text-white outline-none transition duration-300 pr-12 shadow-inner"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition"
+                      >
+                        {showNewPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-orange-300 mb-2 uppercase tracking-wide">Confirm Password</label>
+                    <div className="relative group">
+                      <input
+                        type={showConfirmPass ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full bg-slate-900/80 border border-red-500/30 focus:border-orange-400 rounded-xl px-5 py-4 text-white outline-none transition duration-300 pr-12 shadow-inner"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPass(!showConfirmPass)}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition"
+                      >
+                        {showConfirmPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <div className="p-4 rounded-xl bg-red-900/60 border border-red-500/50 text-red-200 text-sm font-bold flex items-center gap-2 shadow-lg animate-pulse">
+                    <AlertCircle size={18} /> {passwordError}
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div className="p-4 rounded-xl bg-green-900/60 border border-green-500/50 text-green-200 text-sm font-bold flex items-center gap-2 shadow-lg">
+                    <Check size={18} /> {passwordSuccess}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleChangePassword}
+                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-black py-4 rounded-xl transition duration-300 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg transform hover:scale-[1.02] active:scale-95 mt-4"
+                >
+                  <Lock size={20} /> Update Password
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border border-blue-500/30 rounded-3xl p-8 backdrop-blur-xl">
+              <h3 className="text-xl font-black text-blue-300 mb-6 flex items-center gap-3">
+                <Zap size={24} className="text-yellow-400" /> Security Guidelines
+              </h3>
+              <ul className="space-y-4 text-sm text-slate-300">
+                <li className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                  <Check size={20} className="text-green-400 flex-shrink-0" />
+                  <span>Use strong passwords with at least 8 characters, mixing letters, numbers, and symbols</span>
+                </li>
+                <li className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                  <Check size={20} className="text-green-400 flex-shrink-0" />
+                  <span>Change your password every 30 days for maximum security</span>
+                </li>
+                <li className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                  <Check size={20} className="text-green-400 flex-shrink-0" />
+                  <span>Never share your login credentials with anyone</span>
+                </li>
+              </ul>
             </div>
           </div>
         )}
