@@ -21,7 +21,7 @@
     "nprogress": "latest",
     "tailwindcss": "^3.4.1",
     "postcss": "latest",
-    "autoprefixer": "latest"
+    "autoprefixer": "latest",
+    "react-icons": "latest"
   }
 }
-
