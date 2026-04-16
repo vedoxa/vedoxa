@@ -6,7 +6,8 @@ import {
   MessageCircle, 
   ArrowLeft,
   BookOpen,
-  Sparkles
+  Sparkles,
+  Bot
 } from "lucide-react";
 // Social Media Icons ke liye react-icons (FontAwesome 6)
 import { 
@@ -40,7 +41,7 @@ export default function AboutPage() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-12 md:py-20">
+      <main className="max-w-4xl mx-auto px-4 py-12 md:py-20 relative">
         
         {/* Title Section */}
         <div className="text-center mb-16">
@@ -106,6 +107,25 @@ export default function AboutPage() {
             Stay connected with us on social media for daily insights, new book launches, and spiritual awakening quotes.
           </p>
         </div>
+
+        {/* Bot Button */}
+        <div className="fixed bottom-8 right-8 z-[5000] flex flex-col gap-4 items-center">
+          <Link 
+            href="/support" 
+            className="w-14 h-14 bg-gradient-to-tr from-yellow-600 to-yellow-400 rounded-full shadow-[0_0_30px_rgba(234,179,8,0.4)] flex items-center justify-center text-black hover:scale-110 transition-transform cursor-pointer relative"
+            style={{ animation: 'float 3s ease-in-out infinite' }}
+          >
+            <Bot size={28} className="drop-shadow-md" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-black animate-pulse"></div>
+          </Link>
+        </div>
+
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+          }
+        `}} />
 
       </main>
     </div>
