@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(180deg);">
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="gradYellowRed" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#ffc107" />
@@ -22,19 +22,21 @@
         </filter>
     </defs>
 
-    <path d="M 150 30 L 70 200 Q 60 220 75 225 Q 85 228 95 210 L 150 100 Z"
-          fill="url(#gradYellowRed)"
-          stroke="rgba(255, 255, 255, 0.3)"
-          stroke-width="2"
-          stroke-linejoin="round"
-          filter="url(#softGlow)" />
+    <g transform="rotate(180 150 150)">
+        <path d="M 150 30 L 70 200 Q 60 220 75 225 Q 85 228 95 210 L 150 100 Z"
+              fill="url(#gradYellowRed)"
+              stroke="rgba(255, 255, 255, 0.3)"
+              stroke-width="2"
+              stroke-linejoin="round"
+              filter="url(#softGlow)" />
 
-    <path d="M 150 30 L 230 200 Q 240 220 225 225 Q 215 228 205 210 L 150 100 Z"
-          fill="url(#gradRedYellow)"
-          stroke="rgba(255, 255, 255, 0.3)"
-          stroke-width="2"
-          stroke-linejoin="round"
-          filter="url(#softGlow)" />
+        <path d="M 150 30 L 230 200 Q 240 220 225 225 Q 215 228 205 210 L 150 100 Z"
+              fill="url(#gradRedYellow)"
+              stroke="rgba(255, 255, 255, 0.3)"
+              stroke-width="2"
+              stroke-linejoin="round"
+              filter="url(#softGlow)" />
 
-    <ellipse cx="150" cy="90" rx="15" ry="40" fill="rgba(255, 255, 255, 0.15)" filter="url(#softGlow)" />
+        <ellipse cx="150" cy="90" rx="15" ry="40" fill="rgba(255, 255, 255, 0.15)" filter="url(#softGlow)" />
+    </g>
 </svg>
