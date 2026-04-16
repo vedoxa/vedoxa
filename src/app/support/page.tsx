@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Bot, User, Send, Ticket, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
-// ✅ YAHAN FIX HAI: Vercel build ke time error na de isliye placeholder add kiya hai
+// ✅ Vercel build ke time error na de isliye placeholder add kiya hai
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -12,7 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export default function SupportPage() {
   const [user, setUser] = useState<any>(null);
   const [messages, setMessages] = useState<{sender: 'bot'|'user', text: string}[]>([
-    { sender: 'bot', text: "Namaste! 🙏 Welcome to Vedoxa Help & Support. Main aapki kaise madad kar sakta hu?" }
+    { sender: 'bot', text: "Hello! 🙏 Welcome to Vedoxa Help & Support. How can I assist you today?" }
   ]);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [ticketData, setTicketData] = useState({ subject: "", message: "" });
@@ -20,9 +20,9 @@ export default function SupportPage() {
   const [ticketSuccess, setTicketSuccess] = useState(false);
 
   const faqs = [
-    { q: "Payment cut ho gaya par Book unlock nahi hui?", a: "Kripya apne account ko logout karke wapas login karein. Agar phir bhi unlock na ho, toh niche 'Raise a Ticket' par click karein." },
-    { q: "Book ka PDF kaise download karein?", a: "Vedoxa par security ke liye hum direct PDF download allow nahi karte. Aap lifetime hamare fast 'Web Reader' me book padh sakte hain." },
-    { q: "Kharidi hui book kahan dikhegi?", a: "Home page par Premium Library section me aapki kharidi hui book ke niche 'Read Now' ka button aa jayega." }
+    { q: "Payment was deducted but the book didn't unlock?", a: "Please log out and log back into your account. If it still doesn't unlock, click on 'Raise a Ticket' below." },
+    { q: "How can I download the book's PDF?", a: "For security reasons, we do not allow direct PDF downloads. You can read the book anytime using our fast and secure 'Web Reader'." },
+    { q: "Where will my purchased books appear?", a: "A 'Read Now' button will appear under your purchased books in the Premium Library section on the Home page." }
   ];
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function SupportPage() {
   const submitTicket = async (e: any) => {
     e.preventDefault();
     if (!user) {
-      alert("Ticket raise karne ke liye pehle Login karna zaroori hai.");
+      alert("Please login first to raise a support ticket.");
       return;
     }
     setIsSubmitting(true);
@@ -57,10 +57,10 @@ export default function SupportPage() {
     setIsSubmitting(false);
     if (!error) {
       setTicketSuccess(true);
-      setMessages(prev => [...prev, { sender: 'bot', text: "Aapki ticket successfully darj ho chuki hai. Hamari team 48 hours ke andar aapke problem ka solution de degi." }]);
+      setMessages(prev => [...prev, { sender: 'bot', text: "Your ticket has been successfully submitted. Our team will review and resolve your issue within 48 hours." }]);
       setShowTicketForm(false);
     } else {
-      alert("Ticket submit karne me error aaya.");
+      alert("Error submitting the ticket. Please try again.");
     }
   };
 
@@ -104,7 +104,7 @@ export default function SupportPage() {
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Ticket className="text-yellow-500"/> Raise a Support Ticket</h3>
             <form onSubmit={submitTicket} className="flex flex-col gap-4">
               <input required placeholder="Problem Title (eg. Payment Issue)" value={ticketData.subject} onChange={e => setTicketData({...ticketData, subject: e.target.value})} className="bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-yellow-500" />
-              <textarea required placeholder="Apni problem detail me likhein..." value={ticketData.message} onChange={e => setTicketData({...ticketData, message: e.target.value})} className="bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-yellow-500 h-24 resize-none" />
+              <textarea required placeholder="Describe your problem in detail..." value={ticketData.message} onChange={e => setTicketData({...ticketData, message: e.target.value})} className="bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-yellow-500 h-24 resize-none" />
               <div className="flex gap-3">
                 <button type="button" onClick={() => setShowTicketForm(false)} className="px-4 py-2 rounded-xl text-sm font-bold bg-white/5 text-gray-400 hover:text-white">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 bg-yellow-500 text-black font-bold py-2 rounded-xl text-sm flex justify-center items-center gap-2">
