@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Bot
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,9 +29,18 @@ function loadRazorpayScript() {
 }
 
 const dict = {
-  EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", noReviews: "No reviews yet. Be the first to review after purchasing!" },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
+  EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
 };
+
+// 5 Premium Avatars (DALL-E / Midjourney style placehoders)
+const AVATARS = [
+  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Vedoxa1&backgroundColor=eab308",
+  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Karma&backgroundColor=059669",
+  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Dharma&backgroundColor=dc2626",
+  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Moksha&backgroundColor=2563eb",
+  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Gyan&backgroundColor=7c3aed"
+];
 
 export default function VedoxaHome() {
   const [lang, setLang] = useState("EN");
@@ -57,16 +66,22 @@ export default function VedoxaHome() {
   const [useRewards, setUseRewards] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // New states for Book Detail Page & Reviews
   const [showBookDetails, setShowBookDetails] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [newReviewText, setNewReviewText] = useState("");
   const [loadingReviews, setLoadingReviews] = useState(false);
+  
+  // FIX: User ka existing review check karne ke liye state
+  const [userExistingReview, setUserExistingReview] = useState(null);
+
+  // FIX: Sidebar Dashboard States
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   NProgress.configure({ showSpinner: false, speed: 400 });
 
   useEffect(() => {
-    // Disable Mobile Zooming (Pinch & Double Tap)
     const preventZoom = (e) => { e.preventDefault(); };
     document.addEventListener('gesturestart', preventZoom);
     document.addEventListener('gesturechange', preventZoom);
@@ -75,7 +90,7 @@ export default function VedoxaHome() {
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) handleUserLogin(session.user);
-      else { setUser(null); setProfile(null); setPurchasedBookIds([]); }
+      else { setUser(null); setProfile(null); setPurchasedBookIds([]); setIsSidebarOpen(false); }
     });
 
     return () => {
@@ -85,15 +100,14 @@ export default function VedoxaHome() {
     };
   }, []);
 
-  // FIX: Pichla page scroll hona band karne ke liye hook add kiya hai
   useEffect(() => {
-    if (showBookDetails || showCheckout || showAuthModal || showReader) {
+    if (showBookDetails || showCheckout || showAuthModal || showReader || isSidebarOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
-  }, [showBookDetails, showCheckout, showAuthModal, showReader]);
+  }, [showBookDetails, showCheckout, showAuthModal, showReader, isSidebarOpen]);
 
   const handleUserLogin = async (loggedUser) => {
     setUser(loggedUser);
@@ -113,16 +127,29 @@ export default function VedoxaHome() {
     setLoading(false); NProgress.done();
   }, []);
 
-  // Fetch reviews for a specific book
   const fetchReviews = async (bookId) => {
     setLoadingReviews(true);
     try {
       const { data, error } = await supabase
         .from("reviews")
-        .select("id, review_text, created_at, profiles(name)")
+        .select("id, review_text, created_at, user_id, profiles(name)")
         .eq("book_id", bookId)
         .order("created_at", { ascending: false });
-      if (!error && data) setReviews(data);
+      
+      if (!error && data) {
+        setReviews(data);
+        // FIX: Check if user already reviewed
+        if (user) {
+          const existing = data.find(r => r.user_id === user.id);
+          if (existing) {
+            setUserExistingReview(existing);
+            setNewReviewText(existing.review_text);
+          } else {
+            setUserExistingReview(null);
+            setNewReviewText("");
+          }
+        }
+      }
     } catch (err) { console.error("Error fetching reviews:", err); }
     setLoadingReviews(false);
   };
@@ -130,17 +157,22 @@ export default function VedoxaHome() {
   const handleSubmitReview = async () => {
     if (!newReviewText.trim()) return;
     try {
-      const { error } = await supabase.from("reviews").insert([
-        { book_id: selectedBook.id, user_id: user.id, review_text: newReviewText }
-      ]);
-      if (!error) {
+      if (userExistingReview) {
+        // UPDATE existing review
+        const { error } = await supabase.from("reviews").update({ review_text: newReviewText }).eq("id", userExistingReview.id);
+        if (error) throw error;
+        addToast("Review updated successfully!", "success");
+      } else {
+        // INSERT new review
+        const { error } = await supabase.from("reviews").insert([
+          { book_id: selectedBook.id, user_id: user.id, review_text: newReviewText }
+        ]);
+        if (error) throw error;
         addToast("Review submitted successfully!", "success");
-        setNewReviewText("");
-        fetchReviews(selectedBook.id); // Refresh reviews
-      } else throw error;
+      }
+      fetchReviews(selectedBook.id); 
     } catch (err) {
-      // FIX: Asli error msg show karega taaki DB issue pakda jaye
-      addToast("Review Error: " + (err.message || "Failed to submit review."), "error");
+      addToast("Review Error: " + (err.message || "Failed to save review."), "error");
     }
   };
 
@@ -167,7 +199,12 @@ export default function VedoxaHome() {
     NProgress.done();
   };
 
-  const handleLogout = async () => { await supabase.auth.signOut(); addToast("Logged out securely", "info"); };
+  const confirmLogout = async () => { 
+    await supabase.auth.signOut(); 
+    setShowLogoutConfirm(false);
+    setIsSidebarOpen(false);
+    addToast("Logged out securely", "info"); 
+  };
 
   const verifyCoupon = async () => {
     if (!checkoutData.coupon) return;
@@ -175,6 +212,19 @@ export default function VedoxaHome() {
     if (data && new Date(data.expiry) > new Date() && data.used < data.limit_count) {
       setAppliedCoupon(data); addToast("Coupon applied! 🎉", "success");
     } else { setAppliedCoupon(null); addToast("Invalid or expired coupon", "error"); }
+  };
+
+  // FIX: Save New Avatar to DB
+  const handleSaveAvatar = async (avatarUrl) => {
+    try {
+      const { error } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
+      if (error) throw error;
+      setProfile({ ...profile, avatar_url: avatarUrl });
+      addToast("Profile picture updated!", "success");
+      setShowAvatarPicker(false);
+    } catch (error) {
+      addToast("Error saving avatar.", "error");
+    }
   };
 
   let clientFinalPrice = appliedCoupon ? Math.round(selectedBook?.final_price - (selectedBook?.final_price * appliedCoupon.discount / 100)) : selectedBook?.final_price;
@@ -341,6 +391,96 @@ export default function VedoxaHome() {
         </AnimatePresence>
       </div>
 
+      {/* Sidebar Dashboard */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000]" 
+            />
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25 }}
+              className="fixed top-0 right-0 w-80 h-full bg-[#0a0a0d] border-l border-white/10 z-[5001] shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/40">
+                <span className="font-bold text-white flex items-center gap-2"><Settings size={18}/> Dashboard</span>
+                <button onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10"><X size={20}/></button>
+              </div>
+
+              <div className="p-6 flex flex-col items-center gap-4 border-b border-white/5">
+                <div className="relative group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
+                   <div className="w-24 h-24 rounded-full border-2 border-yellow-500/50 overflow-hidden bg-white/5 flex items-center justify-center">
+                     {profile?.avatar_url ? (
+                       <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                     ) : (
+                       <UserCircle size={48} className="text-yellow-500 opacity-50" />
+                     )}
+                   </div>
+                   <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <Edit3 size={20} className="text-white" />
+                   </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="font-bold text-white text-lg">{profile?.name || "Vedoxa Reader"}</h3>
+                  <p className="text-gray-500 text-xs">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="p-6 flex flex-col gap-4">
+                <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-yellow-500 font-bold"><Coins size={20}/> Reward Points</div>
+                  <span className="text-xl font-black text-white">{profile?.reward_points || 0}</span>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center">
+                  <span className="text-gray-300 font-bold text-sm">Language / भाषा</span>
+                  <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-yellow-500/30 text-yellow-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-yellow-500/10 transition">
+                    {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-auto p-6 border-t border-white/10">
+                {showLogoutConfirm ? (
+                  <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-center">
+                    <p className="text-sm font-bold text-white mb-3">Are you sure you want to log out?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 bg-white/10 text-white text-xs font-bold py-2 rounded-xl">Cancel</button>
+                      <button onClick={confirmLogout} className="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-xl">Yes, Logout</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowLogoutConfirm(true)} className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition">
+                    <LogOut size={18}/> Logout securely
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Avatar Picker Modal */}
+      <AnimatePresence>
+        {showAvatarPicker && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+             <div className="bg-[#0a0a0d] border border-white/10 rounded-3xl p-6 w-full max-w-sm relative">
+                <button onClick={() => setShowAvatarPicker(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={20}/></button>
+                <h3 className="text-lg font-bold text-white mb-6 text-center">Choose your Avatar</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  {AVATARS.map((url, idx) => (
+                    <button key={idx} onClick={() => handleSaveAvatar(url)} className="aspect-square rounded-full border-2 border-white/10 hover:border-yellow-500 hover:scale-105 transition overflow-hidden bg-white/5">
+                      <img src={url} alt={`avatar-${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* FAST BOOK DETAIL MODAL */}
       <AnimatePresence>
         {showBookDetails && selectedBook && (
@@ -356,7 +496,6 @@ export default function VedoxaHome() {
             <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center border-r border-white/10">
                
                <div className="w-full h-64 md:h-96 mb-8 shadow-2xl">
-                 {/* DETAIL MODAL ME PHOTO WALA CODE ADD KIYA */}
                  {selectedBook.cover_path ? (
                    <div className="w-full h-full relative overflow-hidden rounded-3xl">
                      <img 
@@ -399,10 +538,12 @@ export default function VedoxaHome() {
                  <h2 className="text-2xl font-bold text-white">{t.reviews}</h2>
                </div>
 
-               {/* Add Review Box (Only visible if bought) */}
+               {/* FIX: Add/Edit Review Box */}
                {purchasedBookIds.includes(selectedBook.id) && (
                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl mb-8">
-                   <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><CheckCircle2 size={16}/> You own this book</h3>
+                   <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                     <CheckCircle2 size={16}/> {userExistingReview ? "Update your review" : "You own this book"}
+                   </h3>
                    <textarea 
                      value={newReviewText}
                      onChange={(e) => setNewReviewText(e.target.value)}
@@ -410,7 +551,7 @@ export default function VedoxaHome() {
                      className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-yellow-500 resize-none h-24 mb-3"
                    />
                    <button onClick={handleSubmitReview} className="btn-gold px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ml-auto">
-                     {t.submitReview}
+                     {userExistingReview ? t.updateReview : t.submitReview}
                    </button>
                  </div>
                )}
@@ -421,14 +562,15 @@ export default function VedoxaHome() {
                     <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
                  ) : reviews.length > 0 ? (
                     reviews.map(review => (
-                      <div key={review.id} className="bg-white/5 border border-white/5 p-5 rounded-2xl">
+                      <div key={review.id} className="bg-white/5 border border-white/5 p-5 rounded-2xl relative">
+                        {review.user_id === user?.id && <div className="absolute top-4 right-4 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">Your Review</div>}
                         <div className="flex justify-between items-start mb-2">
                            <div className="font-bold text-white text-sm flex items-center gap-2">
                              <UserCircle size={16} className="text-gray-400"/>
-                             {review.profiles?.name || "Verified Buyer"}
+                             {review.profiles?.name || "Vedoxa Reader"}
                            </div>
-                           <div className="flex text-yellow-500"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
                         </div>
+                        <div className="flex text-yellow-500 mb-2"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
                         <p className="text-gray-300 text-sm leading-relaxed">{review.review_text}</p>
                       </div>
                     ))
@@ -569,16 +711,20 @@ export default function VedoxaHome() {
           </Link>
 
           <div className="flex items-center gap-3 md:gap-6">
-            <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-white/10 transition">
-              {lang === "EN" ? "हिन्दी" : "English"}
-            </button>
+            {!user && (
+              <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-white/10 transition">
+                {lang === "EN" ? "हिन्दी" : "English"}
+              </button>
+            )}
             
             {user ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold border border-yellow-500/20">
-                  <Coins size={14} /> {profile?.reward_points || 0}
+              // FIX: New Profile Button that opens sidebar
+              <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 md:px-3 rounded-full hover:bg-white/10 hover:border-yellow-500/30 transition">
+                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden">
+                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover"/> : <UserCircle size={18} className="text-yellow-500"/>}
                 </div>
-              </div>
+                <Menu size={18} className="text-gray-400 mr-1" />
+              </button>
             ) : (
               <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm flex items-center gap-2 font-bold">
                 <UserCircle size={16} /> <span className="hidden sm:inline">{t.login}</span><span className="sm:hidden">Login</span>
@@ -588,22 +734,29 @@ export default function VedoxaHome() {
         </nav>
 
         {/* Hero Section */}
-        <section className="relative px-4 pt-16 pb-12 md:pt-28 md:pb-20 text-center flex flex-col items-center justify-center overflow-hidden">
+        <section className="relative px-4 pt-10 pb-8 md:pt-16 md:pb-12 text-center flex flex-col items-center justify-center overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150vw] md:w-[800px] h-[300px] md:h-[600px] bg-yellow-500/10 blur-[100px] rounded-full pointer-events-none -z-10" />
           
-          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-6 max-w-4xl mx-auto">
+          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-4 max-w-4xl mx-auto">
             {lang === "EN" ? <>{t.heroTitle.split(" ")[0]} <span className="gold-text">{t.heroTitle.split(" ")[1]}</span> {t.heroTitle.split(" ")[2]}</> : <><span className="gold-text">अपनी चेतना</span> को जागृत करें</>}
           </motion.h1>
           
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="text-gray-400 max-w-2xl mx-auto mb-10 text-sm md:text-lg px-2">
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="text-gray-400 max-w-2xl mx-auto text-sm md:text-lg px-2">
             {t.heroSub}
           </motion.p>
-          
-          {/* FIX: Yahan se "Safe & Secure" aur "Instant PDF" wale tags hata diye gaye hain (Footer me gaye hain) */}
+        </section>
+
+        {/* FIX: New Animated Gap Section */}
+        <section className="w-full max-w-4xl mx-auto px-4 py-4 md:py-8 flex flex-col items-center opacity-80">
+          <div className="h-16 md:h-24 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 animate-pulse"></div>
+          <div className="border border-yellow-500/30 bg-yellow-500/5 px-6 py-2 rounded-full text-xs md:text-sm font-bold text-yellow-500 mt-4 tracking-widest uppercase text-center shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+            {t.journeyText}
+          </div>
+          <div className="h-8 md:h-12 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 mt-4"></div>
         </section>
 
         {/* Dynamic Book Library Grid */}
-        <section className="px-4 py-12 md:py-20 w-full max-w-7xl mx-auto">
+        <section className="px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
           <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="font-cinzel text-2xl md:text-4xl font-bold mb-10 md:mb-16 text-center">
             {t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
           </motion.h2>
@@ -675,7 +828,6 @@ export default function VedoxaHome() {
           </div>
         </section>
 
-        {/* FIX: NAYA FOOTER JISME TAGS AUR BUTTON DONO HAIN */}
         <footer className="py-10 w-full flex flex-col items-center gap-6 border-t border-white/10 mt-auto bg-black/20">
           <Link href="/about" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
             About Us
@@ -687,8 +839,7 @@ export default function VedoxaHome() {
           </div>
         </footer>
 
-        {/* FIX: YAHAN SE BOT HATA DIYA, SIRF SHARE CHHODA HAI HOME PAGE PAR */}
-        <div className="fixed bottom-8 right-8 z-[5000] flex flex-col gap-4 items-center">
+        <div className="fixed bottom-8 right-8 z-[4000] flex flex-col gap-4 items-center">
           <button 
             onClick={handleShare}
             className="w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all shadow-lg"
@@ -697,13 +848,6 @@ export default function VedoxaHome() {
             <Share2 size={20} />
           </button>
         </div>
-
-        <style dangerouslySetInnerHTML={{__html: `
-          @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-          }
-        `}} />
 
       </div>
     </>
