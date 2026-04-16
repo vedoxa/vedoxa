@@ -67,19 +67,25 @@ export async function POST(req: Request) {
                                  .digest("hex");
 
       if (expectedSign === rzpSignature) {
-        // Asli Payment Confirm -> DB me safe entry
+        // 🔴 YAHAN FIX KIYA HAI: Saari missing details add kardi
         const { error: insertError } = await supabaseAdmin.from('orders').insert([{ 
           customer_id: orderData.customer_id,
+          customer_name: orderData.customer_name,     // FIX
+          customer_email: orderData.customer_email,   // FIX
           book_id: orderData.book_id,
-          // ⚠️ IMPORTANT: 'amount' ya 'total_amount' likho jo tumhare DB me ho. 'amount_paid' mat likhna agar wo DB me nahi hai.
+          book_title: orderData.book_title,           // FIX
+          base_price: orderData.base_price,           // FIX
+          final_price: orderData.final_price,         // 🔴 Asli Error yahan tha
           amount: orderData.final_price, 
-          payment_method: 'razorpay',
-          payment_status: 'completed',
-          rzp_order_id: rzpOrderId,
-          rzp_payment_id: rzpPaymentId
+          coupon_used: orderData.coupon_used,         // FIX
+          points_used: orderData.points_used,         // FIX
+          payment_method: 'razorpay'
         }]);
 
-        if (insertError) throw new Error(insertError.message);
+        if (insertError) {
+          console.error("Database Insert Error:", insertError);
+          throw new Error(insertError.message);
+        }
         
         // Reward Points Update
         const earnedPoints = Math.floor(orderData.final_price * 0.019);
@@ -95,6 +101,6 @@ export async function POST(req: Request) {
     }
   } catch (error: any) {
     console.error("Payment API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
