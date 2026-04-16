@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image"; // NAYA ADD KIYA GAYA HAI
+import Image from "next/image"; 
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
   ChevronRight, RefreshCw, CheckCircle2,
@@ -85,6 +85,16 @@ export default function VedoxaHome() {
     };
   }, []);
 
+  // FIX: Pichla page scroll hona band karne ke liye hook add kiya hai
+  useEffect(() => {
+    if (showBookDetails || showCheckout || showAuthModal || showReader) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showBookDetails, showCheckout, showAuthModal, showReader]);
+
   const handleUserLogin = async (loggedUser) => {
     setUser(loggedUser);
     setCheckoutData(prev => ({ ...prev, email: loggedUser.email }));
@@ -129,7 +139,8 @@ export default function VedoxaHome() {
         fetchReviews(selectedBook.id); // Refresh reviews
       } else throw error;
     } catch (err) {
-      addToast("Failed to submit review.", "error");
+      // FIX: Asli error msg show karega taaki DB issue pakda jaye
+      addToast("Review Error: " + (err.message || "Failed to submit review."), "error");
     }
   };
 
@@ -272,7 +283,6 @@ export default function VedoxaHome() {
     try {
         const { data: pdfData, error } = await supabase.storage.from('books-pdfs').createSignedUrl(book.pdf_path, 3600);
         if (!error && pdfData?.signedUrl) { 
-            // FIX: Mobile browser me download hone se rokne aur online website me hi PDF dikhane ke liye Google Docs Viewer ka use kiya hai
             const secureViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfData.signedUrl)}&embedded=true`;
             setReaderUrl(secureViewerUrl); 
             setShowReader(true); 
@@ -545,7 +555,6 @@ export default function VedoxaHome() {
         
         {/* Responsive Navbar */}
         <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
-          {/* NAYA SVG LOGO */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-9 h-9 md:w-11 md:h-11 relative rounded-full p-0.5 border border-yellow-500/20 group-hover:border-yellow-500/50 transition">
               <Image 
@@ -569,7 +578,6 @@ export default function VedoxaHome() {
                 <div className="flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold border border-yellow-500/20">
                   <Coins size={14} /> {profile?.reward_points || 0}
                 </div>
-                {/* FIX: Yahan se Logout button hata diya gaya hai */}
               </div>
             ) : (
               <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm flex items-center gap-2 font-bold">
@@ -591,10 +599,7 @@ export default function VedoxaHome() {
             {t.heroSub}
           </motion.p>
           
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex justify-center gap-6 md:gap-10 flex-wrap">
-            <div className="flex items-center gap-2 text-gray-300 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
-            <div className="flex items-center gap-2 text-gray-300 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><Zap size={16} className="text-yellow-500"/> {t.instant}</div>
-          </motion.div>
+          {/* FIX: Yahan se "Safe & Secure" aur "Instant PDF" wale tags hata diye gaye hain (Footer me gaye hain) */}
         </section>
 
         {/* Dynamic Book Library Grid */}
@@ -623,13 +628,12 @@ export default function VedoxaHome() {
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, delay: i * 0.1 }} 
                     key={book.id} 
-                    onClick={() => openBookDetails(book)} // Opens details FAST
+                    onClick={() => openBookDetails(book)} 
                     className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer hover:bg-white/10 hover:border-yellow-500/30 transition-all duration-300 hover:-translate-y-2 shadow-lg"
                   >
                     {book.discount > 0 && !isPurchased && <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30 z-10">{book.discount}% OFF</div>}
                     
                     <div className="w-full h-44 mb-6">
-                      {/* HOME PAGE GRID ME PHOTO WALA CODE ADD KIYA */}
                       {book.cover_path ? (
                         <div className="w-full h-full relative overflow-hidden rounded-xl">
                           <img 
@@ -671,17 +675,20 @@ export default function VedoxaHome() {
           </div>
         </section>
 
-        {/* NAYA FOOTER YAHAN AAYEGA (Main div ke andar) */}
-        <footer className="py-8 w-full text-center border-t border-white/10 mt-auto">
-          <Link href="/about" className="text-sm font-bold text-gray-400 hover:text-yellow-500 transition">
+        {/* FIX: NAYA FOOTER JISME TAGS AUR BUTTON DONO HAIN */}
+        <footer className="py-10 w-full flex flex-col items-center gap-6 border-t border-white/10 mt-auto bg-black/20">
+          <Link href="/about" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
             About Us
           </Link>
+          
+          <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4">
+            <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
+            <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><Zap size={16} className="text-yellow-500"/> {t.instant}</div>
+          </div>
         </footer>
 
-        {/* NAYA: FLOATING BUTTONS (SHARE + BOT) */}
+        {/* FIX: YAHAN SE BOT HATA DIYA, SIRF SHARE CHHODA HAI HOME PAGE PAR */}
         <div className="fixed bottom-8 right-8 z-[5000] flex flex-col gap-4 items-center">
-          
-          {/* Share Button */}
           <button 
             onClick={handleShare}
             className="w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all shadow-lg"
@@ -689,16 +696,6 @@ export default function VedoxaHome() {
           >
             <Share2 size={20} />
           </button>
-
-          {/* Bot Button */}
-          <Link 
-            href="/support" 
-            className="w-14 h-14 bg-gradient-to-tr from-yellow-600 to-yellow-400 rounded-full shadow-[0_0_30px_rgba(234,179,8,0.4)] flex items-center justify-center text-black hover:scale-110 transition-transform cursor-pointer relative"
-            style={{ animation: 'float 3s ease-in-out infinite' }}
-          >
-            <Bot size={28} className="drop-shadow-md" />
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-black animate-pulse"></div>
-          </Link>
         </div>
 
         <style dangerouslySetInnerHTML={{__html: `
@@ -708,7 +705,7 @@ export default function VedoxaHome() {
           }
         `}} />
 
-      </div> {/* Ye Main Layout wale div ka closing bracket hai */}
+      </div>
     </>
   );
 }
