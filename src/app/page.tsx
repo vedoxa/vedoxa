@@ -196,7 +196,7 @@ export default function VedoxaHome() {
         setShowCheckout(false); setShowBookDetails(false);
         openWebReader(selectedBook);
       } catch (err) {
-        addToast("Database error: Check orders table.", "error");
+        addToast("DB Error: " + err.message, "error");
       } finally {
         setIsProcessing(false); NProgress.done();
       }
