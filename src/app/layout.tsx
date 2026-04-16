@@ -16,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* NAYA ADD KIYA GAYA CODE: Browser Favicon ke liye */}
         <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+        <meta name="msvalidate.01" content="F869EDF5C3D1E2BAB4EC07A020186EDF" />
       </head>
       <body className="bg-black text-white flex flex-col min-h-screen">
         
