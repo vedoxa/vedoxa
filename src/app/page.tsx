@@ -2,6 +2,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image"; // NAYA ADD KIYA GAYA HAI
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
   ChevronRight, RefreshCw, CheckCircle2,
@@ -459,10 +460,19 @@ export default function VedoxaHome() {
         
         {/* Responsive Navbar */}
         <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
-          <div className="flex items-center gap-2 md:gap-3">
-            <ShieldCheck className="text-yellow-500 w-6 h-6 md:w-8 md:h-8" />
+          {/* NAYA SVG LOGO */}
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-9 h-9 md:w-11 md:h-11 relative rounded-full p-0.5 border border-yellow-500/20 group-hover:border-yellow-500/50 transition">
+              <Image 
+                src="/logo.svg" 
+                alt="Vedoxa Brand Logo" 
+                fill 
+                priority 
+                className="object-contain"
+              />
+            </div>
             <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">{t.brand}</span>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-3 md:gap-6">
             <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-white/10 transition">
@@ -587,3 +597,4 @@ export default function VedoxaHome() {
     </>
   );
 }
+
