@@ -6,7 +6,7 @@ import Image from "next/image"; // NAYA ADD KIYA GAYA HAI
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Bot
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -236,6 +236,27 @@ export default function VedoxaHome() {
         else throw error;
     } catch(err) { addToast("Failed to load secure reader", "error"); }
     NProgress.done();
+  };
+
+  // NAYA: Website Share Function
+  const handleShare = async () => {
+    const shareData = {
+      title: 'VEDOXA Premium Library',
+      text: 'Awaken Your Consciousness with original, verified digital books on spirituality & psychology.',
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log("Sharing cancelled or failed");
+      }
+    } else {
+      // Agar browser support nahi karta, toh link copy kar dega
+      navigator.clipboard.writeText(window.location.href);
+      addToast("Website link copied to clipboard! 📋", "success");
+    }
   };
 
   return (
@@ -592,6 +613,36 @@ export default function VedoxaHome() {
             About Us
           </Link>
         </footer>
+
+        {/* NAYA: FLOATING BUTTONS (SHARE + BOT) */}
+        <div className="fixed bottom-8 right-8 z-[5000] flex flex-col gap-4 items-center">
+          
+          {/* Share Button */}
+          <button 
+            onClick={handleShare}
+            className="w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all shadow-lg"
+            title="Share Website"
+          >
+            <Share2 size={20} />
+          </button>
+
+          {/* Bot Button */}
+          <Link 
+            href="/support" 
+            className="w-14 h-14 bg-gradient-to-tr from-yellow-600 to-yellow-400 rounded-full shadow-[0_0_30px_rgba(234,179,8,0.4)] flex items-center justify-center text-black hover:scale-110 transition-transform cursor-pointer relative"
+            style={{ animation: 'float 3s ease-in-out infinite' }}
+          >
+            <Bot size={28} className="drop-shadow-md" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-black animate-pulse"></div>
+          </Link>
+        </div>
+
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+          }
+        `}} />
 
       </div> {/* Ye Main Layout wale div ka closing bracket hai */}
     </>
