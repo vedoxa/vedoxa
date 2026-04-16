@@ -1,30 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
-	 x="0px" y="0px" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve">
-<defs>
-	<linearGradient id="vedoxaGradient" gradientUnits="userSpaceOnUse" x1="0" y1="256" x2="512" y2="256">
-		<stop  offset="0" style="stop-color:#F59E0B"/> <stop  offset="1" style="stop-color:#DC2626"/> </linearGradient>
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(180deg);">
+    <defs>
+        <linearGradient id="gradYellowRed" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffc107" />
+            <stop offset="50%" stop-color="#ff9800" />
+            <stop offset="100%" stop-color="#ff5500" />
+        </linearGradient>
 
-	<filter id="innerShadow">
-		<feFlood flood-color="black" flood-opacity="0.5"/>
-		<feComposite in2="SourceAlpha" operator="out"/>
-		<feGaussianBlur stdDeviation="5" result="blur"/>
-		<feOffset dx="0" dy="5"/>
-		<feComposite in2="SourceAlpha" operator="in"/>
-		<feMerge>
-			<feMergeNode/>
-			<feMergeNode in="SourceGraphic"/>
-		</feMerge>
-	</filter>
-</defs>
+        <linearGradient id="gradRedYellow" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ff5500" />
+            <stop offset="50%" stop-color="#ff9800" />
+            <stop offset="100%" stop-color="#ffc107" />
+        </linearGradient>
 
-<g style="fill:url(#vedoxaGradient); filter:url(#innerShadow);">
-	<path d="M512,0v378L256,512L0,378V0h113v313l143,76l143-76V0H512z"/>
-	
-	<path d="M128,15L0,82v296l256,134V378L128,311z"/>
-	
-	<path d="M256,512l128-67V311l-128,67z"/>
-	
-	<path d="M256,378l128-67V15L256,82z"/>
-</g>
+        <filter id="softGlow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+
+    <path d="M 150 30 L 70 200 Q 60 220 75 225 Q 85 228 95 210 L 150 100 Z"
+          fill="url(#gradYellowRed)"
+          stroke="rgba(255, 255, 255, 0.3)"
+          stroke-width="2"
+          stroke-linejoin="round"
+          filter="url(#softGlow)" />
+
+    <path d="M 150 30 L 230 200 Q 240 220 225 225 Q 215 228 205 210 L 150 100 Z"
+          fill="url(#gradRedYellow)"
+          stroke="rgba(255, 255, 255, 0.3)"
+          stroke-width="2"
+          stroke-linejoin="round"
+          filter="url(#softGlow)" />
+
+    <ellipse cx="150" cy="90" rx="15" ry="40" fill="rgba(255, 255, 255, 0.15)" filter="url(#softGlow)" />
 </svg>
