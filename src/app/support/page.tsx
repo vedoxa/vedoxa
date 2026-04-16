@@ -4,7 +4,10 @@ import Link from "next/link";
 import { ArrowLeft, Bot, User, Send, Ticket, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+// ✅ YAHAN FIX HAI: Vercel build ke time error na de isliye placeholder add kiya hai
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function SupportPage() {
   const [user, setUser] = useState<any>(null);
