@@ -51,7 +51,6 @@ export default function VedoxaHome() {
   const [showReader, setShowReader] = useState(false);
   const [readerUrl, setReaderUrl] = useState("");
 
-  // FIX: checkoutData me countryCode add kiya hai (+91 default)
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutData, setCheckoutData] = useState({ name: "", email: "", phone: "", countryCode: "+91", coupon: "" });
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -171,13 +170,11 @@ export default function VedoxaHome() {
   if (useRewards && profile?.reward_points > 0) clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
   const earnedPoints = selectedBook ? Math.floor(selectedBook.final_price * 0.019) : 0;
 
-  // 🔴 UPDATED PAYMENT FLOW: Handles both ₹0 (Free) and Paid correctly
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
     if (!checkoutData.name || !checkoutData.phone) { addToast("Fill all details", "error"); return; }
     
-    // FIX: India ka number check karega 10 digit hai ya nahi
     if (checkoutData.countryCode === '+91' && checkoutData.phone.length !== 10) { 
       addToast("Please enter a valid 10-digit Indian phone number.", "error"); 
       return; 
@@ -185,17 +182,16 @@ export default function VedoxaHome() {
 
     setIsProcessing(true); NProgress.start();
 
-    // SCENARIO 1: Agar coupon se price ₹0 ho gaya hai (Bypass Razorpay)
     if (clientFinalPrice === 0) {
       try {
         const { error } = await supabase.from('orders').insert([{
           customer_id: user.id,
-          customer_name: checkoutData.name,       // FIX: Missing error theek kiya
-          customer_email: user.email,             // FIX: Missing error theek kiya
+          customer_name: checkoutData.name,       
+          customer_email: user.email,             
           book_id: selectedBook.id,
-          book_title: selectedBook.title,         // FIX: Missing error theek kiya
-          base_price: selectedBook.base_price,    // FIX: Missing error theek kiya
-          final_price: 0,                         // FIX: DB constraint fix
+          book_title: selectedBook.title,         
+          base_price: selectedBook.base_price,    
+          final_price: 0,                         
           amount: 0,
           coupon_used: appliedCoupon?.code || null,
           payment_method: 'free_coupon',
@@ -213,10 +209,9 @@ export default function VedoxaHome() {
       } finally {
         setIsProcessing(false); NProgress.done();
       }
-      return; // Code yahi ruk jayega
+      return; 
     }
 
-    // SCENARIO 2: Agar paise lag rahe hain (Call Razorpay)
     const loaded = await loadRazorpayScript();
     if (!loaded) { addToast("Payment gateway failed. Check network.", "error"); setIsProcessing(false); NProgress.done(); return; }
 
@@ -231,7 +226,7 @@ export default function VedoxaHome() {
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount * 100, // strictly in paise
+        amount: orderData.amount * 100, 
         currency: "INR",
         name: "VEDOXA",
         description: selectedBook.title,
@@ -239,7 +234,7 @@ export default function VedoxaHome() {
         prefill: { 
           name: checkoutData.name, 
           email: user.email, 
-          contact: checkoutData.countryCode + checkoutData.phone // FIX: Country code add kiya
+          contact: checkoutData.countryCode + checkoutData.phone 
         },
         theme: { color: "#eab308" },
         handler: async function (response) {
@@ -276,13 +271,17 @@ export default function VedoxaHome() {
     NProgress.start();
     try {
         const { data: pdfData, error } = await supabase.storage.from('books-pdfs').createSignedUrl(book.pdf_path, 3600);
-        if (!error && pdfData?.signedUrl) { setReaderUrl(pdfData.signedUrl); setShowReader(true); } 
+        if (!error && pdfData?.signedUrl) { 
+            // FIX: Mobile browser me download hone se rokne aur online website me hi PDF dikhane ke liye Google Docs Viewer ka use kiya hai
+            const secureViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfData.signedUrl)}&embedded=true`;
+            setReaderUrl(secureViewerUrl); 
+            setShowReader(true); 
+        } 
         else throw error;
     } catch(err) { addToast("Failed to load secure reader", "error"); }
     NProgress.done();
   };
 
-  // NAYA: Website Share Function
   const handleShare = async () => {
     const shareData = {
       title: 'VEDOXA Premium Library',
@@ -297,7 +296,6 @@ export default function VedoxaHome() {
         console.log("Sharing cancelled or failed");
       }
     } else {
-      // Agar browser support nahi karta, toh link copy kar dega
       navigator.clipboard.writeText(window.location.href);
       addToast("Website link copied to clipboard! 📋", "success");
     }
@@ -476,7 +474,6 @@ export default function VedoxaHome() {
               <form onSubmit={handlePayment} className="flex flex-col gap-4">
                 <input required placeholder="Full Name" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
                 
-                {/* FIX: Country code drop-down and mobile validation */}
                 <div className="flex gap-2">
                   <select 
                     value={checkoutData.countryCode} 
