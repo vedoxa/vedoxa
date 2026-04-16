@@ -13,6 +13,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* NAYA ADD KIYA GAYA CODE: Browser Favicon ke liye */}
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+      </head>
       <body className="bg-black text-white flex flex-col min-h-screen">
         
         {/* Main Content */}
