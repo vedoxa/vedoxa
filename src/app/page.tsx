@@ -30,7 +30,7 @@ function loadRazorpayScript() {
 
 const dict = {
   EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", noReviews: "No reviews yet. Be the first to review after purchasing!" },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", noReviews: "अभी तक कोई समीक्षा কাশী नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
 };
 
 export default function VedoxaHome() {
@@ -51,8 +51,9 @@ export default function VedoxaHome() {
   const [showReader, setShowReader] = useState(false);
   const [readerUrl, setReaderUrl] = useState("");
 
+  // FIX: checkoutData me countryCode add kiya hai (+91 default)
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutData, setCheckoutData] = useState({ name: "", email: "", phone: "", coupon: "" });
+  const [checkoutData, setCheckoutData] = useState({ name: "", email: "", phone: "", countryCode: "+91", coupon: "" });
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [useRewards, setUseRewards] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -175,6 +176,12 @@ export default function VedoxaHome() {
     e.preventDefault();
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
     if (!checkoutData.name || !checkoutData.phone) { addToast("Fill all details", "error"); return; }
+    
+    // FIX: India ka number check karega 10 digit hai ya nahi
+    if (checkoutData.countryCode === '+91' && checkoutData.phone.length !== 10) { 
+      addToast("Please enter a valid 10-digit Indian phone number.", "error"); 
+      return; 
+    }
 
     setIsProcessing(true); NProgress.start();
 
@@ -183,10 +190,16 @@ export default function VedoxaHome() {
       try {
         const { error } = await supabase.from('orders').insert([{
           customer_id: user.id,
+          customer_name: checkoutData.name,       // FIX: Missing error theek kiya
+          customer_email: user.email,             // FIX: Missing error theek kiya
           book_id: selectedBook.id,
+          book_title: selectedBook.title,         // FIX: Missing error theek kiya
+          base_price: selectedBook.base_price,    // FIX: Missing error theek kiya
+          final_price: 0,                         // FIX: DB constraint fix
           amount: 0,
           coupon_used: appliedCoupon?.code || null,
-          payment_method: 'free_coupon'
+          payment_method: 'free_coupon',
+          points_used: useRewards ? profile?.reward_points : 0
         }]);
         
         if (error) throw error;
@@ -223,7 +236,11 @@ export default function VedoxaHome() {
         name: "VEDOXA",
         description: selectedBook.title,
         order_id: orderData.rzpOrderId,
-        prefill: { name: checkoutData.name, email: user.email, contact: checkoutData.phone },
+        prefill: { 
+          name: checkoutData.name, 
+          email: user.email, 
+          contact: checkoutData.countryCode + checkoutData.phone // FIX: Country code add kiya
+        },
         theme: { color: "#eab308" },
         handler: async function (response) {
           try {
@@ -458,7 +475,30 @@ export default function VedoxaHome() {
 
               <form onSubmit={handlePayment} className="flex flex-col gap-4">
                 <input required placeholder="Full Name" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
-                <input required type="tel" placeholder="Phone Number" value={checkoutData.phone} onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
+                
+                {/* FIX: Country code drop-down and mobile validation */}
+                <div className="flex gap-2">
+                  <select 
+                    value={checkoutData.countryCode} 
+                    onChange={(e) => setCheckoutData({...checkoutData, countryCode: e.target.value})}
+                    className="w-24 px-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition cursor-pointer appearance-none"
+                  >
+                    <option value="+91" className="bg-black">🇮🇳 +91</option>
+                    <option value="+1" className="bg-black">🇺🇸 +1</option>
+                    <option value="+44" className="bg-black">🇬🇧 +44</option>
+                    <option value="+61" className="bg-black">🇦🇺 +61</option>
+                    <option value="+971" className="bg-black">🇦🇪 +971</option>
+                  </select>
+                  <input 
+                    required 
+                    type="tel" 
+                    placeholder="Phone Number" 
+                    value={checkoutData.phone} 
+                    onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value.replace(/\D/g, '')})} 
+                    maxLength={checkoutData.countryCode === '+91' ? 10 : 15}
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" 
+                  />
+                </div>
                 
                 <div className="flex gap-2">
                   <input placeholder={t.haveCoupon} value={checkoutData.coupon} onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})} className="flex-1 px-4 py-3 rounded-xl bg-yellow-500/5 border border-dashed border-yellow-500/30 text-yellow-500 outline-none focus:border-yellow-500" />
@@ -532,7 +572,7 @@ export default function VedoxaHome() {
                 <div className="flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold border border-yellow-500/20">
                   <Coins size={14} /> {profile?.reward_points || 0}
                 </div>
-                <button onClick={handleLogout} className="text-gray-400 hover:text-white transition"><LogOut size={20} /></button>
+                {/* FIX: Yahan se Logout button hata diya gaya hai */}
               </div>
             ) : (
               <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm flex items-center gap-2 font-bold">
