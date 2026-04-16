@@ -170,13 +170,40 @@ export default function VedoxaHome() {
   if (useRewards && profile?.reward_points > 0) clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
   const earnedPoints = selectedBook ? Math.floor(selectedBook.final_price * 0.019) : 0;
 
-  // 🔴 YAHAN CHANGE HUA HAI: STRICT RAZORPAY PAYMENT FLOW (Free logic blocked)
+  // 🔴 UPDATED PAYMENT FLOW: Handles both ₹0 (Free) and Paid correctly
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
     if (!checkoutData.name || !checkoutData.phone) { addToast("Fill all details", "error"); return; }
 
     setIsProcessing(true); NProgress.start();
+
+    // SCENARIO 1: Agar coupon se price ₹0 ho gaya hai (Bypass Razorpay)
+    if (clientFinalPrice === 0) {
+      try {
+        const { error } = await supabase.from('orders').insert([{
+          customer_id: user.id,
+          book_id: selectedBook.id,
+          amount: 0,
+          coupon_used: appliedCoupon?.code || null,
+          payment_method: 'free_coupon'
+        }]);
+        
+        if (error) throw error;
+        
+        addToast("Book unlocked successfully! 🎉", "success");
+        setPurchasedBookIds(prev => [...prev, selectedBook.id]);
+        setShowCheckout(false); setShowBookDetails(false);
+        openWebReader(selectedBook);
+      } catch (err) {
+        addToast("Database error: Check orders table.", "error");
+      } finally {
+        setIsProcessing(false); NProgress.done();
+      }
+      return; // Code yahi ruk jayega
+    }
+
+    // SCENARIO 2: Agar paise lag rahe hain (Call Razorpay)
     const loaded = await loadRazorpayScript();
     if (!loaded) { addToast("Payment gateway failed. Check network.", "error"); setIsProcessing(false); NProgress.done(); return; }
 
