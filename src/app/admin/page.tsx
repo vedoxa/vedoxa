@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy-url.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key";
+const lookerStudioUrl = process.env.NEXT_PUBLIC_LOOKER_STUDIO_URL || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function PremiumAdminDashboard() {
@@ -634,7 +635,7 @@ export default function PremiumAdminDashboard() {
                     <iframe 
                         width="100%" 
                         height="100%" 
-                        src="YOUR_LOOKER_STUDIO_EMBED_URL" 
+                        src={lookerStudioUrl} 
                         frameBorder="0" 
                         style={{ border: 0, minHeight: '500px' }} 
                         allowFullScreen 
