@@ -30,7 +30,7 @@ function loadRazorpayScript() {
 
 const dict = {
   EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है आरंभ जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
 };
 
 // 5 Premium Avatars (DALL-E / Midjourney style placehoders)
@@ -708,7 +708,7 @@ export default function VedoxaHome() {
                 
                 {/* Checkout Trust Logos */}
                 <div className="flex justify-center items-center gap-3 mt-3 opacity-60">
-                   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Razorpay_logo.svg/1200px-Razorpay_logo.svg.png" alt="Razorpay" className="h-4 object-contain brightness-0 invert" />
+                   <img src="/razorpay-logo.png" alt="Razorpay" className="h-4 object-contain brightness-0 invert" />
                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" alt="Visa" className="h-3 object-contain brightness-0 invert" />
                    <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 border border-white/20 px-1.5 py-0.5 rounded"><ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL</div>
                 </div>
@@ -900,8 +900,8 @@ export default function VedoxaHome() {
         <div className="w-full py-6 flex flex-col items-center bg-[#0a0a0d] border-b border-white/5">
            <p className="text-gray-500 text-[10px] font-bold mb-4 tracking-widest uppercase">Trusted By & Verified Secure</p>
            <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 opacity-70 hover:opacity-100 transition-all duration-300">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" alt="Google Verified" className="h-6 object-contain grayscale hover:grayscale-0 transition-all" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Razorpay_logo.svg/1200px-Razorpay_logo.svg.png" alt="Razorpay" className="h-5 object-contain brightness-0 invert" />
+              <img src="/google-logo.png" alt="Google Verified" className="h-6 object-contain grayscale hover:grayscale-0 transition-all" />
+              <img src="/razorpay-logo.png" alt="Razorpay" className="h-5 object-contain brightness-0 invert" />
               <div className="flex items-center gap-1.5 text-sm font-bold text-white"><ShieldCheck className="text-green-500" size={20}/> McAfee Secure</div>
               <div className="flex items-center gap-1.5 text-sm font-bold text-white"><Lock className="text-yellow-500" size={20}/> SSL 256-bit</div>
            </div>
@@ -912,9 +912,6 @@ export default function VedoxaHome() {
             <h2 className="font-cinzel text-xl font-bold text-yellow-500 mb-2">VEDOXA</h2>
             <p className="text-gray-500 text-xs mb-6">© 2026 Vedoxa Premium Library. All rights reserved.</p>
             <div className="flex flex-wrap justify-center gap-4 md:gap-8 text-xs text-gray-400">
-               <Link href="/contact" className="hover:text-white transition">Contact Us</Link>
-               <Link href="/terms" className="hover:text-white transition">Terms & Conditions</Link>
-               <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
                <Link href="/refund" className="hover:text-white transition font-semibold text-gray-300">100% Quality Assured (Digital Delivery - Final Sale)</Link>
             </div>
         </div>
