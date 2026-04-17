@@ -410,17 +410,17 @@ export default function VedoxaHome() {
         </AnimatePresence>
       </div>
 
-      {/* Sidebar Dashboard */}
+      {/* Sidebar Dashboard (FAST ANIMATION) */}
       <AnimatePresence>
         {isSidebarOpen && (
           <>
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
               onClick={() => setIsSidebarOpen(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000]" 
             />
             <motion.div 
-              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25 }}
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.15, ease: "easeOut" }}
               className="fixed top-0 right-0 w-80 h-full bg-[#0a0a0d] border-l border-white/10 z-[5001] shadow-2xl flex flex-col"
             >
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/40">
@@ -705,6 +705,13 @@ export default function VedoxaHome() {
                   {isProcessing ? <RefreshCw className="animate-spin" size={18} /> : <Lock size={18} />}
                   {isProcessing ? "Processing..." : `${t.pay} ₹${clientFinalPrice}`}
                 </button>
+                
+                {/* Checkout Trust Logos */}
+                <div className="flex justify-center items-center gap-3 mt-3 opacity-60">
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Razorpay_logo.svg/1200px-Razorpay_logo.svg.png" alt="Razorpay" className="h-4 object-contain brightness-0 invert" />
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" alt="Visa" className="h-3 object-contain brightness-0 invert" />
+                   <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 border border-white/20 px-1.5 py-0.5 rounded"><ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL</div>
+                </div>
               </form>
             </motion.div>
           </motion.div>
@@ -729,7 +736,7 @@ export default function VedoxaHome() {
         
         {/* Responsive Navbar */}
         <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/brand" className="flex items-center gap-3 group">
             <div className="w-9 h-9 md:w-11 md:h-11 relative rounded-full p-0.5 border border-yellow-500/20 group-hover:border-yellow-500/50 transition">
               <Image 
                 src="/logo.svg" 
@@ -867,7 +874,7 @@ export default function VedoxaHome() {
           
           <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4 mb-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
-            <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><Zap size={16} className="text-yellow-500"/> {t.instant}</div>
+            <button onClick={() => user ? setIsSidebarOpen(true) : setShowAuthModal(true)} className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition cursor-pointer"><Zap size={16} className="text-yellow-500"/> {t.instant}</button>
           </div>
         </footer>
 
@@ -887,6 +894,29 @@ export default function VedoxaHome() {
               <span className="px-8">Vedoxa Library</span>
               <span className="px-8">Vedoxa Library</span>
            </div>
+        </div>
+
+        {/* NEW TRUST LOGOS SECTION */}
+        <div className="w-full py-6 flex flex-col items-center bg-[#0a0a0d] border-b border-white/5">
+           <p className="text-gray-500 text-[10px] font-bold mb-4 tracking-widest uppercase">Trusted By & Verified Secure</p>
+           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 opacity-70 hover:opacity-100 transition-all duration-300">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" alt="Google Verified" className="h-6 object-contain grayscale hover:grayscale-0 transition-all" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Razorpay_logo.svg/1200px-Razorpay_logo.svg.png" alt="Razorpay" className="h-5 object-contain brightness-0 invert" />
+              <div className="flex items-center gap-1.5 text-sm font-bold text-white"><ShieldCheck className="text-green-500" size={20}/> McAfee Secure</div>
+              <div className="flex items-center gap-1.5 text-sm font-bold text-white"><Lock className="text-yellow-500" size={20}/> SSL 256-bit</div>
+           </div>
+        </div>
+
+        {/* REAL BOTTOM FOOTER */}
+        <div className="w-full py-8 flex flex-col items-center bg-[#06060a]">
+            <h2 className="font-cinzel text-xl font-bold text-yellow-500 mb-2">VEDOXA</h2>
+            <p className="text-gray-500 text-xs mb-6">© 2026 Vedoxa Premium Library. All rights reserved.</p>
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8 text-xs text-gray-400">
+               <Link href="/contact" className="hover:text-white transition">Contact Us</Link>
+               <Link href="/terms" className="hover:text-white transition">Terms & Conditions</Link>
+               <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
+               <Link href="/refund" className="hover:text-white transition font-semibold text-gray-300">100% Quality Assured (Digital Delivery - Final Sale)</Link>
+            </div>
         </div>
 
         <div className="fixed bottom-12 right-8 z-[4000] flex flex-col gap-4 items-center">
