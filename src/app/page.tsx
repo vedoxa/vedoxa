@@ -113,15 +113,7 @@ export default function VedoxaHome() {
     setUser(loggedUser);
     setCheckoutData(prev => ({ ...prev, email: loggedUser.email }));
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', loggedUser.id).single();
-    if (prof) {
-      // FIX: Auto-set Avatar if none exists
-      if (!prof.avatar_url) {
-        const randomAvatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
-        const { error } = await supabase.from('profiles').update({ avatar_url: randomAvatar }).eq('id', loggedUser.id);
-        if (!error) prof.avatar_url = randomAvatar;
-      }
-      setProfile(prof);
-    }
+    if (prof) setProfile(prof);
     const { data: orders } = await supabase.from('orders').select('book_id').eq('customer_id', loggedUser.id);
     if (orders) setPurchasedBookIds(orders.map(o => o.book_id));
   };
@@ -385,17 +377,6 @@ export default function VedoxaHome() {
         .btn-gold:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(234,179,8,0.45); }
         #nprogress .bar { background: #eab308 !important; height: 3px !important; }
         #nprogress .peg { box-shadow: 0 0 10px #eab308, 0 0 5px #eab308 !important; }
-        
-        /* FIX: Marquee Animation */
-        @keyframes scrollLeft {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-scroll {
-          animation: scrollLeft 20s linear infinite;
-          display: inline-block;
-          white-space: nowrap;
-        }
       `}</style>
 
       {/* Floating Toasts */}
@@ -448,11 +429,10 @@ export default function VedoxaHome() {
               </div>
 
               <div className="p-6 flex flex-col gap-4">
-                {/* FIX: Link Component instead of div */}
-                <Link href="/reward-points" className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-yellow-500/20 transition">
+                <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl flex justify-between items-center">
                   <div className="flex items-center gap-2 text-yellow-500 font-bold"><Coins size={20}/> Reward Points</div>
                   <span className="text-xl font-black text-white">{profile?.reward_points || 0}</span>
-                </Link>
+                </div>
 
                 <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center">
                   <span className="text-gray-300 font-bold text-sm">Language / भाषा</span>
@@ -460,18 +440,6 @@ export default function VedoxaHome() {
                     {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
                   </button>
                 </div>
-
-                {/* FIX: New Explore & Quiz Options */}
-                <Link href="/explore" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
-                  <span className="text-gray-300 font-bold text-sm">Explore</span>
-                  <ChevronRight size={16} className="text-gray-500" />
-                </Link>
-
-                <Link href="/quiz" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
-                  <span className="text-gray-300 font-bold text-sm">Quiz</span>
-                  <ChevronRight size={16} className="text-gray-500" />
-                </Link>
-
               </div>
 
               <div className="mt-auto p-6 border-t border-white/10">
@@ -778,13 +746,13 @@ export default function VedoxaHome() {
           </motion.p>
         </section>
 
-        {/* FIX: Reduced Animated Gap Section */}
-        <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-80">
-          <div className="h-8 md:h-12 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 animate-pulse"></div>
-          <div className="border border-yellow-500/30 bg-yellow-500/5 px-6 py-2 rounded-full text-xs md:text-sm font-bold text-yellow-500 mt-2 tracking-widest uppercase text-center shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+        {/* FIX: New Animated Gap Section */}
+        <section className="w-full max-w-4xl mx-auto px-4 py-4 md:py-8 flex flex-col items-center opacity-80">
+          <div className="h-16 md:h-24 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 animate-pulse"></div>
+          <div className="border border-yellow-500/30 bg-yellow-500/5 px-6 py-2 rounded-full text-xs md:text-sm font-bold text-yellow-500 mt-4 tracking-widest uppercase text-center shadow-[0_0_15px_rgba(234,179,8,0.1)]">
             {t.journeyText}
           </div>
-          <div className="h-4 md:h-8 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 mt-2"></div>
+          <div className="h-8 md:h-12 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 mt-4"></div>
         </section>
 
         {/* Dynamic Book Library Grid */}
@@ -865,31 +833,13 @@ export default function VedoxaHome() {
             About Us
           </Link>
           
-          <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4 mb-4">
+          <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
             <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><Zap size={16} className="text-yellow-500"/> {t.instant}</div>
           </div>
         </footer>
 
-        {/* FIX: Scrolling Line Loop at the very bottom */}
-        <div className="w-full bg-yellow-500/5 border-t border-yellow-500/20 overflow-hidden cursor-pointer py-1.5" onClick={() => window.location.reload()}>
-           <div className="animate-scroll text-[10px] text-yellow-500/60 tracking-[0.2em] uppercase font-black flex w-max">
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-           </div>
-        </div>
-
-        <div className="fixed bottom-12 right-8 z-[4000] flex flex-col gap-4 items-center">
+        <div className="fixed bottom-8 right-8 z-[4000] flex flex-col gap-4 items-center">
           <button 
             onClick={handleShare}
             className="w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all shadow-lg"
@@ -902,4 +852,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-}
+  }
