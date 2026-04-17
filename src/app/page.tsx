@@ -30,10 +30,10 @@ function loadRazorpayScript() {
 
 const dict = {
   EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है आरंभ जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
 };
 
-// 5 Premium Avatars (DALL-E / Midjourney style placehoders)
+// 5 Premium Avatars
 const AVATARS = [
   "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Vedoxa1&backgroundColor=eab308",
   "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Karma&backgroundColor=059669",
@@ -71,10 +71,7 @@ export default function VedoxaHome() {
   const [newReviewText, setNewReviewText] = useState("");
   const [loadingReviews, setLoadingReviews] = useState(false);
   
-  // FIX: User ka existing review check karne ke liye state
   const [userExistingReview, setUserExistingReview] = useState(null);
-
-  // FIX: Sidebar Dashboard States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -114,7 +111,6 @@ export default function VedoxaHome() {
     setCheckoutData(prev => ({ ...prev, email: loggedUser.email }));
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', loggedUser.id).single();
     if (prof) {
-      // FIX: Auto-set Avatar if none exists
       if (!prof.avatar_url) {
         const randomAvatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
         const { error } = await supabase.from('profiles').update({ avatar_url: randomAvatar }).eq('id', loggedUser.id);
@@ -146,7 +142,6 @@ export default function VedoxaHome() {
       
       if (!error && data) {
         setReviews(data);
-        // FIX: Check if user already reviewed
         if (user) {
           const existing = data.find(r => r.user_id === user.id);
           if (existing) {
@@ -166,12 +161,10 @@ export default function VedoxaHome() {
     if (!newReviewText.trim()) return;
     try {
       if (userExistingReview) {
-        // UPDATE existing review
         const { error } = await supabase.from("reviews").update({ review_text: newReviewText }).eq("id", userExistingReview.id);
         if (error) throw error;
         addToast("Review updated successfully!", "success");
       } else {
-        // INSERT new review
         const { error } = await supabase.from("reviews").insert([
           { book_id: selectedBook.id, user_id: user.id, review_text: newReviewText }
         ]);
@@ -222,7 +215,6 @@ export default function VedoxaHome() {
     } else { setAppliedCoupon(null); addToast("Invalid or expired coupon", "error"); }
   };
 
-  // FIX: Save New Avatar to DB
   const handleSaveAvatar = async (avatarUrl) => {
     try {
       const { error } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
@@ -448,7 +440,6 @@ export default function VedoxaHome() {
               </div>
 
               <div className="p-6 flex flex-col gap-4">
-                {/* FIX: Link Component instead of div */}
                 <Link href="/reward-points" className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-yellow-500/20 transition">
                   <div className="flex items-center gap-2 text-yellow-500 font-bold"><Coins size={20}/> Reward Points</div>
                   <span className="text-xl font-black text-white">{profile?.reward_points || 0}</span>
@@ -461,7 +452,6 @@ export default function VedoxaHome() {
                   </button>
                 </div>
 
-                {/* FIX: New Explore & Quiz Options */}
                 <Link href="/explore" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
                   <span className="text-gray-300 font-bold text-sm">Explore</span>
                   <ChevronRight size={16} className="text-gray-500" />
@@ -570,7 +560,6 @@ export default function VedoxaHome() {
                  <h2 className="text-2xl font-bold text-white">{t.reviews}</h2>
                </div>
 
-               {/* FIX: Add/Edit Review Box */}
                {purchasedBookIds.includes(selectedBook.id) && (
                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl mb-8">
                    <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
@@ -588,7 +577,6 @@ export default function VedoxaHome() {
                  </div>
                )}
 
-               {/* Reviews List */}
                <div className="flex flex-col gap-4">
                  {loadingReviews ? (
                     <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
@@ -706,12 +694,18 @@ export default function VedoxaHome() {
                   {isProcessing ? "Processing..." : `${t.pay} ₹${clientFinalPrice}`}
                 </button>
                 
-                {/* Checkout Trust Logos */}
+                {/* CHECKOUT MODAL PURE SVG RAZORPAY & SSL */}
                 <div className="flex justify-center items-center gap-3 mt-3 opacity-60">
-                   <img src="/razorpay-logo.png" alt="Razorpay" className="h-4 object-contain brightness-0 invert" />
-                   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" alt="Visa" className="h-3 object-contain brightness-0 invert" />
+                   <div className="flex items-center gap-1 font-bold text-white tracking-wide text-[10px] md:text-xs">
+                     <svg viewBox="0 0 100 24" className="h-3 md:h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill="#fff"/>
+                        <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
+                        <text x="24" y="17" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
+                     </svg>
+                   </div>
                    <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 border border-white/20 px-1.5 py-0.5 rounded"><ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL</div>
                 </div>
+
               </form>
             </motion.div>
           </motion.div>
@@ -757,7 +751,6 @@ export default function VedoxaHome() {
             )}
             
             {user ? (
-              // FIX: New Profile Button that opens sidebar
               <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 md:px-3 rounded-full hover:bg-white/10 hover:border-yellow-500/30 transition">
                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden">
                   {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover"/> : <UserCircle size={18} className="text-yellow-500"/>}
@@ -785,7 +778,7 @@ export default function VedoxaHome() {
           </motion.p>
         </section>
 
-        {/* FIX: Reduced Animated Gap Section */}
+        {/* Animated Gap Section */}
         <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-80">
           <div className="h-8 md:h-12 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 animate-pulse"></div>
           <div className="border border-yellow-500/30 bg-yellow-500/5 px-6 py-2 rounded-full text-xs md:text-sm font-bold text-yellow-500 mt-2 tracking-widest uppercase text-center shadow-[0_0_15px_rgba(234,179,8,0.1)]">
@@ -878,7 +871,7 @@ export default function VedoxaHome() {
           </div>
         </footer>
 
-        {/* FIX: Scrolling Line Loop at the very bottom */}
+        {/* Scrolling Line Loop at the very bottom */}
         <div className="w-full bg-yellow-500/5 border-t border-yellow-500/20 overflow-hidden cursor-pointer py-1.5" onClick={() => window.location.reload()}>
            <div className="animate-scroll text-[10px] text-yellow-500/60 tracking-[0.2em] uppercase font-black flex w-max">
               <span className="px-8">Vedoxa Library</span>
@@ -896,26 +889,38 @@ export default function VedoxaHome() {
            </div>
         </div>
 
-        {/* NEW TRUST LOGOS SECTION */}
+        {/* PURE SVG TRUST LOGOS SECTION */}
         <div className="w-full py-6 flex flex-col items-center bg-[#0a0a0d] border-b border-white/5">
            <p className="text-gray-500 text-[10px] font-bold mb-4 tracking-widest uppercase">Trusted By & Verified Secure</p>
            <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 opacity-70 hover:opacity-100 transition-all duration-300">
-              <img src="/google-logo.png" alt="Google Verified" className="h-6 object-contain grayscale hover:grayscale-0 transition-all" />
-              <img src="/razorpay-logo.png" alt="Razorpay" className="h-5 object-contain brightness-0 invert" />
+              
+              {/* Google Verified Pure SVG */}
+              <div className="flex items-center gap-2 font-bold text-white tracking-wide text-sm">
+                <svg viewBox="0 0 48 48" className="h-5 md:h-6 w-auto grayscale hover:grayscale-0 transition-all cursor-pointer">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                Google Verified
+              </div>
+
+              {/* Razorpay Pure SVG Text + Icon */}
+              <div className="flex items-center gap-1 font-bold text-white tracking-wide text-sm">
+                <svg viewBox="0 0 100 24" className="h-4 md:h-5 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill="#fff"/>
+                  <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
+                  <text x="24" y="17" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
+                </svg>
+              </div>
+              
+              {/* Lucide Vector Icons */}
               <div className="flex items-center gap-1.5 text-sm font-bold text-white"><ShieldCheck className="text-green-500" size={20}/> McAfee Secure</div>
               <div className="flex items-center gap-1.5 text-sm font-bold text-white"><Lock className="text-yellow-500" size={20}/> SSL 256-bit</div>
            </div>
         </div>
 
-        {/* REAL BOTTOM FOOTER */}
-        <div className="w-full py-8 flex flex-col items-center bg-[#06060a]">
-            <h2 className="font-cinzel text-xl font-bold text-yellow-500 mb-2">VEDOXA</h2>
-            <p className="text-gray-500 text-xs mb-6">© 2026 Vedoxa Premium Library. All rights reserved.</p>
-            <div className="flex flex-wrap justify-center gap-4 md:gap-8 text-xs text-gray-400">
-               <Link href="/refund" className="hover:text-white transition font-semibold text-gray-300">100% Quality Assured (Digital Delivery - Final Sale)</Link>
-            </div>
-        </div>
-
+        {/* Floating Share Button */}
         <div className="fixed bottom-12 right-8 z-[4000] flex flex-col gap-4 items-center">
           <button 
             onClick={handleShare}
