@@ -523,7 +523,7 @@ export default function VedoxaHome() {
                      <img 
                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
                        alt={selectedBook.title}
-                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                       className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
                      />
                    </div>
                  ) : (
@@ -824,7 +824,7 @@ export default function VedoxaHome() {
                           <img 
                             src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} 
                             alt={book.title}
-                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                            className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
                           />
                         </div>
                       ) : (
