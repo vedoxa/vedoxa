@@ -1,4 +1,4 @@
-import './globals.css'; 
+Import './globals.css'; 
 import Script from 'next/script';
 import Footer from '../components/Footer'; // YAHAN CHANGE KIYA HAI (@/ hata kar ../ lagaya hai)
 
@@ -7,6 +7,13 @@ export const metadata = {
   description: 'Awaken Your Consciousness',
   verification: {
     google: 'VyrJe14oANu7UifdZIx8nDyZNb72fhACt3dv2m9AqM8',
+  },
+  icons: {
+    icon: [
+      { url: '/logo.svg', type: 'image/svg+xml' },
+      // Google search ke liye 48x48 px PNG zaroori hai, isliye isko add kiya hai
+      { url: '/icon.png', type: 'image/png', sizes: '48x48' } 
+    ],
   },
 };
 
