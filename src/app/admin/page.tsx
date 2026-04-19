@@ -54,6 +54,7 @@ export default function PremiumAdminDashboard() {
   const [discountEndDate, setDiscountEndDate] = useState("");
   const [selectedBooks, setSelectedBooks] = useState([]);
   const [discountSearch, setDiscountSearch] = useState("");
+  const [editingDiscountId, setEditingDiscountId] = useState(null);
   
   // COUPON MANAGEMENT
   const [coupons, setCoupons] = useState([]);
@@ -82,6 +83,7 @@ export default function PremiumAdminDashboard() {
   const [showAddBookModal, setShowAddBookModal] = useState(false);
   const [showAddDiscountModal, setShowAddDiscountModal] = useState(false);
   const [showAddCouponModal, setShowAddCouponModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // NOTIFICATIONS
   const [notifications, setNotifications] = useState([]);
@@ -115,7 +117,7 @@ export default function PremiumAdminDashboard() {
         supabase.from('discounts').select('*'),
         supabase.from('coupons').select('*'),
         supabase.from('orders').select('*'),
-        supabase.from('customers').select('*')
+        supabase.from('profiles').select('*') // CONNECTED TO PROFILES TABLE
       ]);
 
       if (booksData.data) setBooks(booksData.data);
@@ -159,17 +161,18 @@ export default function PremiumAdminDashboard() {
   };
 
   const handlePublishBook = async () => {
-    if (!title || basePrice <= 0 || !file) {
+    if (!title || basePrice <= 0 || (!file && !editingBookId)) {
       setUploadStatus("❌ Title, Price and PDF file are required!");
       return;
     }
 
     setIsUploading(true);
-    setUploadStatus("🖼️ Uploading Cover Image...");
+    let coverFileName = null;
+    let pdfFileName = null;
 
     try {
-      let coverFileName = null;
       if (coverFile) {
+        setUploadStatus("🖼️ Uploading Cover Image...");
         coverFileName = `${Date.now()}-cover-${Math.random().toString(36).substring(2)}.${coverFile.name.split('.').pop()}`;
         const { error: coverError } = await supabase.storage
           .from('books-covers')
@@ -178,15 +181,17 @@ export default function PremiumAdminDashboard() {
         if (coverError) throw coverError;
       }
 
-      setUploadStatus("🔒 Securing and Uploading PDF...");
-      const pdfFileName = `${Date.now()}-book-${Math.random().toString(36).substring(2)}.pdf`;
-      const { error: storageError } = await supabase.storage
-        .from('books-pdfs')
-        .upload(pdfFileName, file);
+      if (file) {
+        setUploadStatus("🔒 Securing and Uploading PDF...");
+        pdfFileName = `${Date.now()}-book-${Math.random().toString(36).substring(2)}.pdf`;
+        const { error: storageError } = await supabase.storage
+          .from('books-pdfs')
+          .upload(pdfFileName, file);
 
-      if (storageError) throw storageError;
+        if (storageError) throw storageError;
+      }
 
-      setUploadStatus("✅ Files Uploaded! Saving details...");
+      setUploadStatus("✅ Saving details...");
 
       const finalPrice = basePrice - (basePrice * discount / 100);
       const bookData = {
@@ -195,24 +200,30 @@ export default function PremiumAdminDashboard() {
         author,
         pages: pages ? Number(pages) : null,
         language,
-        tags: tags ? tags.split(',').map(t => t.trim()) : [],
+        tags: tags ? (typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : tags) : [],
         base_price: basePrice,
         discount: discount,
         final_price: finalPrice,
-        pdf_path: pdfFileName,
-        cover_path: coverFileName,
-        created_at: new Date().toISOString(),
         format: "pdf"
       };
 
-      const { error: dbError } = editingBookId 
-        ? await supabase.from('books').update(bookData).eq('id', editingBookId)
-        : await supabase.from('books').insert([bookData]);
+      if (pdfFileName) bookData.pdf_path = pdfFileName;
+      if (coverFileName) bookData.cover_path = coverFileName;
+
+      let dbError;
+      if (editingBookId) {
+        const { error } = await supabase.from('books').update(bookData).eq('id', editingBookId);
+        dbError = error;
+      } else {
+        bookData.created_at = new Date().toISOString();
+        const { error } = await supabase.from('books').insert([bookData]);
+        dbError = error;
+      }
 
       if (dbError) throw dbError;
 
-      setUploadStatus("🎉 Book published successfully!");
-      addNotification("Book added successfully! 📚", "success");
+      setUploadStatus(editingBookId ? "🎉 Book updated successfully!" : "🎉 Book published successfully!");
+      addNotification(editingBookId ? "Book updated successfully! 📚" : "Book added successfully! 📚", "success");
       
       resetBookForm();
       loadAllData();
@@ -223,6 +234,19 @@ export default function PremiumAdminDashboard() {
       setIsUploading(false);
       setTimeout(() => setUploadStatus(""), 4000);
     }
+  };
+
+  const handleEditBookClick = (book) => {
+    setTitle(book.title || "");
+    setDescription(book.description || "");
+    setAuthor(book.author || "VEDOXA");
+    setPages(book.pages || "");
+    setLanguage(book.language || "English");
+    setTags(book.tags ? book.tags.join(', ') : "");
+    setBasePrice(book.base_price || 0);
+    setDiscount(book.discount || 0);
+    setEditingBookId(book.id);
+    setShowAddBookModal(true);
   };
 
   const resetBookForm = () => {
@@ -260,28 +284,65 @@ export default function PremiumAdminDashboard() {
     }
 
     try {
-      const { error } = await supabase.from('discounts').insert([{
+      const discountData = {
         name: discountName,
         percentage: discountPercentage,
         startDate: discountStartDate,
         endDate: discountEndDate,
         appliedBooks: selectedBooks,
-        created_at: new Date().toISOString()
-      }]);
+      };
 
-      if (error) throw error;
+      let dbError;
+      if (editingDiscountId) {
+        const { error } = await supabase.from('discounts').update(discountData).eq('id', editingDiscountId);
+        dbError = error;
+      } else {
+        discountData.created_at = new Date().toISOString();
+        const { error } = await supabase.from('discounts').insert([discountData]);
+        dbError = error;
+      }
 
-      setDiscountName("");
-      setDiscountPercentage(0);
-      setDiscountStartDate("");
-      setDiscountEndDate("");
-      setSelectedBooks([]);
-      setShowAddDiscountModal(false);
-      addNotification("Discount created successfully! 💰", "success");
+      if (dbError) throw dbError;
+
+      resetDiscountForm();
+      addNotification(editingDiscountId ? "Discount updated successfully! 💰" : "Discount created successfully! 💰", "success");
       loadAllData();
     } catch (error) {
       addNotification("Error: " + error.message, "error");
     }
+  };
+
+  const handleEditDiscountClick = (discount) => {
+    setDiscountName(discount.name || "");
+    setDiscountPercentage(discount.percentage || 0);
+    setDiscountStartDate(discount.startDate || "");
+    setDiscountEndDate(discount.endDate || "");
+    setSelectedBooks(discount.appliedBooks || []);
+    setEditingDiscountId(discount.id);
+    setShowAddDiscountModal(true);
+  };
+
+  const handleDeleteDiscount = async (id) => {
+    if (window.confirm("Delete this discount?")) {
+      try {
+        const { error } = await supabase.from('discounts').delete().eq('id', id);
+        if (error) throw error;
+        setDiscounts(discounts.filter(d => d.id !== id));
+        addNotification("Discount deleted! 🗑️", "success");
+      } catch (error) {
+        addNotification("Delete failed: " + error.message, "error");
+      }
+    }
+  };
+
+  const resetDiscountForm = () => {
+    setDiscountName("");
+    setDiscountPercentage(0);
+    setDiscountStartDate("");
+    setDiscountEndDate("");
+    setSelectedBooks([]);
+    setEditingDiscountId(null);
+    setShowAddDiscountModal(false);
   };
 
   const handleAddCoupon = async () => {
@@ -361,17 +422,16 @@ export default function PremiumAdminDashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      try {
-        await supabase.auth.signOut();
-        setIsAuthenticated(false);
-        setEmail("");
-        setPassword("");
-        addNotification("Logged out successfully! 👋", "success");
-      } catch (error) {
-        console.log("Logout error:", error);
-      }
+  const handleLogoutConfirm = async () => {
+    try {
+      await supabase.auth.signOut();
+      setIsAuthenticated(false);
+      setEmail("");
+      setPassword("");
+      setShowLogoutModal(false);
+      addNotification("Logged out successfully! 👋", "success");
+    } catch (error) {
+      console.log("Logout error:", error);
     }
   };
 
@@ -494,6 +554,23 @@ export default function PremiumAdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/40 to-slate-950 text-slate-200 font-sans">
+      
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-slate-900 border border-red-500/50 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_rgba(239,68,68,0.2)] text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6 border border-red-500/50">
+               <LogOut size={32} className="text-red-400" />
+            </div>
+            <h3 className="text-2xl font-black text-white mb-2">Confirm Logout</h3>
+            <p className="text-slate-400 mb-8 text-sm leading-relaxed">Are you sure you want to securely log out of the VEDOXA Admin Control Center?</p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition border border-slate-600 shadow-lg">Cancel</button>
+              <button onClick={handleLogoutConfirm} className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl transition shadow-[0_0_20px_rgba(225,29,72,0.4)]">Yes, Logout</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
         <div className="absolute top-40 right-1/4 w-[30rem] h-[30rem] bg-purple-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse animation-delay-2000"></div>
@@ -519,7 +596,7 @@ export default function PremiumAdminDashboard() {
           
           <div className="flex items-center gap-6">
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-red-500/20 to-rose-600/20 hover:from-red-500/40 hover:to-rose-600/40 text-red-300 px-5 py-2.5 rounded-lg font-bold text-sm transition border border-red-500/30 hover:border-red-400/60 shadow-lg"
             >
               <LogOut size={18} /> Logout
@@ -722,8 +799,8 @@ export default function PremiumAdminDashboard() {
               <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-slate-900 border border-indigo-500/50 rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-[0_0_50px_rgba(99,102,241,0.2)]">
                   <div className="flex justify-between items-center mb-6 border-b border-indigo-500/20 pb-4">
-                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">Publish New Book</h3>
-                    <button onClick={() => setShowAddBookModal(false)} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
+                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">{editingBookId ? "Edit Book Details" : "Publish New Book"}</h3>
+                    <button onClick={resetBookForm} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
                       <X size={24} />
                     </button>
                   </div>
@@ -772,7 +849,7 @@ export default function PremiumAdminDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-800/40 p-5 rounded-2xl border border-indigo-500/20">
                       <div className="border-r border-indigo-500/20 pr-0 md:pr-4">
                         <label className="block text-xs font-black text-pink-400 mb-3 uppercase flex items-center gap-2">
-                          <BookOpen size={16} /> 1. Upload Cover Image
+                          <BookOpen size={16} /> 1. Upload Cover Image {editingBookId && '(Optional)'}
                         </label>
                         <div className="relative">
                           <input
@@ -786,7 +863,7 @@ export default function PremiumAdminDashboard() {
 
                       <div className="pl-0 md:pl-4 mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-indigo-500/20">
                         <label className="block text-xs font-black text-blue-400 mb-3 uppercase flex items-center gap-2">
-                          <Upload size={16} /> 2. Upload Book PDF *
+                          <Upload size={16} /> 2. Upload Book PDF {editingBookId ? '(Optional)' : '*'}
                         </label>
                         <input
                           type="file"
@@ -815,10 +892,10 @@ export default function PremiumAdminDashboard() {
                         className="flex-[2] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition duration-300 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg transform hover:scale-[1.02] active:scale-95"
                       >
                         {isUploading ? <Loader size={20} className="animate-spin" /> : <Upload size={20} />}
-                        {isUploading ? "Processing..." : "Publish Book"}
+                        {isUploading ? "Processing..." : (editingBookId ? "Update Book" : "Publish Book")}
                       </button>
                       <button
-                        onClick={() => setShowAddBookModal(false)}
+                        onClick={resetBookForm}
                         className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition duration-300 uppercase tracking-widest border border-slate-600 hover:border-slate-500"
                       >
                         Cancel
@@ -848,12 +925,20 @@ export default function PremiumAdminDashboard() {
                         <p className="text-xs text-indigo-300 mt-1 font-medium">by {book.author}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteBook(book.id)}
-                      className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEditBookClick(book)}
+                        className="text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 p-2 rounded-lg transition"
+                      >
+                        <Edit3 size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBook(book.id)}
+                        className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
                   </div>
                   
                   <p className="text-sm text-slate-400 mb-6 flex-1 line-clamp-3 relative z-10">{book.description || "No description provided."}</p>
@@ -898,7 +983,10 @@ export default function PremiumAdminDashboard() {
                 </h2>
               </div>
               <button
-                onClick={() => setShowAddDiscountModal(true)}
+                onClick={() => {
+                  resetDiscountForm();
+                  setShowAddDiscountModal(true);
+                }}
                 className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-black px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] transform hover:scale-105 flex items-center gap-2"
               >
                 <Plus size={20} /> Create Discount
@@ -921,8 +1009,8 @@ export default function PremiumAdminDashboard() {
               <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-slate-900 border border-green-500/50 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(34,197,94,0.2)]">
                   <div className="flex justify-between items-center mb-6 border-b border-green-500/20 pb-4">
-                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">New Discount</h3>
-                    <button onClick={() => setShowAddDiscountModal(false)} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
+                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{editingDiscountId ? "Edit Discount" : "New Discount"}</h3>
+                    <button onClick={resetDiscountForm} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
                       <X size={24} />
                     </button>
                   </div>
@@ -977,10 +1065,10 @@ export default function PremiumAdminDashboard() {
                         onClick={handleAddDiscount}
                         className="flex-[2] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg transform hover:scale-[1.02]"
                       >
-                        Create Discount
+                        {editingDiscountId ? "Update Discount" : "Create Discount"}
                       </button>
                       <button
-                        onClick={() => setShowAddDiscountModal(false)}
+                        onClick={resetDiscountForm}
                         className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition border border-slate-600 uppercase"
                       >
                         Cancel
@@ -1000,12 +1088,14 @@ export default function PremiumAdminDashboard() {
                       ? "bg-gradient-to-br from-green-900/40 to-emerald-900/20 border-green-500/40 hover:border-green-400/70 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
                       : "bg-gradient-to-br from-slate-900/60 to-slate-800/40 border-slate-700/50 hover:border-slate-500/50"
                   }`}>
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 flex items-center gap-2">
                       {isActive ? (
                         <span className="bg-green-500/20 text-green-300 text-xs font-black px-3 py-1.5 rounded-md border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]">✅ ACTIVE</span>
                       ) : (
                         <span className="bg-slate-700/50 text-slate-300 text-xs font-black px-3 py-1.5 rounded-md border border-slate-600/50">⏰ UPCOMING</span>
                       )}
+                      <button onClick={() => handleEditDiscountClick(discount)} className="text-slate-400 hover:text-blue-400 bg-slate-800/80 hover:bg-blue-500/20 p-1.5 rounded-md transition"><Edit3 size={16}/></button>
+                      <button onClick={() => handleDeleteDiscount(discount.id)} className="text-slate-400 hover:text-red-400 bg-slate-800/80 hover:bg-red-500/20 p-1.5 rounded-md transition"><Trash2 size={16}/></button>
                     </div>
 
                     <div className="mb-4">
@@ -1203,11 +1293,15 @@ export default function PremiumAdminDashboard() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center relative z-10">
                       <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg border border-white/20 transform rotate-3">
-                          {customer.name?.[0] || "?"}
+                        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg border border-white/20 transform rotate-3 overflow-hidden">
+                          {customer.avatar_url ? (
+                             <img src={customer.avatar_url} alt={customer.name} className="w-full h-full object-cover" />
+                          ) : (
+                             customer.name?.[0] || "?"
+                          )}
                         </div>
                         <div>
-                          <h3 className="font-black text-white text-xl">{customer.name || "Anonymous"}</h3>
+                          <h3 className="font-black text-white text-xl">{customer.name || "Vedoxa Reader"}</h3>
                           <p className="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
                             <Mail size={14} className="text-amber-400/70" /> {customer.email || "No email"}
                           </p>
@@ -1235,8 +1329,8 @@ export default function PremiumAdminDashboard() {
                           <p className="text-2xl font-black text-white mt-1">{customerOrders.length}</p>
                         </div>
                         <div className="bg-slate-900/50 rounded-2xl p-4 border border-purple-500/20">
-                          <p className="text-[10px] text-purple-300 font-bold uppercase tracking-widest">Joined</p>
-                          <p className="text-sm font-bold text-white mt-2">{new Date(customer.created_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</p>
+                          <p className="text-[10px] text-purple-300 font-bold uppercase tracking-widest">Reward Pts</p>
+                          <p className="text-xl font-bold text-white mt-1">{customer.reward_points || 0}</p>
                         </div>
                       </div>
                     </div>
