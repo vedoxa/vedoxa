@@ -1,4 +1,4 @@
-Import './globals.css'; 
+import './globals.css'; 
 import Script from 'next/script';
 import Footer from '../components/Footer'; // YAHAN CHANGE KIYA HAI (@/ hata kar ../ lagaya hai)
 
