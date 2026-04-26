@@ -7,6 +7,9 @@ export const metadata = {
   description: 'Awaken Your Consciousness',
   verification: {
     google: 'VyrJe14oANu7UifdZIx8nDyZNb72fhACt3dv2m9AqM8',
+    other: {
+      monetag: 'd3a8d1a2e7efeac87a31a2a723b36b6c', // NAYA ADD KIYA GAYA MONETAG VERIFICATION
+    },
   },
   icons: {
     icon: [
@@ -24,6 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* NAYA ADD KIYA GAYA CODE: Browser Favicon ke liye */}
         <link rel="icon" href="/logo.svg" type="image/svg+xml" />
         <meta name="msvalidate.01" content="F869EDF5C3D1E2BAB4EC07A020186EDF" />
+        {/* NAYA ADD KIYA GAYA CODE: Monetag Verification ke liye */}
+        <meta name="monetag" content="d3a8d1a2e7efeac87a31a2a723b36b6c" />
       </head>
       <body className="bg-black text-white flex flex-col min-h-screen">
         
