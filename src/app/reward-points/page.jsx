@@ -179,13 +179,13 @@ export default function RewardPointsPage() {
         )}
       </AnimatePresence>
 
-      {/* Navigation - Top Right "Self" Button Added */}
+      {/* Navigation - Chhote Buttons aur proper layout */}
       <nav className="mb-8 flex justify-between items-center max-w-4xl mx-auto w-full">
-        <Link href="/" className="inline-flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 px-5 py-2.5 rounded-xl text-white font-bold transition shadow-lg">
-          <ChevronLeft size={20} /> Back to Home
+        <Link href="/" className="inline-flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2 rounded-xl text-white text-sm font-bold transition shadow-lg">
+          <ChevronLeft size={18} /> Back to Home
         </Link>
-        <Link href="/self" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:scale-105">
-          Self <ArrowRight size={18} />
+        <Link href="/self" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white text-sm font-bold px-4 py-2 rounded-xl transition shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:scale-105">
+          Self <ArrowRight size={16} />
         </Link>
       </nav>
 
@@ -200,7 +200,13 @@ export default function RewardPointsPage() {
           <p className="text-gray-400">Watch short ads, collect coins, and convert them into real discounts. <br/> (विज्ञापन देखें, कॉइन्स इकट्ठा करें और असली छूट प्राप्त करें।)</p>
         </div>
 
-        {!loading && user ? (
+        {/* Loading FIX: Pehle loading spinner dikhega */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <RefreshCw className="animate-spin text-yellow-500 mb-4" size={32} />
+            <p className="text-gray-400 font-bold">Loading your dashboard...</p>
+          </div>
+        ) : user ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               {/* Ad Coins Card */}
@@ -269,20 +275,20 @@ export default function RewardPointsPage() {
               </p>
 
               <div className="grid md:grid-cols-2 gap-8">
-                {/* User's Own Code */}
+                {/* User's Own Code - MOBILE RESPONSIVE FIX */}
                 <div className="bg-black/40 border border-white/5 p-6 rounded-2xl">
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2">Your Referral Code</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-white/5 border border-dashed border-yellow-500/50 text-yellow-500 font-mono text-xl text-center py-3 rounded-xl tracking-widest font-bold">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex-1 bg-white/5 border border-dashed border-yellow-500/50 text-yellow-500 font-mono text-xl text-center py-3 rounded-xl tracking-widest font-bold min-w-0">
                       {profile?.referral_code || "------"}
                     </div>
-                    <button onClick={handleShareCode} className="bg-yellow-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-yellow-400 transition">
+                    <button onClick={handleShareCode} className="bg-yellow-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-yellow-400 transition whitespace-nowrap">
                       Share
                     </button>
                   </div>
                 </div>
 
-                {/* Enter Friend's Code */}
+                {/* Enter Friend's Code - MOBILE RESPONSIVE FIX */}
                 <div className="bg-black/40 border border-white/5 p-6 rounded-2xl">
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2">Have a Referral Code?</p>
                   
@@ -292,19 +298,19 @@ export default function RewardPointsPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <input 
                           type="text" 
                           placeholder="Enter Code Here..." 
                           value={referralInput}
                           onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
                           maxLength={6}
-                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono uppercase focus:border-yellow-500 outline-none"
+                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono uppercase focus:border-yellow-500 outline-none min-w-0"
                         />
                         <button 
                           onClick={handleApplyReferral}
                           disabled={isApplyingReferral || !referralInput}
-                          className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-xl transition disabled:opacity-50"
+                          className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-xl transition disabled:opacity-50 whitespace-nowrap flex justify-center items-center"
                         >
                           {isApplyingReferral ? <RefreshCw className="animate-spin" size={20}/> : "Apply"}
                         </button>
