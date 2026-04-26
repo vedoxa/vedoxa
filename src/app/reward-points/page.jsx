@@ -11,7 +11,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-ke
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 🔴 APNA MONETAG DIRECT LINK YAHAN DAALEIN
-const MONETAG_DIRECT_LINK = "https://www.profitablecpmrate.com/YOUR_DIRECT_LINK_ID";
+const MONETAG_DIRECT_LINK = "https://omg10.com/4/10927258";
 
 export default function RewardPointsPage() {
   const [user, setUser] = useState(null);
