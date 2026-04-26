@@ -124,27 +124,16 @@ export default function RewardPointsPage() {
 
     setIsApplyingReferral(true);
     try {
-      // 1. Find the user whose code is entered
-      const { data: referrer, error: refError } = await supabase
-        .from('profiles')
-        .select('id, reward_points')
-        .eq('referral_code', referralInput.toUpperCase())
-        .single();
-      
-      if (refError || !referrer) throw new Error("Invalid Referral Code! (गलत कोड)");
+      // FIX: Secure Server-Side Function ka use kar rahe hain (RLS bypass ke liye)
+      const { data: result, error: rpcError } = await supabase.rpc('process_referral', {
+        ref_code: referralInput.toUpperCase(),
+        new_user_id: user.id
+      });
 
-      // 2. Add ₹10 to referrer's wallet
-      await supabase.from('profiles')
-        .update({ reward_points: (referrer.reward_points || 0) + 10 })
-        .eq('id', referrer.id);
+      if (rpcError) throw new Error("Server communication error.");
+      if (result === 'invalid_code') throw new Error("Invalid Referral Code! (गलत कोड)");
 
-      // 3. Mark current user as referred
-      const { error: updateError } = await supabase.from('profiles')
-        .update({ referred_by: referralInput.toUpperCase() })
-        .eq('id', user.id);
-
-      if (updateError) throw new Error("Failed to link referral.");
-
+      // Agar success mila
       setProfile(prev => ({ ...prev, referred_by: referralInput.toUpperCase() }));
       showToast("Code Applied! Your friend got ₹10. (रेफरल कोड लग गया!)", "success");
       setReferralInput("");
