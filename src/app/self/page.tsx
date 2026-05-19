@@ -2,7 +2,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ChevronLeft, Zap, ShieldAlert, Sparkles, Rocket, KeyRound, UserPlus, TrendingUp, Eye, DollarSign, WalletCards, Send, Mail, CheckCircle2, AlertTriangle } from "lucide-react";
+// FIX: Yahan RefreshCw missing tha, ab add kar diya hai 👇
+import { ChevronLeft, Zap, ShieldAlert, Sparkles, Rocket, KeyRound, UserPlus, TrendingUp, Eye, DollarSign, WalletCards, Send, Mail, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
 
