@@ -7,7 +7,8 @@ import {
   LogOut, Eye, EyeOff, Trash2, Plus, X, Check, AlertCircle,
   BarChart3, TrendingUp, Zap, DollarSign, Tag, Mail, Phone, MapPin, CreditCard,
   Download, Filter, Search, Edit3, Copy, Loader, ChevronDown, Calendar, Star,
-  TrendingDown, Activity, Bell, Menu, ChevronRight, Sparkles, ArrowUpRight, ArrowDownLeft, LineChart, PieChart
+  TrendingDown, Activity, Bell, Menu, ChevronRight, Sparkles, ArrowUpRight, ArrowDownLeft, LineChart, PieChart,
+  Handshake, Key, MessageSquare, Send
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
@@ -88,6 +89,20 @@ export default function PremiumAdminDashboard() {
   // NOTIFICATIONS
   const [notifications, setNotifications] = useState([]);
 
+  // ==========================================
+  // PARTNERS & AFFILIATES MANAGEMENT (NEW)
+  // ==========================================
+  const [affiliateCodes, setAffiliateCodes] = useState([]);
+  const [affiliates, setAffiliates] = useState([]);
+  const [affiliateMessages, setAffiliateMessages] = useState([]);
+  
+  const [newCommission, setNewCommission] = useState(40);
+  const [newCodeDiscount, setNewCodeDiscount] = useState(10);
+  const [payAmount, setPayAmount] = useState({});
+  const [selectedAffiliateId, setSelectedAffiliateId] = useState(null);
+  const [adminChatInput, setAdminChatInput] = useState("");
+  const chatRef = useRef(null);
+
   useEffect(() => {
     checkSession();
   }, []);
@@ -99,6 +114,12 @@ export default function PremiumAdminDashboard() {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [affiliateMessages, selectedAffiliateId]);
 
   const checkSession = async () => {
     try {
@@ -112,12 +133,15 @@ export default function PremiumAdminDashboard() {
   const loadAllData = async () => {
     if (!isAuthenticated) return;
     try {
-      const [booksData, discountsData, couponsData, ordersData, customersData] = await Promise.all([
+      const [booksData, discountsData, couponsData, ordersData, customersData, affCodesData, affData, affMsgsData] = await Promise.all([
         supabase.from('books').select('*'),
         supabase.from('discounts').select('*'),
         supabase.from('coupons').select('*'),
         supabase.from('orders').select('*'),
-        supabase.from('profiles').select('*') // CONNECTED TO PROFILES TABLE
+        supabase.from('profiles').select('*'),
+        supabase.from('affiliate_codes').select('*').order('created_at', { ascending: false }),
+        supabase.from('affiliates').select('*').order('joined_at', { ascending: false }),
+        supabase.from('affiliate_messages').select('*').order('created_at', { ascending: true })
       ]);
 
       if (booksData.data) setBooks(booksData.data);
@@ -125,6 +149,11 @@ export default function PremiumAdminDashboard() {
       if (couponsData.data) setCoupons(couponsData.data);
       if (ordersData.data) setOrders(ordersData.data);
       if (customersData.data) setCustomers(customersData.data);
+      
+      // Affiliate Data
+      if (affCodesData.data) setAffiliateCodes(affCodesData.data);
+      if (affData.data) setAffiliates(affData.data);
+      if (affMsgsData.data) setAffiliateMessages(affMsgsData.data);
     } catch (error) {
       console.log("Data load error:", error);
     }
@@ -388,6 +417,66 @@ export default function PremiumAdminDashboard() {
     }
   };
 
+  // ==========================================
+  // AFFILIATE SYSTEM ACTIONS
+  // ==========================================
+  const generateAffiliateCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    return code;
+  };
+
+  const handleCreateAffiliateCode = async () => {
+    const code = generateAffiliateCode();
+    try {
+      const { error } = await supabase.from('affiliate_codes').insert([{
+        code,
+        commission_pct: newCommission,
+        discount_pct: newCodeDiscount
+      }]);
+      if (error) throw error;
+      addNotification(`New Partner Code Generated: ${code}`, "success");
+      loadAllData();
+    } catch (err) {
+      addNotification("Error creating code: " + err.message, "error");
+    }
+  };
+
+  const handlePayAffiliate = async (affiliateId, currentPaid) => {
+    const amount = Number(payAmount[affiliateId] || 0);
+    if (amount <= 0) return addNotification("Enter a valid payout amount!", "error");
+    
+    try {
+      const { error } = await supabase.from('affiliates').update({
+        total_paid: Number(currentPaid) + amount
+      }).eq('user_id', affiliateId);
+      
+      if (error) throw error;
+      setPayAmount(prev => ({...prev, [affiliateId]: ""}));
+      addNotification(`Successfully paid ₹${amount} to partner!`, "success");
+      loadAllData();
+    } catch (err) {
+      addNotification("Error marking payment: " + err.message, "error");
+    }
+  };
+
+  const handleSendAdminMessage = async () => {
+    if (!adminChatInput.trim() || !selectedAffiliateId) return;
+    try {
+      const { error } = await supabase.from('affiliate_messages').insert([{
+        affiliate_id: selectedAffiliateId,
+        sender_type: 'admin',
+        message: adminChatInput
+      }]);
+      if (error) throw error;
+      setAdminChatInput("");
+      loadAllData();
+    } catch (err) {
+      addNotification("Message failed: " + err.message, "error");
+    }
+  };
+
   const handleChangePassword = async () => {
     setPasswordError("");
     setPasswordSuccess("");
@@ -614,6 +703,7 @@ export default function PremiumAdminDashboard() {
               { id: "discounts", label: "Discounts", icon: "💰" },
               { id: "coupons", label: "Coupons", icon: "🎟️" },
               { id: "customers", label: "Customers", icon: "👥" },
+              { id: "affiliates", label: "Partners", icon: "🤝" }, // NEW TAB ADDED
               { id: "settings", label: "Settings", icon: "⚙️" }
             ].map(tab => (
               <button
@@ -763,6 +853,181 @@ export default function PremiumAdminDashboard() {
           </div>
         )}
 
+        {/* =========================================
+            AFFILIATE / PARTNER MANAGEMENT TAB (NEW)
+            ========================================= */}
+        {activeTab === "affiliates" && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            
+            <div className="bg-slate-900/50 p-6 rounded-2xl border border-blue-500/20 backdrop-blur-md">
+              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center gap-2">
+                <Handshake className="text-blue-400" /> Partners Management
+              </h2>
+              <p className="text-indigo-300 text-sm mt-1">Generate secret codes, manage influencer payouts, and chat securely.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* CODE GENERATOR */}
+              <div className="bg-slate-900/80 border border-blue-500/30 rounded-3xl p-6 relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[30px] rounded-full"></div>
+                <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Key className="text-cyan-400"/> Generate Partner Code</h3>
+                
+                <div className="space-y-4 relative z-10">
+                  <div>
+                    <label className="block text-xs font-bold text-blue-300 mb-2 uppercase">Commission (%)</label>
+                    <input type="number" value={newCommission} onChange={(e) => setNewCommission(Number(e.target.value))} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-blue-300 mb-2 uppercase">Customer Discount (%)</label>
+                    <input type="number" value={newCodeDiscount} onChange={(e) => setNewCodeDiscount(Number(e.target.value))} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-400"/>
+                  </div>
+                  <button onClick={handleCreateAffiliateCode} className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-black py-4 rounded-xl hover:from-blue-500 hover:to-cyan-500 transition shadow-lg mt-2">
+                    Generate Secret Code
+                  </button>
+                </div>
+              </div>
+
+              {/* CODES LIST */}
+              <div className="lg:col-span-2 bg-slate-900/80 border border-indigo-500/30 rounded-3xl p-6 overflow-hidden flex flex-col">
+                <h3 className="text-xl font-black text-white mb-4">Active & Claimed Codes</h3>
+                <div className="overflow-y-auto flex-1 pr-2 space-y-3 max-h-[300px] hide-scrollbar">
+                  {affiliateCodes.map((codeObj, i) => (
+                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${codeObj.is_claimed ? 'bg-green-900/20 border-green-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
+                      <div>
+                        <p className="text-xl font-mono font-black tracking-widest text-white">{codeObj.code}</p>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Comm: <span className="text-green-400">{codeObj.commission_pct}%</span> | Disc: <span className="text-pink-400">{codeObj.discount_pct}%</span></p>
+                      </div>
+                      <div className="text-right">
+                        {codeObj.is_claimed ? (
+                          <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded text-xs font-bold border border-green-500/50">CLAIMED</span>
+                        ) : (
+                          <span className="bg-slate-700 text-slate-300 px-3 py-1 rounded text-xs font-bold border border-slate-600">WAITING</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {affiliateCodes.length === 0 && <p className="text-slate-500 text-sm text-center mt-10">No codes generated yet.</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* AFFILIATES & CHAT SYSTEM */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Affiliates List */}
+              <div className="lg:col-span-2 bg-slate-900/80 border border-purple-500/30 rounded-3xl p-6 overflow-hidden">
+                <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Users className="text-purple-400"/> Registered Partners</h3>
+                <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2 hide-scrollbar">
+                  {affiliates.map(aff => {
+                    const pendingPayout = (aff.total_earned || 0) - (aff.total_paid || 0);
+                    return (
+                      <div key={aff.user_id} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5 hover:border-purple-500/50 transition">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-black text-white">{aff.full_name}</h4>
+                            <p className="text-sm font-bold text-purple-400">{aff.channel_name}</p>
+                            <p className="text-xs text-slate-400 mt-1 font-mono">UPI: {aff.payment_upi}</p>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedAffiliateId(aff.user_id)}
+                            className={`px-4 py-2 rounded-lg font-bold text-xs border transition ${selectedAffiliateId === aff.user_id ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'}`}
+                          >
+                            Chat
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/50">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold">Clicks</p>
+                            <p className="text-white font-black">{aff.clicks || 0}</p>
+                          </div>
+                          <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/50">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold">Sales</p>
+                            <p className="text-green-400 font-black">{aff.sales || 0}</p>
+                          </div>
+                          <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/50">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold">Earned</p>
+                            <p className="text-white font-black">₹{aff.total_earned || 0}</p>
+                          </div>
+                          <div className="bg-orange-900/20 p-2 rounded-lg text-center border border-orange-500/30">
+                            <p className="text-[10px] text-orange-400 uppercase font-bold">Pending</p>
+                            <p className="text-orange-400 font-black">₹{pendingPayout}</p>
+                          </div>
+                        </div>
+
+                        {/* Pay Affiliate Actions */}
+                        {pendingPayout > 0 && (
+                          <div className="flex gap-2 items-center bg-slate-900/80 p-3 rounded-xl border border-slate-700">
+                            <input 
+                              type="number" 
+                              placeholder="Amount sent" 
+                              value={payAmount[aff.user_id] || ""}
+                              onChange={(e) => setPayAmount({...payAmount, [aff.user_id]: e.target.value})}
+                              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm outline-none flex-1"
+                            />
+                            <button onClick={() => handlePayAffiliate(aff.user_id, aff.total_paid || 0)} className="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition whitespace-nowrap">
+                              Mark as Paid
+                           </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {affiliates.length === 0 && <p className="text-slate-500 text-center py-10">No partners registered yet.</p>}
+                </div>
+              </div>
+
+              {/* Chat Panel */}
+              <div className="bg-[#0a0a0f] border border-blue-500/30 rounded-3xl overflow-hidden flex flex-col h-[600px] shadow-2xl relative">
+                {!selectedAffiliateId ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <MessageSquare size={48} className="text-slate-600 mb-4"/>
+                    <p className="text-slate-400 font-bold">Select a partner to view chat history and reply.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-slate-900 border-b border-slate-800 p-4">
+                      <h3 className="font-bold text-white flex items-center gap-2">Live Support Chat</h3>
+                      <p className="text-xs text-blue-400">Chatting with {affiliates.find(a => a.user_id === selectedAffiliateId)?.full_name}</p>
+                    </div>
+                    
+                    <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {affiliateMessages.filter(m => m.affiliate_id === selectedAffiliateId).map(msg => (
+                        <div key={msg.id} className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.sender_type === 'admin' ? 'bg-blue-600 text-white self-end rounded-tr-sm ml-auto' : 'bg-slate-800 border border-slate-700 text-gray-200 self-start rounded-tl-sm mr-auto'}`}>
+                          {msg.message}
+                        </div>
+                      ))}
+                      {affiliateMessages.filter(m => m.affiliate_id === selectedAffiliateId).length === 0 && (
+                        <div className="text-center text-slate-500 text-sm mt-10">No messages yet.</div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-slate-900 border-t border-slate-800 flex gap-2">
+                      <input 
+                        type="text" 
+                        value={adminChatInput}
+                        onChange={(e) => setAdminChatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendAdminMessage()}
+                        placeholder="Reply to partner..." 
+                        className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-500"
+                      />
+                      <button 
+                        onClick={handleSendAdminMessage}
+                        disabled={!adminChatInput.trim()}
+                        className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl disabled:opacity-50 transition"
+                      >
+                        <Send size={18}/>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Existing Tabs Continuation ... */}
         {activeTab === "books" && (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-indigo-500/20 backdrop-blur-md">
