@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,6 +76,11 @@ export default function VedoxaHome() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
+  // =====================================
+  // PARTNER / AFFILIATE LOGIC (NEW)
+  // =====================================
+  const [partnerData, setPartnerData] = useState(null);
+
   NProgress.configure({ showSpinner: false, speed: 400 });
 
   useEffect(() => {
@@ -84,6 +89,8 @@ export default function VedoxaHome() {
     document.addEventListener('gesturechange', preventZoom);
     
     fetchBooks();
+    initPartnerSystem(); // Affiliate Link Tracker
+
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) handleUserLogin(session.user);
@@ -105,6 +112,44 @@ export default function VedoxaHome() {
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [showBookDetails, showCheckout, showAuthModal, showReader, isSidebarOpen]);
+
+  // Affiliate System Initializer
+  const initPartnerSystem = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    let pCode = urlParams.get('partner');
+    
+    // Save to local storage so even if they navigate away, partner keeps credit
+    if (pCode) {
+      localStorage.setItem('vedoxa_partner', pCode.toUpperCase());
+    } else {
+      pCode = localStorage.getItem('vedoxa_partner');
+    }
+
+    if (pCode) {
+      const { data, error } = await supabase
+        .from('affiliate_codes')
+        .select('*')
+        .eq('code', pCode)
+        .eq('is_claimed', true)
+        .single();
+        
+      if (data && !error) {
+        setPartnerData(data);
+        
+        // Count the View/Click (Only once per session to avoid spam)
+        const viewKey = `viewed_${pCode}`;
+        if (!sessionStorage.getItem(viewKey)) {
+          sessionStorage.setItem(viewKey, 'true');
+          const { data: aff } = await supabase.from('affiliates').select('clicks').eq('partner_code', pCode).single();
+          if (aff) {
+            await supabase.from('affiliates').update({ clicks: (aff.clicks || 0) + 1 }).eq('partner_code', pCode);
+          }
+        }
+      } else {
+        localStorage.removeItem('vedoxa_partner'); // Code invalid or expired
+      }
+    }
+  };
 
   const handleUserLogin = async (loggedUser) => {
     setUser(loggedUser);
@@ -227,9 +272,40 @@ export default function VedoxaHome() {
     }
   };
 
-  let clientFinalPrice = appliedCoupon ? Math.round(selectedBook?.final_price - (selectedBook?.final_price * appliedCoupon.discount / 100)) : selectedBook?.final_price;
-  if (useRewards && profile?.reward_points > 0) clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
-  const earnedPoints = selectedBook ? Math.floor(selectedBook.final_price * 0.019) : 0;
+  // ==============================================
+  // MAGIC DYNAMIC PRICING CALCULATION
+  // ==============================================
+  let partnerDiscountAmount = 0;
+  let baseForClient = selectedBook?.final_price || 0;
+  
+  if (partnerData && selectedBook) {
+      partnerDiscountAmount = Math.round(baseForClient * (partnerData.discount_pct / 100));
+      baseForClient -= partnerDiscountAmount;
+  }
+
+  let couponDiscountAmount = appliedCoupon ? Math.round(baseForClient * (appliedCoupon.discount / 100)) : 0;
+  let clientFinalPrice = baseForClient - couponDiscountAmount;
+
+  if (useRewards && profile?.reward_points > 0) {
+      clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
+  }
+  
+  const earnedPoints = selectedBook ? Math.floor(baseForClient * 0.019) : 0;
+
+  // Give Affiliate Commission
+  const creditAffiliate = async (amountPaid) => {
+    if (!partnerData || amountPaid <= 0) return;
+    const commission = Math.round(amountPaid * (partnerData.commission_pct / 100));
+    try {
+      const { data: aff } = await supabase.from('affiliates').select('sales, total_earned').eq('partner_code', partnerData.code).single();
+      if (aff) {
+        await supabase.from('affiliates').update({
+          sales: (aff.sales || 0) + 1,
+          total_earned: (aff.total_earned || 0) + commission
+        }).eq('partner_code', partnerData.code);
+      }
+    } catch (err) { console.error("Affiliate credit error", err); }
+  };
 
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -280,7 +356,7 @@ export default function VedoxaHome() {
       const orderRes = await fetch('/api/payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create_order', bookId: selectedBook.id, couponCode: appliedCoupon?.code, useRewards, userId: user.id })
+        body: JSON.stringify({ action: 'create_order', bookId: selectedBook.id, couponCode: appliedCoupon?.code, useRewards, userId: user.id, finalAmountOverride: clientFinalPrice })
       });
       if (!orderRes.ok) throw new Error("Order creation failed");
       const orderData = await orderRes.json();
@@ -313,6 +389,10 @@ export default function VedoxaHome() {
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
               addToast("Payment Verified! Unlocking book...", "success");
+              
+              // Give Commission to Partner
+              if (partnerData) await creditAffiliate(orderData.amount);
+
               setPurchasedBookIds(prev => [...prev, selectedBook.id]);
               setShowCheckout(false);
               setShowBookDetails(false);
@@ -343,20 +423,23 @@ export default function VedoxaHome() {
   };
 
   const handleShare = async () => {
+    let urlToShare = window.location.href;
+    if (partnerData) {
+      const urlObj = new URL(window.location.href);
+      urlObj.searchParams.set('partner', partnerData.code);
+      urlToShare = urlObj.toString();
+    }
+
     const shareData = {
       title: 'VEDOXA Premium Library',
       text: 'Awaken Your Consciousness with original, verified digital books on spirituality & psychology.',
-      url: window.location.href,
+      url: urlToShare,
     };
 
     if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.log("Sharing cancelled or failed");
-      }
+      try { await navigator.share(shareData); } catch (err) {}
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(urlToShare);
       addToast("Website link copied to clipboard! 📋", "success");
     }
   };
@@ -505,7 +588,12 @@ export default function VedoxaHome() {
 
       {/* FAST BOOK DETAIL MODAL */}
       <AnimatePresence>
-        {showBookDetails && selectedBook && (
+        {showBookDetails && selectedBook && (() => {
+            const originalPrice = selectedBook.final_price;
+            const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
+            const displayPrice = originalPrice - pDiscount;
+
+            return (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
             className="fixed inset-0 z-[800] bg-black/90 backdrop-blur-xl flex flex-col md:flex-row overflow-y-auto"
@@ -515,9 +603,16 @@ export default function VedoxaHome() {
             </button>
 
             {/* Book Info Section */}
-            <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center border-r border-white/10">
+            <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center border-r border-white/10 relative">
                
-               <div className="w-full h-64 md:h-96 mb-8 shadow-2xl">
+               {/* Partner Badge in Modal */}
+               {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
+                 <div className="absolute top-8 left-8 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                   <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
+                 </div>
+               )}
+
+               <div className="w-full h-64 md:h-96 mb-8 shadow-2xl mt-10 md:mt-0">
                  {selectedBook.cover_path ? (
                    <div className="w-full h-full relative overflow-hidden rounded-3xl">
                      <img 
@@ -540,7 +635,12 @@ export default function VedoxaHome() {
                </p>
 
                <div className="flex items-center gap-6 mt-auto">
-                 <span className="text-4xl font-black text-white">₹{selectedBook.final_price}</span>
+                 <div>
+                   {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
+                     <span className="text-lg text-gray-500 line-through mr-3">₹{originalPrice}</span>
+                   )}
+                   <span className="text-4xl font-black text-white">₹{displayPrice}</span>
+                 </div>
                  {purchasedBookIds.includes(selectedBook.id) ? (
                     <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="flex-1 px-8 py-4 rounded-2xl text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-3 font-bold hover:bg-emerald-500/25 transition">
                       <CheckCircle2 size={24} /> {t.readNow}
@@ -603,7 +703,7 @@ export default function VedoxaHome() {
                </div>
             </div>
           </motion.div>
-        )}
+        )})}
       </AnimatePresence>
 
       {/* Auth Modal */}
@@ -683,7 +783,8 @@ export default function VedoxaHome() {
 
                 <div className="bg-white/5 p-4 rounded-xl mt-2">
                   <div className="flex justify-between text-gray-400 text-sm mb-2"><span>Price:</span> <span>₹{selectedBook.final_price}</span></div>
-                  {appliedCoupon && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Coupon Discount:</span> <span>- ₹{selectedBook.final_price - (selectedBook.final_price - (selectedBook.final_price * appliedCoupon.discount / 100))}</span></div>}
+                  {partnerData && <div className="flex justify-between text-blue-400 font-bold text-sm mb-2"><span>Partner Discount ({partnerData.discount_pct}%):</span> <span>- ₹{partnerDiscountAmount}</span></div>}
+                  {appliedCoupon && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Coupon Discount:</span> <span>- ₹{couponDiscountAmount}</span></div>}
                   {useRewards && profile?.reward_points > 0 && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Points Applied:</span> <span>- ₹{profile.reward_points}</span></div>}
                   <div className="flex justify-between text-white text-lg font-extrabold border-t border-white/10 pt-2 mt-2"><span>Total to Pay:</span> <span>₹{clientFinalPrice}</span></div>
                   <div className="text-right text-xs text-yellow-500 mt-1 font-medium">{t.rewardEarn}: {earnedPoints} pts</div>
@@ -728,6 +829,14 @@ export default function VedoxaHome() {
       {/* Main Layout */}
       <div className="min-h-screen flex flex-col bg-[#06060a] text-gray-200 overflow-x-hidden selection:bg-yellow-500/30">
         
+        {/* Dynamic Partner Banner */}
+        {partnerData && (
+          <div className="w-full bg-blue-500/20 border-b border-blue-500/40 py-2 px-4 text-center flex items-center justify-center gap-2">
+            <Handshake size={16} className="text-blue-400"/>
+            <span className="text-blue-300 text-xs md:text-sm font-bold tracking-wide uppercase">Partner Discount of {partnerData.discount_pct}% has been applied to all books!</span>
+          </div>
+        )}
+
         {/* Responsive Navbar */}
         <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
           <Link href="/brand" className="flex items-center gap-3 group">
@@ -806,6 +915,12 @@ export default function VedoxaHome() {
             ) : (
               books.map((book, i) => {
                 const isPurchased = purchasedBookIds.includes(book.id);
+                
+                // Book Price display calculation for partners
+                const originalPrice = book.final_price;
+                const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
+                const displayPrice = originalPrice - pDiscount;
+
                 return (
                   <motion.div 
                     initial={{ opacity: 0, y: 40 }} 
@@ -816,7 +931,8 @@ export default function VedoxaHome() {
                     onClick={() => openBookDetails(book)} 
                     className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer hover:bg-white/10 hover:border-yellow-500/30 transition-all duration-300 hover:-translate-y-2 shadow-lg"
                   >
-                    {book.discount > 0 && !isPurchased && <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30 z-10">{book.discount}% OFF</div>}
+                    {book.discount > 0 && !isPurchased && !partnerData && <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30 z-10">{book.discount}% OFF</div>}
+                    {partnerData && !isPurchased && <div className="absolute top-4 right-4 bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/40 z-10 shadow-[0_0_10px_rgba(59,130,246,0.3)]">-{partnerData.discount_pct}% (Partner)</div>}
                     
                     <div className="w-full h-44 mb-6">
                       {book.cover_path ? (
@@ -839,8 +955,9 @@ export default function VedoxaHome() {
                     
                     <div className="mt-auto flex justify-between items-end border-t border-white/10 pt-5">
                       <div>
-                        {book.discount > 0 && !isPurchased && <div className="text-xs text-gray-500 line-through mb-1">₹{book.base_price}</div>}
-                        <div className={`text-2xl font-black ${isPurchased ? "text-emerald-400" : "text-white"}`}>{isPurchased ? 'Owned' : `₹${book.final_price}`}</div>
+                        {book.discount > 0 && !isPurchased && !partnerData && <div className="text-xs text-gray-500 line-through mb-1">₹{book.base_price}</div>}
+                        {partnerData && !isPurchased && <div className="text-xs text-gray-500 line-through mb-1">₹{originalPrice}</div>}
+                        <div className={`text-2xl font-black ${isPurchased ? "text-emerald-400" : "text-white"}`}>{isPurchased ? 'Owned' : `₹${displayPrice}`}</div>
                       </div>
                       
                       {isPurchased ? (
