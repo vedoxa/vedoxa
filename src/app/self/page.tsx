@@ -304,7 +304,7 @@ export default function SelfPage() {
                 </div>
                 <div className="mt-auto">
                   <p className="text-xs text-gray-500 text-center mb-3">Need formal support?</p>
-                  <a href="mailto:admin@vedoxa.shop" className="w-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold transition">
+                  <a href="mailto:vedoxa1@gmail.com" className="w-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold transition">
                     <Mail size={18}/> Email Support
                   </a>
                 </div>
