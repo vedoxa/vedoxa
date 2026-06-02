@@ -30,7 +30,7 @@ function loadRazorpayScript() {
 
 const dict = {
   EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है যখন आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
 };
 
 // 5 Premium Avatars
@@ -588,13 +588,9 @@ export default function VedoxaHome() {
 
       {/* FAST BOOK DETAIL MODAL WITH SPIRITUAL VIBE ANIMATION */}
       <AnimatePresence>
-        {showBookDetails && selectedBook && (() => {
-            const originalPrice = selectedBook.final_price;
-            const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
-            const displayPrice = originalPrice - pDiscount;
-
-            return (
+        {showBookDetails && selectedBook && (
           <motion.div 
+            key="book-details-modal"
             initial={{ opacity: 0, scale: 0.98 }} 
             animate={{ opacity: 1, scale: 1 }} 
             exit={{ opacity: 0, scale: 0.98 }} 
@@ -655,9 +651,9 @@ export default function VedoxaHome() {
                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="flex items-center gap-6 mt-auto">
                  <div>
                    {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-                     <span className="text-lg text-gray-500 line-through mr-3">₹{originalPrice}</span>
+                     <span className="text-lg text-gray-500 line-through mr-3">₹{selectedBook.final_price}</span>
                    )}
-                   <span className="text-4xl font-black text-white">₹{displayPrice}</span>
+                   <span className="text-4xl font-black text-white">₹{selectedBook.final_price - (partnerData ? Math.round(selectedBook.final_price * (partnerData.discount_pct / 100)) : 0)}</span>
                  </div>
                  {purchasedBookIds.includes(selectedBook.id) ? (
                     <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="flex-1 px-8 py-4 rounded-2xl text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-3 font-bold hover:bg-emerald-500/25 transition shadow-lg">
@@ -727,7 +723,7 @@ export default function VedoxaHome() {
                </div>
             </motion.div>
           </motion.div>
-        )})}
+        )}
       </AnimatePresence>
 
       {/* Auth Modal */}
