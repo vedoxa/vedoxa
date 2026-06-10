@@ -599,7 +599,8 @@ export default function VedoxaHome() {
             animate={{ opacity: 1, scale: 1 }} 
             exit={{ opacity: 0, scale: 0.98 }} 
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="fixed inset-0 z-[800] bg-black/90 backdrop-blur-xl flex flex-col md:flex-row overflow-hidden h-[100dvh]"
+            className="fixed inset-0 z-[800] bg-[#0a0a0d] flex flex-col md:flex-row overflow-y-auto"
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <motion.button 
                initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
@@ -674,7 +675,7 @@ export default function VedoxaHome() {
             {/* Reviews Section */}
             <motion.div 
                initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.5 }}
-               className="w-full md:w-1/2 p-5 md:p-16 bg-[#0a0a0d] relative overflow-y-auto min-h-0 md:h-full"
+               className="w-full md:w-1/2 p-8 md:p-16 bg-[#0a0a0d] relative overflow-hidden"
             >
                {/* Background subtle glow for reviews */}
                <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500/5 blur-[100px] pointer-events-none" />
@@ -685,37 +686,37 @@ export default function VedoxaHome() {
                </div>
 
                {purchasedBookIds.includes(selectedBook.id) && (
-                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl mb-8 relative z-10 shadow-lg">
-                   <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                 <div className="bg-white/5 border border-white/10 p-4 rounded-xl mb-6 relative z-10 shadow-lg">
+                   <h3 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">
                      <CheckCircle2 size={16}/> {userExistingReview ? "Update your review" : "You own this book"}
                    </h3>
                    <textarea 
                      value={newReviewText}
                      onChange={(e) => setNewReviewText(e.target.value)}
                      placeholder={t.writeReview}
-                     className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-yellow-500 resize-none h-24 mb-3 transition"
+                     className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-yellow-500 resize-none h-20 mb-3 transition"
                    />
-                   <button onClick={handleSubmitReview} className="btn-gold px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ml-auto">
+                   <button onClick={handleSubmitReview} className="btn-gold px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ml-auto">
                      {userExistingReview ? t.updateReview : t.submitReview}
                    </button>
                  </div>
                )}
 
-               <div className="flex flex-col gap-4 relative z-10">
+               <div className="flex flex-col gap-2 relative z-10">
                  {loadingReviews ? (
                     <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
                  ) : reviews.length > 0 ? (
                     reviews.map(review => (
-                      <div key={review.id} className="bg-white/5 border border-white/5 p-3 md:p-4 rounded-xl relative hover:bg-white/10 transition duration-300">
-                        {review.user_id === user?.id && <div className="absolute top-4 right-4 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">Your Review</div>}
-                        <div className="flex justify-between items-start mb-2">
-                           <div className="font-bold text-white text-sm flex items-center gap-2">
-                             <UserCircle size={16} className="text-gray-400"/>
+                      <div key={review.id} className="bg-white/5 border border-white/5 p-3 rounded-xl relative hover:bg-white/10 transition duration-300">
+                        {review.user_id === user?.id && <div className="absolute top-2 right-2 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">Your Review</div>}
+                        <div className="flex justify-between items-start mb-1">
+                           <div className="font-bold text-white text-xs flex items-center gap-2">
+                             <UserCircle size={14} className="text-gray-400"/>
                              {review.profiles?.name || "Vedoxa Reader"}
                            </div>
                         </div>
-                        <div className="flex text-yellow-500 mb-2"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
-                        <p className="text-gray-300 text-xs md:text-sm leading-snug">{review.review_text}</p>
+                        <div className="flex text-yellow-500 mb-1.5"><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/></div>
+                        <p className="text-gray-300 text-xs leading-relaxed">{review.review_text}</p>
                       </div>
                     ))
                  ) : (
@@ -1076,4 +1077,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-        }
+}
