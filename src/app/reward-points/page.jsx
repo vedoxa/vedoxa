@@ -100,7 +100,7 @@ export default function RewardPointsPage() {
 
     setIsConverting(true);
     const coinsToConvert = Math.floor(profile.ad_coins / 10) * 10;
-    const rupeesEarned = (coinsToConvert / 10) * 0.25;
+    const rupeesEarned = (coinsToConvert / 10) * 0.10;
     
     const remainingAdCoins = profile.ad_coins - coinsToConvert;
     const newRewardPoints = (profile.reward_points || 0) + rupeesEarned;
@@ -236,7 +236,7 @@ export default function RewardPointsPage() {
                 </div>
 
                 <div className="w-full bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mb-6 text-sm text-emerald-400 font-medium">
-                  <strong>Rate:</strong> 10 Ad Coins = ₹0.25
+                  <strong>Rate:</strong> 10 Ad Coins = ₹0.10
                   <br/>
                   <span className="text-xs opacity-80">(Converted points are automatically used at checkout)</span>
                 </div>
