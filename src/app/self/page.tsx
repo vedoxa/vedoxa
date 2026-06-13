@@ -290,7 +290,8 @@ export default function SelfPage() {
             </div>
 
             {/* Support & Chat Section */}
-            <div className="grid md:grid-cols-3 gap-6 h-[500px]">
+            {/* FIX: Removed fixed h-[500px] and added md:h-[500px] so it expands on mobile natively */}
+            <div className="grid md:grid-cols-3 gap-6 md:h-[500px]">
               
               {/* Info & Email */}
               <div className="md:col-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col gap-6">
@@ -311,7 +312,8 @@ export default function SelfPage() {
               </div>
 
               {/* Live Chat with Admin */}
-              <div className="md:col-span-2 bg-[#0d0d14] border border-blue-500/20 rounded-3xl flex flex-col overflow-hidden relative shadow-[0_0_20px_rgba(59,130,246,0.05)]">
+              {/* FIX: Added h-[450px] md:h-full here to fix mobile squishiness */}
+              <div className="md:col-span-2 bg-[#0d0d14] border border-blue-500/20 rounded-3xl flex flex-col overflow-hidden relative shadow-[0_0_20px_rgba(59,130,246,0.05)] h-[450px] md:h-full">
                 <div className="bg-black/40 border-b border-white/10 p-4 flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-white flex items-center gap-2">Live Chat with Admin</h3>
