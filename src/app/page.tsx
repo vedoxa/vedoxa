@@ -29,8 +29,8 @@ function loadRazorpayScript() {
 }
 
 const dict = {
-  EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Secure Pay", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "सुरक्षित भुगतान", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
+  EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Pay Now", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "Pay Now", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
 };
 
 // 5 Premium Avatars
@@ -77,7 +77,7 @@ export default function VedoxaHome() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // =====================================
-  // PARTNER / AFFILIATE LOGIC (NEW)
+  // PARTNER / AFFILIATE LOGIC
   // =====================================
   const [partnerData, setPartnerData] = useState(null);
 
@@ -89,7 +89,7 @@ export default function VedoxaHome() {
     document.addEventListener('gesturechange', preventZoom);
     
     fetchBooks();
-    initPartnerSystem(); // Affiliate Link Tracker
+    initPartnerSystem(); 
 
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -113,12 +113,10 @@ export default function VedoxaHome() {
     return () => { document.body.style.overflow = 'unset'; };
   }, [showBookDetails, showCheckout, showAuthModal, showReader, isSidebarOpen]);
 
-  // Affiliate System Initializer
   const initPartnerSystem = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     let pCode = urlParams.get('partner');
     
-    // Save to local storage so even if they navigate away, partner keeps credit
     if (pCode) {
       localStorage.setItem('vedoxa_partner', pCode.toUpperCase());
     } else {
@@ -135,8 +133,6 @@ export default function VedoxaHome() {
         
       if (data && !error) {
         setPartnerData(data);
-        
-        // Count the View/Click (Only once per session to avoid spam)
         const viewKey = `viewed_${pCode}`;
         if (!sessionStorage.getItem(viewKey)) {
           sessionStorage.setItem(viewKey, 'true');
@@ -146,14 +142,14 @@ export default function VedoxaHome() {
           }
         }
       } else {
-        localStorage.removeItem('vedoxa_partner'); // Code invalid or expired
+        localStorage.removeItem('vedoxa_partner'); 
       }
     }
   };
 
   const handleUserLogin = async (loggedUser) => {
     setUser(loggedUser);
-    setCheckoutData(prev => ({ ...prev, email: loggedUser.email }));
+    
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', loggedUser.id).single();
     if (prof) {
       if (!prof.avatar_url) {
@@ -162,7 +158,18 @@ export default function VedoxaHome() {
         if (!error) prof.avatar_url = randomAvatar;
       }
       setProfile(prof);
+      
+      // AUTO FILL NAME AND PHONE FROM DATABASE
+      setCheckoutData(prev => ({ 
+        ...prev, 
+        email: loggedUser.email,
+        name: prof.name || prev.name,
+        phone: prof.phone || prev.phone
+      }));
+    } else {
+      setCheckoutData(prev => ({ ...prev, email: loggedUser.email }));
     }
+    
     const { data: orders } = await supabase.from('orders').select('book_id').eq('customer_id', loggedUser.id);
     if (orders) setPurchasedBookIds(orders.map(o => o.book_id));
   };
@@ -272,9 +279,6 @@ export default function VedoxaHome() {
     }
   };
 
-  // ==============================================
-  // MAGIC DYNAMIC PRICING CALCULATION
-  // ==============================================
   let partnerDiscountAmount = 0;
   let baseForClient = selectedBook?.final_price || 0;
   
@@ -292,7 +296,6 @@ export default function VedoxaHome() {
   
   const earnedPoints = selectedBook ? Math.floor(baseForClient * 0.019) : 0;
 
-  // Give Affiliate Commission
   const creditAffiliate = async (amountPaid) => {
     if (!partnerData || amountPaid <= 0) return;
     const commission = Math.round(amountPaid * (partnerData.commission_pct / 100));
@@ -310,7 +313,8 @@ export default function VedoxaHome() {
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!user) { addToast("Please login to purchase", "error"); setShowCheckout(false); setShowAuthModal(true); return; }
-    if (!checkoutData.name || !checkoutData.phone) { addToast("Fill all details", "error"); return; }
+    if (!checkoutData.name) checkoutData.name = profile?.name || "Vedoxa Reader"; // Auto handle blank name
+    if (!checkoutData.phone) { addToast("Phone number is required", "error"); return; }
     
     if (checkoutData.countryCode === '+91' && checkoutData.phone.length !== 10) { 
       addToast("Please enter a valid 10-digit Indian phone number.", "error"); 
@@ -318,6 +322,17 @@ export default function VedoxaHome() {
     }
 
     setIsProcessing(true); NProgress.start();
+
+    // AUTO SAVE NAME AND PHONE TO PROFILE
+    try {
+      await supabase.from('profiles').update({ 
+        name: checkoutData.name, 
+        phone: checkoutData.phone 
+      }).eq('id', user.id);
+      
+      // Update local profile state
+      setProfile(prev => ({ ...prev, name: checkoutData.name, phone: checkoutData.phone }));
+    } catch (e) { console.error("Failed to update profile", e); }
 
     if (clientFinalPrice === 0) {
       try {
@@ -390,7 +405,6 @@ export default function VedoxaHome() {
             if (verifyData.success) {
               addToast("Payment Verified! Unlocking book...", "success");
               
-              // Give Commission to Partner
               if (partnerData) await creditAffiliate(orderData.amount);
 
               setPurchasedBookIds(prev => [...prev, selectedBook.id]);
@@ -447,7 +461,6 @@ export default function VedoxaHome() {
   return (
     <>
       <style>{`
-        /* Stop zooming completely */
         html, body {
             touch-action: pan-y;
             -webkit-text-size-adjust: 100%;
@@ -461,7 +474,6 @@ export default function VedoxaHome() {
         #nprogress .bar { background: #eab308 !important; height: 3px !important; }
         #nprogress .peg { box-shadow: 0 0 10px #eab308, 0 0 5px #eab308 !important; }
         
-        /* FIX: Marquee Animation */
         @keyframes scrollLeft {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
@@ -485,7 +497,7 @@ export default function VedoxaHome() {
         </AnimatePresence>
       </div>
 
-      {/* Sidebar Dashboard (FAST ANIMATION) */}
+      {/* Sidebar Dashboard */}
       <AnimatePresence>
         {isSidebarOpen && (
           <>
@@ -595,17 +607,17 @@ export default function VedoxaHome() {
 
             return (
           <motion.div 
+            key="book-details-modal"
             initial={{ opacity: 0, scale: 0.98 }} 
             animate={{ opacity: 1, scale: 1 }} 
             exit={{ opacity: 0, scale: 0.98 }} 
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className="fixed inset-0 z-[800] bg-[#0a0a0d] overflow-y-auto"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {/* Added Wrapper to Fix Flexbox Scroll Issue on Mobile */}
             <div className="flex flex-col md:flex-row min-h-full w-full relative">
                 <motion.button 
-                   initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                   initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
                    onClick={() => setShowBookDetails(false)} 
                    className="fixed top-6 right-6 z-[850] p-3 bg-white/10 rounded-full text-white hover:bg-red-500/80 transition-colors shadow-lg"
                 >
@@ -615,18 +627,16 @@ export default function VedoxaHome() {
                 {/* Book Info Section */}
                 <div className="w-full md:w-1/2 p-5 md:p-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
                    
-                   {/* Partner Badge in Modal */}
                    {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-                     <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="absolute top-8 left-8 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-8 left-8 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
                        <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
                      </motion.div>
                    )}
 
                    <motion.div 
-                     initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1, duration: 0.5 }}
+                     initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
                      className="w-full h-64 md:h-96 mb-8 mt-10 md:mt-0 relative"
                    >
-                     {/* Magical glow behind book */}
                      <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
                      
                      <motion.div 
@@ -649,13 +659,13 @@ export default function VedoxaHome() {
                      </motion.div>
                    </motion.div>
 
-                   <motion.h1 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg">{selectedBook.title}</motion.h1>
-                   <motion.p initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md">by {selectedBook.author}</motion.p>
-                   <motion.p initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base">
+                   <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg">{selectedBook.title}</motion.h1>
+                   <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md">by {selectedBook.author}</motion.p>
+                   <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base">
                      {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
                    </motion.p>
 
-                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="flex items-center gap-6 mt-auto">
+                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-6 mt-auto">
                      <div>
                        {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
                          <span className="text-lg text-gray-500 line-through mr-3">₹{originalPrice}</span>
@@ -676,10 +686,9 @@ export default function VedoxaHome() {
 
                 {/* Reviews Section */}
                 <motion.div 
-                   initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.5 }}
+                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
                    className="w-full md:w-1/2 p-5 md:p-16 bg-[#0a0a0d] relative overflow-hidden shrink-0 flex flex-col"
                 >
-                   {/* Background subtle glow for reviews */}
                    <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500/5 blur-[100px] pointer-events-none" />
                    
                    <div className="flex items-center gap-3 mb-8 relative z-10">
@@ -773,7 +782,7 @@ export default function VedoxaHome() {
               <p className="text-xs md:text-sm text-gray-400 mb-6">{t.brand}: <span className="text-yellow-500 font-bold">{selectedBook.title}</span></p>
 
               <form onSubmit={handlePayment} className="flex flex-col gap-4">
-                <input required placeholder="Full Name" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
+                <input placeholder="Full Name (Optional)" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
                 
                 <div className="flex gap-2">
                   <select 
