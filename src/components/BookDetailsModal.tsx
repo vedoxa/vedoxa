@@ -215,7 +215,7 @@ export default function BookDetailsModal({
                     <CheckCircle2 size={24} /> {t.readNow}
                   </button>
                 ) : (
-                  <button onClick={() => setShowCheckout(true)} className="w-full md:flex-1 bg-gradient-to-r from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-black px-8 py-4 rounded-2xl text-lg flex justify-center items-center gap-3 font-black transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transform hover:-translate-y-1">
+                  <button onClick={() => setShowCheckout(true)} className="w-full md:flex-1 bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white px-8 py-4 rounded-2xl text-lg flex justify-center items-center gap-3 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1">
                     <Lock size={20}/> Pay Now
                   </button>
                )}
@@ -251,21 +251,21 @@ export default function BookDetailsModal({
                </div>
              )}
 
-             <div className="flex flex-col gap-2 relative z-10">
+             <div className="flex flex-col gap-3 relative z-10">
                {loadingReviews ? (
                   <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
                ) : reviews.length > 0 ? (
                   reviews.map(review => (
-                    <div key={review.id} className="bg-white/5 border border-white/5 p-2.5 rounded-xl relative hover:bg-white/10 transition duration-300">
-                      {review.user_id === user?.id && <div className="absolute top-2 right-2 text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded">Your Review</div>}
-                      <div className="flex justify-between items-start mb-1">
-                         <div className="font-bold text-white text-[11px] flex items-center gap-1.5">
-                           <UserCircle size={12} className="text-gray-400"/>
+                    <div key={review.id} className="bg-white/5 border border-white/5 p-4 rounded-xl relative hover:bg-white/10 transition duration-300">
+                      {review.user_id === user?.id && <div className="absolute top-3 right-3 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
+                      <div className="flex justify-between items-start mb-2">
+                         <div className="font-bold text-white text-sm flex items-center gap-2">
+                           <UserCircle size={16} className="text-gray-400"/>
                            {review.profiles?.name || "Vedoxa Reader"}
                          </div>
                       </div>
-                      <div className="flex text-yellow-500 mb-1"><Star size={8} fill="currentColor"/><Star size={8} fill="currentColor"/><Star size={8} fill="currentColor"/><Star size={8} fill="currentColor"/><Star size={8} fill="currentColor"/></div>
-                      <p className="text-gray-300 text-[10px] leading-relaxed">{review.review_text}</p>
+                      <div className="flex text-yellow-500 mb-2 gap-0.5"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
+                      <p className="text-gray-300 text-xs leading-relaxed">{review.review_text}</p>
                     </div>
                   ))
                ) : (
@@ -279,4 +279,4 @@ export default function BookDetailsModal({
       </div>
     </motion.div>
   );
-}
+               }
