@@ -1,9 +1,13 @@
 // @ts-nocheck
 "use client";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, UserCircle, Star } from "lucide-react";
+import { X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, UserCircle, Star, Eye, ThumbsUp, ThumbsDown } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function BookDetailsModal({
   selectedBook,
@@ -24,6 +28,100 @@ export default function BookDetailsModal({
   const originalPrice = selectedBook.final_price;
   const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
   const displayPrice = originalPrice - pDiscount;
+
+  // Social Stats State
+  const [stats, setStats] = useState({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
+  const [userInteraction, setUserInteraction] = useState(null); // 'like', 'dislike', or null
+  const [isUpdatingStat, setIsUpdatingStat] = useState(false);
+
+  useEffect(() => {
+    // 1. Increment View Count
+    incrementView();
+    // 2. Fetch User's previous like/dislike status
+    if (user) fetchUserInteraction();
+  }, [selectedBook.id, user]);
+
+  const incrementView = async () => {
+    // Session storage taaki ek session me ek hi view count ho
+    const viewKey = `viewed_book_${selectedBook.id}`;
+    if (!sessionStorage.getItem(viewKey)) {
+      sessionStorage.setItem(viewKey, 'true');
+      const newViews = (selectedBook.views || 0) + 1;
+      setStats(prev => ({ ...prev, views: newViews }));
+      await supabase.from('books').update({ views: newViews }).eq('id', selectedBook.id);
+    } else {
+      setStats({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
+    }
+  };
+
+  const fetchUserInteraction = async () => {
+    const { data } = await supabase.from('user_interactions')
+      .select('interaction_type')
+      .eq('book_id', selectedBook.id)
+      .eq('user_id', user.id).single();
+    
+    if (data) setUserInteraction(data.interaction_type);
+  };
+
+  const handleInteraction = async (type) => {
+    if (!user) {
+      alert("Please login to react to this book.");
+      return;
+    }
+    if (isUpdatingStat) return;
+    setIsUpdatingStat(true);
+
+    try {
+      if (userInteraction === type) {
+        // User clicked the same button again to remove their reaction
+        await supabase.from('user_interactions').delete().eq('book_id', selectedBook.id).eq('user_id', user.id);
+        
+        if (type === 'like') {
+          const newLikes = Math.max(0, stats.likes - 1);
+          setStats(prev => ({ ...prev, likes: newLikes }));
+          await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+        } else {
+          // Decrement dislikes in DB
+          const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
+          await supabase.from('books').update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq('id', selectedBook.id);
+        }
+        setUserInteraction(null);
+      } else {
+        // User is adding a new reaction or changing it
+        await supabase.from('user_interactions').upsert({
+          user_id: user.id,
+          book_id: selectedBook.id,
+          interaction_type: type
+        }, { onConflict: 'user_id, book_id' });
+
+        if (type === 'like') {
+          const newLikes = stats.likes + 1;
+          setStats(prev => ({ ...prev, likes: newLikes }));
+          await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+          
+          // If they changed from dislike to like, reduce dislikes
+          if (userInteraction === 'dislike') {
+            const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
+            await supabase.from('books').update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq('id', selectedBook.id);
+          }
+        } else if (type === 'dislike') {
+          // They disliked. If they previously liked, reduce likes.
+          if (userInteraction === 'like') {
+            const newLikes = Math.max(0, stats.likes - 1);
+            setStats(prev => ({ ...prev, likes: newLikes }));
+            await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+          }
+          // Increment dislikes in DB
+          const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
+          await supabase.from('books').update({ dislikes: (bookData?.dislikes || 0) + 1 }).eq('id', selectedBook.id);
+        }
+        setUserInteraction(type);
+      }
+    } catch (error) {
+      console.error("Interaction failed", error);
+    }
+    setIsUpdatingStat(false);
+  };
 
   return (
     <motion.div 
@@ -55,7 +153,7 @@ export default function BookDetailsModal({
 
              <motion.div 
                initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
-               className="w-full h-64 md:h-96 mb-8 mt-10 md:mt-0 relative"
+               className="w-full h-64 md:h-96 mb-6 mt-10 md:mt-0 relative"
              >
                <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
                
@@ -79,26 +177,46 @@ export default function BookDetailsModal({
                </motion.div>
              </motion.div>
 
-             <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg">{selectedBook.title}</motion.h1>
-             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md">by {selectedBook.author}</motion.p>
-             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base">
+             {/* MODERN SOCIAL STATS BAR */}
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-400 font-bold bg-white/5 w-fit mx-auto px-6 py-2.5 rounded-full border border-white/10 shadow-inner">
+                <div className="flex items-center gap-2 text-blue-400">
+                  <Eye size={18} /> {stats.views} Views
+                </div>
+                <div className="w-px h-4 bg-white/20"></div>
+                <button 
+                  onClick={() => handleInteraction('like')} 
+                  className={`flex items-center gap-2 transition ${userInteraction === 'like' ? 'text-yellow-500' : 'hover:text-white'}`}
+                >
+                  <ThumbsUp size={18} className={userInteraction === 'like' ? 'fill-current' : ''} /> {stats.likes}
+                </button>
+                <button 
+                  onClick={() => handleInteraction('dislike')} 
+                  className={`flex items-center gap-2 transition ${userInteraction === 'dislike' ? 'text-red-500' : 'hover:text-white'}`}
+                >
+                  <ThumbsDown size={18} className={userInteraction === 'dislike' ? 'fill-current' : ''} />
+                </button>
+             </motion.div>
+
+             <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg text-center md:text-left">{selectedBook.title}</motion.h1>
+             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md text-center md:text-left">by {selectedBook.author}</motion.p>
+             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base text-center md:text-left">
                {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
              </motion.p>
 
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-6 mt-auto">
-               <div>
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-col md:flex-row items-center gap-6 mt-auto">
+               <div className="text-center md:text-left">
                  {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
                    <span className="text-lg text-gray-500 line-through mr-3">₹{originalPrice}</span>
                  )}
                  <span className="text-4xl font-black text-white">₹{displayPrice}</span>
                </div>
                {purchasedBookIds.includes(selectedBook.id) ? (
-                  <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="flex-1 px-8 py-4 rounded-2xl text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-3 font-bold hover:bg-emerald-500/25 transition shadow-lg">
+                  <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="w-full md:flex-1 px-8 py-4 rounded-2xl text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-3 font-bold hover:bg-emerald-500/25 transition shadow-lg">
                     <CheckCircle2 size={24} /> {t.readNow}
                   </button>
                 ) : (
-                  <button onClick={() => setShowCheckout(true)} className="flex-1 btn-gold px-8 py-4 rounded-2xl text-lg flex justify-center items-center gap-3 font-black">
-                    <Lock size={20}/> {t.buyNow}
+                  <button onClick={() => setShowCheckout(true)} className="w-full md:flex-1 bg-gradient-to-r from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-black px-8 py-4 rounded-2xl text-lg flex justify-center items-center gap-3 font-black transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transform hover:-translate-y-1">
+                    <Lock size={20}/> Pay Now
                   </button>
                )}
              </motion.div>
