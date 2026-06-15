@@ -78,8 +78,13 @@ export default function VedoxaHome() {
   const [loadingReviews, setLoadingReviews] = useState(false);
   
   const [userExistingReview, setUserExistingReview] = useState(null);
-  // const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Sidebar is removed, Avatar opens directly
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  // =====================================
+  // NEW HAMBURGER MENU STATE
+  // =====================================
+  const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
+  const [expandedMenu, setExpandedMenu] = useState(null);
 
   // =====================================
   // PARTNER / AFFILIATE LOGIC 
@@ -106,6 +111,7 @@ export default function VedoxaHome() {
          setShowAuthModal(false);
          setShowReader(false);
          setShowAvatarPicker(false);
+         setIsHamburgerOpen(false);
       }
     };
     window.addEventListener("popstate", handlePopState);
@@ -126,12 +132,12 @@ export default function VedoxaHome() {
 
   useEffect(() => {
     // Keep scroll locked when ANY modal is open
-    if (showBookDetails || showCheckout || showAuthModal || showReader || showAvatarPicker) {
+    if (showBookDetails || showCheckout || showAuthModal || showReader || showAvatarPicker || isHamburgerOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
-  }, [showBookDetails, showCheckout, showAuthModal, showReader, showAvatarPicker]);
+  }, [showBookDetails, showCheckout, showAuthModal, showReader, showAvatarPicker, isHamburgerOpen]);
 
   const initPartnerSystem = async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -285,6 +291,7 @@ export default function VedoxaHome() {
   const confirmLogout = async () => { 
     await supabase.auth.signOut(); 
     addToast("Logged out securely", "info"); 
+    setIsHamburgerOpen(false);
   };
 
   const verifyCoupon = async () => {
@@ -542,7 +549,7 @@ export default function VedoxaHome() {
         </AnimatePresence>
       </div>
 
-      {/* Avatar Picker Modal - OPENS DIRECTLY NOW */}
+      {/* Avatar Picker Modal */}
       <AnimatePresence>
         {showAvatarPicker && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
@@ -557,7 +564,6 @@ export default function VedoxaHome() {
                   ))}
                 </div>
                 
-                {/* Direct Logout Button Added Here Since Sidebar is Removed */}
                 <div className="border-t border-white/10 pt-6">
                   <button onClick={confirmLogout} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition">
                     <LogOut size={18}/> Logout securely
@@ -567,6 +573,104 @@ export default function VedoxaHome() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ==============================================
+          NEW RIGHT SIDEBAR HAMBURGER MENU 
+      ============================================== */}
+      <AnimatePresence>
+        {isHamburgerOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              onClick={() => setIsHamburgerOpen(false)}
+              className="fixed inset-0 z-[6500] bg-black/60 backdrop-blur-sm cursor-pointer"
+            />
+            {/* Sidebar Drawer */}
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} 
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-72 bg-[#0d0d10] border-l border-white/10 z-[7000] shadow-2xl flex flex-col"
+            >
+              <div className="p-6 flex flex-col h-full">
+                <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Settings size={20} className="text-yellow-500" /> Menu
+                  </h3>
+                  <button onClick={() => setIsHamburgerOpen(false)} className="p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {/* Collapsible Item 1: Profile & Preferences */}
+                  <div className="mb-4 bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+                    <button onClick={() => setExpandedMenu(expandedMenu === 'preferences' ? null : 'preferences')} className="w-full px-5 py-4 flex justify-between items-center text-gray-300 font-bold hover:text-yellow-500 transition">
+                      <div className="flex items-center gap-3"><UserCircle size={18} /> Preferences</div>
+                      <span>{expandedMenu === 'preferences' ? '-' : '+'}</span>
+                    </button>
+                    <AnimatePresence>
+                      {expandedMenu === 'preferences' && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-black/20">
+                          <div className="px-5 pb-4 pt-2 flex flex-col gap-3">
+                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition flex items-center gap-2"><Globe size={14}/> Change Language</p>
+                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition flex items-center gap-2"><Edit3 size={14}/> Edit Profile Data</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Collapsible Item 2: Rewards & Points */}
+                  <div className="mb-4 bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+                    <button onClick={() => setExpandedMenu(expandedMenu === 'rewards' ? null : 'rewards')} className="w-full px-5 py-4 flex justify-between items-center text-gray-300 font-bold hover:text-yellow-500 transition">
+                      <div className="flex items-center gap-3"><Coins size={18} /> Rewards</div>
+                      <span>{expandedMenu === 'rewards' ? '-' : '+'}</span>
+                    </button>
+                    <AnimatePresence>
+                      {expandedMenu === 'rewards' && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-black/20">
+                          <div className="px-5 pb-4 pt-2 flex flex-col gap-3">
+                            <p className="text-sm text-yellow-500 font-bold flex justify-between">Available Points: <span>{profile?.reward_points || 0}</span></p>
+                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition mt-1">View Point History</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Collapsible Item 3: Support */}
+                  <div className="mb-4 bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+                    <button onClick={() => setExpandedMenu(expandedMenu === 'support' ? null : 'support')} className="w-full px-5 py-4 flex justify-between items-center text-gray-300 font-bold hover:text-yellow-500 transition">
+                      <div className="flex items-center gap-3"><MessageSquare size={18} /> Support</div>
+                      <span>{expandedMenu === 'support' ? '-' : '+'}</span>
+                    </button>
+                    <AnimatePresence>
+                      {expandedMenu === 'support' && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-black/20">
+                          <div className="px-5 pb-4 pt-2 flex flex-col gap-3">
+                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition">Contact Us</p>
+                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition">FAQs</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {user && (
+                  <div className="mt-auto pt-4 border-t border-white/10">
+                    <button onClick={confirmLogout} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition">
+                      <LogOut size={18}/> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      {/* ============================================== */}
 
       {/* COMPONENT INTEGRATION: BOOK DETAILS MODAL */}
       <AnimatePresence>
@@ -753,19 +857,24 @@ export default function VedoxaHome() {
             </div>
 
             {user ? (
-              // FIX: Click pe ab direct setShowAvatarPicker(true) hoga
-              <button onClick={() => setShowAvatarPicker(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 rounded-full">
-                <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden">
-                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover"/> : <UserCircle size={18} className="text-yellow-500"/>}
-                </div>
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowAvatarPicker(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 rounded-full">
+                  <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden">
+                    {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover"/> : <UserCircle size={18} className="text-yellow-500"/>}
+                  </div>
+                </button>
+                {/* HAMBURGER MENU BUTTON ADDED HERE */}
+                <button onClick={() => setIsHamburgerOpen(true)} className="p-2 text-gray-400 hover:text-white transition rounded-full hover:bg-white/10">
+                  <Menu size={20} />
+                </button>
+              </div>
             ) : (
               <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 rounded-full text-xs font-bold">Login</button>
             )}
           </div>
         </nav>
 
-        {/* FIX: Search open hone pe Hero Section hide ho jayega */}
+        {/* Search open hone pe Hero Section hide ho jayega */}
         {!isSearchOpen && (
           <>
             {/* Hero Section */}
@@ -879,7 +988,7 @@ export default function VedoxaHome() {
           
           <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4 mb-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
-            <button onClick={() => user ? setIsSidebarOpen(true) : setShowAuthModal(true)} className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition cursor-pointer"><Zap size={16} className="text-yellow-500"/> {t.instant}</button>
+            <button onClick={() => user ? setIsHamburgerOpen(true) : setShowAuthModal(true)} className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition cursor-pointer"><Zap size={16} className="text-yellow-500"/> {t.instant}</button>
           </div>
         </footer>
 
