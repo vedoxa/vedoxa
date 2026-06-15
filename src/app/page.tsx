@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image"; 
 import {
-  ShieldCheck, Globe, BookOpen, Lock, X, Zap, 
+  ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
   LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake
 } from "lucide-react";
@@ -53,6 +53,10 @@ export default function VedoxaHome() {
   const [selectedBook, setSelectedBook] = useState(null);
   const [toasts, setToasts] = useState([]);
 
+  // SEARCH BAR STATE
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [purchasedBookIds, setPurchasedBookIds] = useState([]);
@@ -93,6 +97,16 @@ export default function VedoxaHome() {
     fetchBooks();
     initPartnerSystem(); 
 
+    // BACK BUTTON FIX FOR MODAL
+    const handlePopState = (e) => {
+      if (showBookDetails) {
+        setShowBookDetails(false);
+        // Force the browser back to the homepage URL if it tried to change
+        window.history.pushState(null, "", window.location.pathname);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) handleUserLogin(session.user);
@@ -102,9 +116,10 @@ export default function VedoxaHome() {
     return () => {
       document.removeEventListener('gesturestart', preventZoom);
       document.removeEventListener('gesturechange', preventZoom);
+      window.removeEventListener("popstate", handlePopState);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [showBookDetails]);
 
   useEffect(() => {
     if (showBookDetails || showCheckout || showAuthModal || showReader || isSidebarOpen) {
@@ -161,7 +176,6 @@ export default function VedoxaHome() {
       }
       setProfile(prof);
       
-      // AUTO FILL NAME AND PHONE FROM DATABASE
       setCheckoutData(prev => ({ 
         ...prev, 
         email: loggedUser.email,
@@ -190,7 +204,7 @@ export default function VedoxaHome() {
     try {
       const { data, error } = await supabase
         .from("reviews")
-        .select("id, review_text, created_at, user_id, profiles(name)")
+        .select("id, review_text, created_at, user_id, profiles(name), fake_author_name")
         .eq("book_id", bookId)
         .order("created_at", { ascending: false });
       
@@ -231,10 +245,22 @@ export default function VedoxaHome() {
     }
   };
 
+  // WRAPPER FUNCTION TO ADD FAKE HISTORY STATE FOR BACK BUTTON
   const openBookDetails = (book) => {
     setSelectedBook(book);
     fetchReviews(book.id);
     setShowBookDetails(true);
+    // Push fake state so mobile back button works correctly
+    if (typeof window !== "undefined") {
+      window.history.pushState({ modal: "book-details" }, "", window.location.pathname);
+    }
+  };
+
+  const closeBookDetails = () => {
+    setShowBookDetails(false);
+    if (typeof window !== "undefined" && window.history.state?.modal === "book-details") {
+      window.history.back();
+    }
   };
 
   const addToast = useCallback((message, type = "info") => {
@@ -325,7 +351,6 @@ export default function VedoxaHome() {
 
     setIsProcessing(true); NProgress.start();
 
-    // AUTO SAVE NAME AND PHONE TO PROFILE
     try {
       await supabase.from('profiles').update({ 
         name: checkoutData.name, 
@@ -355,7 +380,7 @@ export default function VedoxaHome() {
         
         addToast("Book unlocked successfully! 🎉", "success");
         setPurchasedBookIds(prev => [...prev, selectedBook.id]);
-        setShowCheckout(false); setShowBookDetails(false);
+        setShowCheckout(false); closeBookDetails();
         openWebReader(selectedBook);
       } catch (err) {
         addToast("DB Error: " + err.message, "error");
@@ -410,7 +435,7 @@ export default function VedoxaHome() {
 
               setPurchasedBookIds(prev => [...prev, selectedBook.id]);
               setShowCheckout(false);
-              setShowBookDetails(false);
+              closeBookDetails();
               openWebReader(selectedBook);
             } else throw new Error("Security verification failed!");
           } catch(err) { addToast(err.message, "error"); }
@@ -459,6 +484,16 @@ export default function VedoxaHome() {
     }
   };
 
+  // SMART FILTER LOGIC (English + Hindi + Tags)
+  const filteredBooks = books.filter(b => {
+    const query = searchQuery.toLowerCase();
+    return (
+      b.title.toLowerCase().includes(query) ||
+      b.author.toLowerCase().includes(query) ||
+      (b.tags && b.tags.some(tag => tag.toLowerCase().includes(query)))
+    );
+  });
+
   return (
     <>
       <style>{`
@@ -484,6 +519,15 @@ export default function VedoxaHome() {
           display: inline-block;
           white-space: nowrap;
         }
+
+        /* NEW: Solid White Discount Badge */
+        .discount-badge {
+            background-color: white !important;
+            color: #b45309 !important; /* Bold Amber/Gold */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-weight: 900;
+        }
+        .fast-anim { transition: all 0.15s ease-out; }
       `}</style>
 
       {/* Floating Toasts */}
@@ -614,7 +658,7 @@ export default function VedoxaHome() {
             loadingReviews={loadingReviews}
             reviews={reviews}
             handleSubmitReview={handleSubmitReview}
-            setShowBookDetails={setShowBookDetails}
+            setShowBookDetails={closeBookDetails} // Pass the close wrapper instead of direct setter
             openWebReader={openWebReader}
             setShowCheckout={setShowCheckout}
           />
@@ -754,37 +798,32 @@ export default function VedoxaHome() {
 
         {/* Responsive Navbar */}
         <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
-          <Link href="/brand" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 md:w-11 md:h-11 relative rounded-full p-0.5 border border-yellow-500/20 group-hover:border-yellow-500/50 transition">
-              <Image 
-                src="/logo.svg" 
-                alt="Vedoxa Brand Logo" 
-                fill 
-                priority 
-                className="object-contain"
-              />
-            </div>
-            <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">{t.brand}</span>
+          <Link href="/" className="flex items-center gap-3">
+             <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">{t.brand}</span>
           </Link>
 
-          <div className="flex items-center gap-3 md:gap-6">
-            {!user && (
-              <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-white/10 transition">
-                {lang === "EN" ? "हिन्दी" : "English"}
-              </button>
-            )}
-            
+          <div className="flex items-center gap-3">
+            {/* SEARCH BAR UI */}
+            <div className={`flex items-center bg-white/5 border border-white/10 rounded-full px-3 py-1.5 transition-all ${isSearchOpen ? 'w-48 md:w-64' : 'w-10'}`}>
+               <Search size={18} className="text-gray-400 cursor-pointer shrink-0" onClick={() => setIsSearchOpen(!isSearchOpen)} />
+               {isSearchOpen && (
+                 <input 
+                   autoFocus
+                   type="text" 
+                   placeholder="Search books..." 
+                   className="bg-transparent border-none outline-none text-xs ml-2 w-full text-white"
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                 />
+               )}
+            </div>
+
             {user ? (
-              <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 md:px-3 rounded-full hover:bg-white/10 hover:border-yellow-500/30 transition">
-                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden">
-                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover"/> : <UserCircle size={18} className="text-yellow-500"/>}
-                </div>
-                <Menu size={18} className="text-gray-400 mr-1" />
+              <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 rounded-full">
+                <Menu size={18} className="text-gray-400" />
               </button>
             ) : (
-              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm flex items-center gap-2 font-bold">
-                <UserCircle size={16} /> <span className="hidden sm:inline">{t.login}</span><span className="sm:hidden">Login</span>
-              </button>
+              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 rounded-full text-xs font-bold">Login</button>
             )}
           </div>
         </nav>
@@ -828,25 +867,29 @@ export default function VedoxaHome() {
                 </div>
               ))
             ) : (
-              books.map((book, i) => {
+              filteredBooks.map((book, i) => {
                 const isPurchased = purchasedBookIds.includes(book.id);
                 
-                // Book Price display calculation for partners
                 const originalPrice = book.final_price;
                 const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
                 const displayPrice = originalPrice - pDiscount;
 
                 return (
                   <motion.div 
+                    layout
                     initial={{ opacity: 0, y: 40 }} 
                     whileInView={{ opacity: 1, y: 0 }} 
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, delay: i * 0.1 }} 
                     key={book.id} 
                     onClick={() => openBookDetails(book)} 
-                    className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer hover:bg-white/10 hover:border-yellow-500/30 transition-all duration-300 hover:-translate-y-2 shadow-lg"
+                    className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:bg-white/10 hover:border-yellow-500/30 hover:-translate-y-2 shadow-lg"
                   >
-                    {book.discount > 0 && !isPurchased && !partnerData && <div className="absolute top-4 right-4 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30 z-10">{book.discount}% OFF</div>}
+                    {book.discount > 0 && !isPurchased && !partnerData && (
+                      <div className="absolute top-4 right-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
+                        {book.discount}% OFF
+                      </div>
+                    )}
                     {partnerData && !isPurchased && <div className="absolute top-4 right-4 bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/40 z-10 shadow-[0_0_10px_rgba(59,130,246,0.3)]">-{partnerData.discount_pct}% (Partner)</div>}
                     
                     <div className="w-full h-44 mb-6">
@@ -893,7 +936,7 @@ export default function VedoxaHome() {
         </section>
 
         <footer className="py-10 w-full flex flex-col items-center gap-6 border-t border-white/10 mt-auto bg-black/20">
-          <Link href="/about" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
+          <Link href="/brand" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
             About Us
           </Link>
           
