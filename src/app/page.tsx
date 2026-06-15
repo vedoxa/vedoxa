@@ -78,13 +78,9 @@ export default function VedoxaHome() {
   const [loadingReviews, setLoadingReviews] = useState(false);
   
   const [userExistingReview, setUserExistingReview] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-
-  // =====================================
-  // NEW HAMBURGER MENU STATE
-  // =====================================
-  const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
-  const [expandedMenu, setExpandedMenu] = useState(null);
 
   // =====================================
   // PARTNER / AFFILIATE LOGIC 
@@ -101,25 +97,22 @@ export default function VedoxaHome() {
     fetchBooks();
     initPartnerSystem(); 
 
-    // STRICT 1-CLICK BACK BUTTON LOGIC
-    const handlePopState = (event) => {
-      // If modal is currently open and back is pressed
-      if (document.body.style.overflow === 'hidden') {
-         // Close ALL Modals
-         setShowBookDetails(false);
-         setShowCheckout(false);
-         setShowAuthModal(false);
-         setShowReader(false);
-         setShowAvatarPicker(false);
-         setIsHamburgerOpen(false);
-      }
+    // STRICT 1-CLICK BACK BUTTON LOGIC FIX
+    const handlePopState = () => {
+      setShowBookDetails(false);
+      setShowCheckout(false);
+      setShowAuthModal(false);
+      setShowReader(false);
+      setShowAvatarPicker(false);
+      setIsSidebarOpen(false);
     };
+    
     window.addEventListener("popstate", handlePopState);
 
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) handleUserLogin(session.user);
-      else { setUser(null); setProfile(null); setPurchasedBookIds([]); }
+      else { setUser(null); setProfile(null); setPurchasedBookIds([]); setIsSidebarOpen(false); }
     });
 
     return () => {
@@ -131,13 +124,13 @@ export default function VedoxaHome() {
   }, []);
 
   useEffect(() => {
-    // Keep scroll locked when ANY modal is open
-    if (showBookDetails || showCheckout || showAuthModal || showReader || showAvatarPicker || isHamburgerOpen) {
+    if (showBookDetails || showCheckout || showAuthModal || showReader || isSidebarOpen || showAvatarPicker) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
-  }, [showBookDetails, showCheckout, showAuthModal, showReader, showAvatarPicker, isHamburgerOpen]);
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showBookDetails, showCheckout, showAuthModal, showReader, isSidebarOpen, showAvatarPicker]);
 
   const initPartnerSystem = async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -254,20 +247,19 @@ export default function VedoxaHome() {
     }
   };
 
-  // HISTORY PUSH FIX FOR BACK BUTTON
   const openBookDetails = (book) => {
     setSelectedBook(book);
     fetchReviews(book.id);
     setShowBookDetails(true);
     if (typeof window !== "undefined") {
-       window.history.pushState({ modalOpen: true }, "", window.location.pathname);
+      window.history.pushState({ modal: "book-details" }, "", window.location.pathname);
     }
   };
 
   const closeBookDetails = () => {
     setShowBookDetails(false);
-    if (typeof window !== "undefined" && window.history.state?.modalOpen) {
-       window.history.back(); // Clean the state
+    if (typeof window !== "undefined" && window.history.state?.modal === "book-details") {
+      window.history.back();
     }
   };
 
@@ -290,8 +282,9 @@ export default function VedoxaHome() {
 
   const confirmLogout = async () => { 
     await supabase.auth.signOut(); 
+    setShowLogoutConfirm(false);
+    setIsSidebarOpen(false);
     addToast("Logged out securely", "info"); 
-    setIsHamburgerOpen(false);
   };
 
   const verifyCoupon = async () => {
@@ -549,6 +542,88 @@ export default function VedoxaHome() {
         </AnimatePresence>
       </div>
 
+      {/* Sidebar Dashboard */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000]" 
+            />
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.15, ease: "easeOut" }}
+              className="fixed top-0 right-0 w-80 h-full bg-[#0a0a0d] border-l border-white/10 z-[5001] shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/40">
+                <span className="font-bold text-white flex items-center gap-2"><Settings size={18}/> Dashboard</span>
+                <button onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10"><X size={20}/></button>
+              </div>
+
+              <div className="p-6 flex flex-col items-center gap-4 border-b border-white/5">
+                <div className="relative group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
+                   <div className="w-24 h-24 rounded-full border-2 border-yellow-500/50 overflow-hidden bg-white/5 flex items-center justify-center">
+                     {profile?.avatar_url ? (
+                       <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                     ) : (
+                       <UserCircle size={48} className="text-yellow-500 opacity-50" />
+                     )}
+                   </div>
+                   <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <Edit3 size={20} className="text-white" />
+                   </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="font-bold text-white text-lg">{profile?.name || "Vedoxa Reader"}</h3>
+                  <p className="text-gray-500 text-xs">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="p-6 flex flex-col gap-4">
+                <Link href="/reward-points" className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-yellow-500/20 transition">
+                  <div className="flex items-center gap-2 text-yellow-500 font-bold"><Coins size={20}/> Reward Points</div>
+                  <span className="text-xl font-black text-white">{profile?.reward_points || 0}</span>
+                </Link>
+
+                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center">
+                  <span className="text-gray-300 font-bold text-sm">Language / भाषा</span>
+                  <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-yellow-500/30 text-yellow-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-yellow-500/10 transition">
+                    {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
+                  </button>
+                </div>
+
+                <Link href="/explore" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
+                  <span className="text-gray-300 font-bold text-sm">Explore</span>
+                  <ChevronRight size={16} className="text-gray-500" />
+                </Link>
+
+                <Link href="/quiz" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
+                  <span className="text-gray-300 font-bold text-sm">Quiz</span>
+                  <ChevronRight size={16} className="text-gray-500" />
+                </Link>
+
+              </div>
+
+              <div className="mt-auto p-6 border-t border-white/10">
+                {showLogoutConfirm ? (
+                  <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-center">
+                    <p className="text-sm font-bold text-white mb-3">Are you sure you want to log out?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 bg-white/10 text-white text-xs font-bold py-2 rounded-xl">Cancel</button>
+                      <button onClick={confirmLogout} className="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-xl">Yes, Logout</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowLogoutConfirm(true)} className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition">
+                    <LogOut size={18}/> Logout securely
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Avatar Picker Modal */}
       <AnimatePresence>
         {showAvatarPicker && (
@@ -563,114 +638,10 @@ export default function VedoxaHome() {
                     </button>
                   ))}
                 </div>
-                
-                <div className="border-t border-white/10 pt-6">
-                  <button onClick={confirmLogout} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition">
-                    <LogOut size={18}/> Logout securely
-                  </button>
-                </div>
              </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ==============================================
-          NEW RIGHT SIDEBAR HAMBURGER MENU 
-      ============================================== */}
-      <AnimatePresence>
-        {isHamburgerOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              onClick={() => setIsHamburgerOpen(false)}
-              className="fixed inset-0 z-[6500] bg-black/60 backdrop-blur-sm cursor-pointer"
-            />
-            {/* Sidebar Drawer */}
-            <motion.div 
-              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} 
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-72 bg-[#0d0d10] border-l border-white/10 z-[7000] shadow-2xl flex flex-col"
-            >
-              <div className="p-6 flex flex-col h-full">
-                <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Settings size={20} className="text-yellow-500" /> Menu
-                  </h3>
-                  <button onClick={() => setIsHamburgerOpen(false)} className="p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition">
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {/* Collapsible Item 1: Profile & Preferences */}
-                  <div className="mb-4 bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                    <button onClick={() => setExpandedMenu(expandedMenu === 'preferences' ? null : 'preferences')} className="w-full px-5 py-4 flex justify-between items-center text-gray-300 font-bold hover:text-yellow-500 transition">
-                      <div className="flex items-center gap-3"><UserCircle size={18} /> Preferences</div>
-                      <span>{expandedMenu === 'preferences' ? '-' : '+'}</span>
-                    </button>
-                    <AnimatePresence>
-                      {expandedMenu === 'preferences' && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-black/20">
-                          <div className="px-5 pb-4 pt-2 flex flex-col gap-3">
-                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition flex items-center gap-2"><Globe size={14}/> Change Language</p>
-                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition flex items-center gap-2"><Edit3 size={14}/> Edit Profile Data</p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Collapsible Item 2: Rewards & Points */}
-                  <div className="mb-4 bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                    <button onClick={() => setExpandedMenu(expandedMenu === 'rewards' ? null : 'rewards')} className="w-full px-5 py-4 flex justify-between items-center text-gray-300 font-bold hover:text-yellow-500 transition">
-                      <div className="flex items-center gap-3"><Coins size={18} /> Rewards</div>
-                      <span>{expandedMenu === 'rewards' ? '-' : '+'}</span>
-                    </button>
-                    <AnimatePresence>
-                      {expandedMenu === 'rewards' && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-black/20">
-                          <div className="px-5 pb-4 pt-2 flex flex-col gap-3">
-                            <p className="text-sm text-yellow-500 font-bold flex justify-between">Available Points: <span>{profile?.reward_points || 0}</span></p>
-                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition mt-1">View Point History</p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Collapsible Item 3: Support */}
-                  <div className="mb-4 bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                    <button onClick={() => setExpandedMenu(expandedMenu === 'support' ? null : 'support')} className="w-full px-5 py-4 flex justify-between items-center text-gray-300 font-bold hover:text-yellow-500 transition">
-                      <div className="flex items-center gap-3"><MessageSquare size={18} /> Support</div>
-                      <span>{expandedMenu === 'support' ? '-' : '+'}</span>
-                    </button>
-                    <AnimatePresence>
-                      {expandedMenu === 'support' && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-black/20">
-                          <div className="px-5 pb-4 pt-2 flex flex-col gap-3">
-                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition">Contact Us</p>
-                            <p className="text-sm text-gray-400 hover:text-white cursor-pointer transition">FAQs</p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                {user && (
-                  <div className="mt-auto pt-4 border-t border-white/10">
-                    <button onClick={confirmLogout} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition">
-                      <LogOut size={18}/> Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-      {/* ============================================== */}
 
       {/* COMPONENT INTEGRATION: BOOK DETAILS MODAL */}
       <AnimatePresence>
@@ -827,6 +798,7 @@ export default function VedoxaHome() {
 
         {/* Responsive Navbar */}
         <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
+          {/* LOGO LINK FIX -> VEDOXA clicks go to /brand */}
           <Link href="/brand" className="flex items-center gap-3 group">
             <div className="w-9 h-9 md:w-11 md:h-11 relative rounded-full p-0.5 border border-yellow-500/20 group-hover:border-yellow-500/50 transition">
               <Image 
@@ -840,7 +812,7 @@ export default function VedoxaHome() {
             <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">{t.brand}</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 md:gap-4">
             {/* SEARCH BAR UI */}
             <div className={`flex items-center bg-white/5 border border-white/10 rounded-full px-3 py-1.5 transition-all ${isSearchOpen ? 'w-48 md:w-64' : 'w-10'}`}>
                <Search size={18} className="text-gray-400 cursor-pointer shrink-0" onClick={() => setIsSearchOpen(!isSearchOpen)} />
@@ -858,23 +830,24 @@ export default function VedoxaHome() {
 
             {user ? (
               <div className="flex items-center gap-2">
-                <button onClick={() => setShowAvatarPicker(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 rounded-full">
-                  <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden">
-                    {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover"/> : <UserCircle size={18} className="text-yellow-500"/>}
-                  </div>
+                {/* AVATAR CLICK FIX -> Direct Open Avatar Picker Modal */}
+                <button onClick={() => setShowAvatarPicker(true)} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-yellow-500/30 hover:border-yellow-500 transition overflow-hidden bg-yellow-500/10 flex items-center justify-center p-0.5">
+                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="profile" className="w-full h-full object-cover rounded-full"/> : <UserCircle size={18} className="text-yellow-500"/>}
                 </button>
-                {/* HAMBURGER MENU BUTTON ADDED HERE */}
-                <button onClick={() => setIsHamburgerOpen(true)} className="p-2 text-gray-400 hover:text-white transition rounded-full hover:bg-white/10">
-                  <Menu size={20} />
+                
+                <button onClick={() => setIsSidebarOpen(true)} className="bg-white/5 border border-white/10 p-2 md:p-2.5 rounded-full hover:bg-white/10 transition">
+                  <Menu size={18} className="text-gray-400" />
                 </button>
               </div>
             ) : (
-              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 rounded-full text-xs font-bold">Login</button>
+              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm flex items-center gap-2 font-bold">
+                <UserCircle size={16} /> <span className="hidden sm:inline">{t.login}</span><span className="sm:hidden">Login</span>
+              </button>
             )}
           </div>
         </nav>
 
-        {/* Search open hone pe Hero Section hide ho jayega */}
+        {/* SEARCH HIDE LOGIC */}
         {!isSearchOpen && (
           <>
             {/* Hero Section */}
@@ -923,7 +896,6 @@ export default function VedoxaHome() {
               filteredBooks.map((book, i) => {
                 const isPurchased = purchasedBookIds.includes(book.id);
                 
-                // Book Price display calculation for partners
                 const originalPrice = book.final_price;
                 const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
                 const displayPrice = originalPrice - pDiscount;
@@ -937,7 +909,7 @@ export default function VedoxaHome() {
                     transition={{ duration: 0.5, delay: i * 0.1 }} 
                     key={book.id} 
                     onClick={() => openBookDetails(book)} 
-                    className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:bg-white/10"
+                    className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:bg-white/10 hover:border-yellow-500/30 hover:-translate-y-2 shadow-lg"
                   >
                     {book.discount > 0 && !isPurchased && !partnerData && (
                       <div className="absolute top-4 right-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
@@ -950,7 +922,7 @@ export default function VedoxaHome() {
                         <img 
                           src={`${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path}`} 
                           alt={book.title}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
                         />
                     </div>
                     
@@ -982,13 +954,13 @@ export default function VedoxaHome() {
         </section>
 
         <footer className="py-10 w-full flex flex-col items-center gap-6 border-t border-white/10 mt-auto bg-black/20">
-          <Link href="/about" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
+          <Link href="/brand" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
             About Us
           </Link>
           
           <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4 mb-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
-            <button onClick={() => user ? setIsHamburgerOpen(true) : setShowAuthModal(true)} className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition cursor-pointer"><Zap size={16} className="text-yellow-500"/> {t.instant}</button>
+            <button onClick={() => user ? setIsSidebarOpen(true) : setShowAuthModal(true)} className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition cursor-pointer"><Zap size={16} className="text-yellow-500"/> {t.instant}</button>
           </div>
         </footer>
 
@@ -1054,5 +1026,278 @@ export default function VedoxaHome() {
 
       </div>
     </>
+  );
+}
+ye dekho maine ek photo send ki hai vasha color kro or ye dekho buy naw vale button ko dhyan se dekho jab hum kishi book ko buy karne ke liye click karte hai to book detail wala modal khulta hai to usme buy naw or Pay now ye dono ek samn dikhte hai par text badle hue jase photo me diya hai color vasha hi pay naw ka bhi krdo.
+jo photo me color diya hai vo pay now wale option ka kardo dono modal me .
+or back wala code bilkul sahi kam kiya theek hai, esme jo photo me color bheja hai button ka vasha kardo theek se theek okk. or jo mene upload ki hui photo me button par ek animatrion or bhi hai wo bhi add krna 
+or haa ek or chiz tumne jo 2sra wala problem tha vo to bilkul hi kharab ker diya jaha mane avatar uper dikhaya hua tha vo to dikh hi nahi raha ab mene ek  photo send ki hai ushe dekho ki avtar kaha par hota hai vedoxa library ke main page par jo 1sri foto the avatar ush jagah par theek tha tum ushe vashi par set kr do vaha 3 dot wale menu ko mat lagao or tum mujhe vo dusra code bhi theek karke dena bookdetails wala jishme tumne likes or views add kiye the ok dono code bilkul sahi karke dena theek se theek par haa in sabke alawa kuchh bhi katna mat or photo ke anusar kam krna professional ki tarah.
+// @ts-nocheck
+"use client";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, UserCircle, Star, Eye, ThumbsUp, ThumbsDown } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+export default function BookDetailsModal({
+  selectedBook,
+  partnerData,
+  purchasedBookIds,
+  t,
+  user,
+  userExistingReview,
+  newReviewText,
+  setNewReviewText,
+  loadingReviews,
+  reviews,
+  handleSubmitReview,
+  setShowBookDetails,
+  openWebReader,
+  setShowCheckout
+}) {
+  const originalPrice = selectedBook.final_price;
+  const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
+  const displayPrice = originalPrice - pDiscount;
+
+  // Social Stats State
+  const [stats, setStats] = useState({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
+  const [userInteraction, setUserInteraction] = useState(null); // 'like', 'dislike', or null
+  const [isUpdatingStat, setIsUpdatingStat] = useState(false);
+
+  // FAST ANIMATION SETTING (0.15s)
+  const fastTransition = { duration: 0.15, ease: "easeOut" };
+
+  useEffect(() => {
+    // 1. Increment View Count
+    incrementView();
+    // 2. Fetch User's previous like/dislike status
+    if (user) fetchUserInteraction();
+  }, [selectedBook.id, user]);
+
+  const incrementView = async () => {
+    // Session storage taaki ek session me ek hi view count ho
+    const viewKey = `viewed_book_${selectedBook.id}`;
+    if (!sessionStorage.getItem(viewKey)) {
+      sessionStorage.setItem(viewKey, 'true');
+      const newViews = (selectedBook.views || 0) + 1;
+      setStats(prev => ({ ...prev, views: newViews }));
+      await supabase.from('books').update({ views: newViews }).eq('id', selectedBook.id);
+    } else {
+      setStats({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
+    }
+  };
+
+  const fetchUserInteraction = async () => {
+    const { data } = await supabase.from('user_interactions')
+      .select('interaction_type')
+      .eq('book_id', selectedBook.id)
+      .eq('user_id', user.id).single();
+    
+    if (data) setUserInteraction(data.interaction_type);
+  };
+
+  const handleInteraction = async (type) => {
+    if (!user) {
+      alert("Please login to react to this book.");
+      return;
+    }
+    if (isUpdatingStat) return;
+    setIsUpdatingStat(true);
+
+    try {
+      if (userInteraction === type) {
+        // User clicked the same button again to remove their reaction
+        await supabase.from('user_interactions').delete().eq('book_id', selectedBook.id).eq('user_id', user.id);
+        
+        if (type === 'like') {
+          const newLikes = Math.max(0, stats.likes - 1);
+          setStats(prev => ({ ...prev, likes: newLikes }));
+          await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+        } else {
+          // Decrement dislikes in DB
+          const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
+          await supabase.from('books').update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq('id', selectedBook.id);
+        }
+        setUserInteraction(null);
+      } else {
+        // User is adding a new reaction or changing it
+        await supabase.from('user_interactions').upsert({
+          user_id: user.id,
+          book_id: selectedBook.id,
+          interaction_type: type
+        }, { onConflict: 'user_id, book_id' });
+
+        if (type === 'like') {
+          const newLikes = stats.likes + 1;
+          setStats(prev => ({ ...prev, likes: newLikes }));
+          await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+          
+          // If they changed from dislike to like, reduce dislikes
+          if (userInteraction === 'dislike') {
+            const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
+            await supabase.from('books').update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq('id', selectedBook.id);
+          }
+        } else if (type === 'dislike') {
+          // They disliked. If they previously liked, reduce likes.
+          if (userInteraction === 'like') {
+            const newLikes = Math.max(0, stats.likes - 1);
+            setStats(prev => ({ ...prev, likes: newLikes }));
+            await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+          }
+          // Increment dislikes in DB
+          const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
+          await supabase.from('books').update({ dislikes: (bookData?.dislikes || 0) + 1 }).eq('id', selectedBook.id);
+        }
+        setUserInteraction(type);
+      }
+    } catch (error) {
+      console.error("Interaction failed", error);
+    }
+    setIsUpdatingStat(false);
+  };
+
+  return (
+    <motion.div 
+      key="book-details-modal"
+      initial={{ opacity: 0, scale: 0.98 }} 
+      animate={{ opacity: 1, scale: 1 }} 
+      exit={{ opacity: 0, scale: 0.98 }} 
+      transition={fastTransition}
+      className="fixed inset-0 z-[800] bg-[#0a0a0d] overflow-y-auto"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
+      <div className="flex flex-col md:flex-row min-h-full w-full relative">
+          <motion.button 
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+             onClick={() => setShowBookDetails(false)} 
+             className="fixed top-6 right-6 z-[850] p-3 bg-white/10 rounded-full text-white hover:bg-red-500/80 transition-colors shadow-lg"
+          >
+             <X size={24} />
+          </motion.button>
+
+          {/* Book Info Section */}
+          <div className="w-full md:w-1/2 p-5 md:p-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
+             
+             {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
+               <div className="absolute top-8 left-8 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                 <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
+               </div>
+             )}
+
+             <div className="w-full h-64 md:h-96 mb-8 mt-10 md:mt-0 relative">
+               <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full" />
+               <motion.div 
+                 animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                 className="w-full h-full relative z-10 shadow-2xl rounded-3xl"
+               >
+               {selectedBook.cover_path ? (
+                 <img 
+                   src={`${supabaseUrl}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
+                   alt={selectedBook.title}
+                   className="w-full h-full object-contain rounded-3xl"
+                 />
+               ) : (
+                 <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-3xl border border-yellow-500/20">
+                   <BookOpen size={64} className="text-yellow-500 opacity-80" />
+                 </div>
+               )}
+               </motion.div>
+             </div>
+
+             {/* MODERN SOCIAL STATS BAR */}
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-400 font-bold bg-white/5 w-fit mx-auto px-6 py-2.5 rounded-full border border-white/10 shadow-inner">
+                <div className="flex items-center gap-2 text-blue-400">
+                  <Eye size={18} /> {stats.views} Views
+                </div>
+                <div className="w-px h-4 bg-white/20"></div>
+                <button 
+                  onClick={() => handleInteraction('like')} 
+                  className={`flex items-center gap-2 transition ${userInteraction === 'like' ? 'text-yellow-500' : 'hover:text-white'}`}
+                >
+                  <ThumbsUp size={18} className={userInteraction === 'like' ? 'fill-current' : ''} /> {stats.likes}
+                </button>
+                <button 
+                  onClick={() => handleInteraction('dislike')} 
+                  className={`flex items-center gap-2 transition ${userInteraction === 'dislike' ? 'text-red-500' : 'hover:text-white'}`}
+                >
+                  <ThumbsDown size={18} className={userInteraction === 'dislike' ? 'fill-current' : ''} />
+                </button>
+             </motion.div>
+
+             <h1 className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 text-center md:text-left">{selectedBook.title}</h1>
+             <p className="text-xl text-yellow-500 mb-6 text-center md:text-left">by {selectedBook.author}</p>
+             <p className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base text-center md:text-left">
+               {selectedBook.description || "Immerse yourself in this profound work."}
+             </p>
+
+             <div className="flex flex-col md:flex-row items-center gap-6 mt-auto">
+               <div className="text-center md:text-left">
+                 {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
+                   <span className="text-lg text-gray-500 line-through mr-3">₹{originalPrice}</span>
+                 )}
+                 <span className="text-4xl font-black text-white">₹{displayPrice}</span>
+               </div>
+               {purchasedBookIds.includes(selectedBook.id) ? (
+                  <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="w-full md:flex-1 px-8 py-4 rounded-2xl text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-3 font-bold hover:bg-emerald-500/25 transition">
+                    <CheckCircle2 size={24} /> {t.readNow}
+                  </button>
+                ) : (
+                  <button onClick={() => setShowCheckout(true)} className="w-full md:flex-1 bg-gradient-to-r from-emerald-400 to-emerald-600 text-black px-8 py-4 rounded-2xl text-lg flex justify-center items-center gap-3 font-black shadow-lg">
+                    <Lock size={20}/> {t.pay}
+                  </button>
+               )}
+             </div>
+          </div>
+
+          {/* Reviews Section */}
+          <div className="w-full md:w-1/2 p-5 md:p-16 bg-[#0a0a0d] relative overflow-hidden shrink-0 flex flex-col">
+             <div className="flex items-center gap-3 mb-8">
+               <MessageSquare className="text-yellow-500" />
+               <h2 className="text-2xl font-bold text-white">{t.reviews}</h2>
+             </div>
+
+             {purchasedBookIds.includes(selectedBook.id) && (
+               <div className="bg-white/5 border border-white/10 p-4 rounded-xl mb-6 relative z-10 shadow-lg">
+                 <h3 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">
+                   <CheckCircle2 size={16}/> {userExistingReview ? "Update your review" : "You own this book"}
+                 </h3>
+                 <textarea 
+                   value={newReviewText}
+                   onChange={(e) => setNewReviewText(e.target.value)}
+                   placeholder={t.writeReview}
+                   className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-yellow-500 resize-none h-20 mb-3 transition"
+                 />
+                 <button onClick={handleSubmitReview} className="btn-gold px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ml-auto">
+                   {userExistingReview ? t.updateReview : t.submitReview}
+                 </button>
+               </div>
+             )}
+
+             <div className="flex flex-col gap-4">
+                {reviews.length > 0 ? (
+                   reviews.map(review => (
+                     <div key={review.id} className="bg-white/5 border border-white/5 p-4 rounded-xl relative hover:bg-white/10 transition duration-300">
+                       {review.user_id === user?.id && <div className="absolute top-2 right-2 text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded">Your Review</div>}
+                       <div className="font-bold text-white text-sm flex items-center gap-2 mb-1">
+                         <UserCircle size={16} className="text-gray-400"/> {review.profiles?.name || review.fake_author_name || "Vedoxa Reader"}
+                       </div>
+                       <div className="flex text-yellow-500 mb-2"><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/><Star size={10} fill="currentColor"/></div>
+                       <p className="text-gray-300 text-xs leading-relaxed">{review.review_text}</p>
+                     </div>
+                   ))
+                ) : (
+                   <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                      <p>{t.noReviews}</p>
+                   </div>
+                )}
+             </div>
+          </div>
+      </div>
+    </motion.div>
   );
 }
