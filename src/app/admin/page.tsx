@@ -40,6 +40,12 @@ export default function PremiumAdminDashboard() {
   const [tags, setTags] = useState("");
   const [basePrice, setBasePrice] = useState(0);
   const [discount, setDiscount] = useState(0);
+  
+  // STATS CONTROL
+  const [bookViews, setBookViews] = useState(0);
+  const [bookLikes, setBookLikes] = useState(0);
+  const [bookDislikes, setBookDislikes] = useState(0);
+
   const [file, setFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState("");
@@ -47,6 +53,10 @@ export default function PremiumAdminDashboard() {
   const [editingBookId, setEditingBookId] = useState(null);
   const [bookSearch, setBookSearch] = useState("");
   
+  // FAKE REVIEWS
+  const [fakeReviewName, setFakeReviewName] = useState("");
+  const [fakeReviewText, setFakeReviewText] = useState("");
+
   // DISCOUNT MANAGEMENT
   const [discounts, setDiscounts] = useState([]);
   const [discountName, setDiscountName] = useState("");
@@ -90,7 +100,7 @@ export default function PremiumAdminDashboard() {
   const [notifications, setNotifications] = useState([]);
 
   // ==========================================
-  // PARTNERS & AFFILIATES MANAGEMENT (NEW)
+  // PARTNERS & AFFILIATES MANAGEMENT 
   // ==========================================
   const [affiliateCodes, setAffiliateCodes] = useState([]);
   const [affiliates, setAffiliates] = useState([]);
@@ -102,6 +112,9 @@ export default function PremiumAdminDashboard() {
   const [selectedAffiliateId, setSelectedAffiliateId] = useState(null);
   const [adminChatInput, setAdminChatInput] = useState("");
   const chatRef = useRef(null);
+  
+  // PARTNER EDIT STATE
+  const [editingPartner, setEditingPartner] = useState(null);
 
   useEffect(() => {
     checkSession();
@@ -150,7 +163,6 @@ export default function PremiumAdminDashboard() {
       if (ordersData.data) setOrders(ordersData.data);
       if (customersData.data) setCustomers(customersData.data);
       
-      // Affiliate Data
       if (affCodesData.data) setAffiliateCodes(affCodesData.data);
       if (affData.data) setAffiliates(affData.data);
       if (affMsgsData.data) setAffiliateMessages(affMsgsData.data);
@@ -233,7 +245,10 @@ export default function PremiumAdminDashboard() {
         base_price: basePrice,
         discount: discount,
         final_price: finalPrice,
-        format: "pdf"
+        format: "pdf",
+        views: bookViews,
+        likes: bookLikes,
+        dislikes: bookDislikes
       };
 
       if (pdfFileName) bookData.pdf_path = pdfFileName;
@@ -265,6 +280,27 @@ export default function PremiumAdminDashboard() {
     }
   };
 
+  const handleAddFakeReview = async () => {
+    if (!fakeReviewName || !fakeReviewText) {
+      addNotification("Name and Review text are required for fake review!", "error");
+      return;
+    }
+    try {
+      const { error } = await supabase.from('reviews').insert([{
+        book_id: editingBookId,
+        fake_author_name: fakeReviewName,
+        review_text: fakeReviewText,
+        // Optional: you can force 5 stars here if you have a rating column
+      }]);
+      if (error) throw error;
+      setFakeReviewName("");
+      setFakeReviewText("");
+      addNotification("Fake Review Added Successfully! 🌟", "success");
+    } catch (err) {
+      addNotification("Review Error: " + err.message, "error");
+    }
+  };
+
   const handleEditBookClick = (book) => {
     setTitle(book.title || "");
     setDescription(book.description || "");
@@ -274,6 +310,9 @@ export default function PremiumAdminDashboard() {
     setTags(book.tags ? book.tags.join(', ') : "");
     setBasePrice(book.base_price || 0);
     setDiscount(book.discount || 0);
+    setBookViews(book.views || 0);
+    setBookLikes(book.likes || 0);
+    setBookDislikes(book.dislikes || 0);
     setEditingBookId(book.id);
     setShowAddBookModal(true);
   };
@@ -287,9 +326,14 @@ export default function PremiumAdminDashboard() {
     setTags("");
     setBasePrice(0);
     setDiscount(0);
+    setBookViews(0);
+    setBookLikes(0);
+    setBookDislikes(0);
     setFile(null);
     setCoverFile(null);
     setEditingBookId(null);
+    setFakeReviewName("");
+    setFakeReviewText("");
     setShowAddBookModal(false);
   };
 
@@ -458,6 +502,46 @@ export default function PremiumAdminDashboard() {
       loadAllData();
     } catch (err) {
       addNotification("Error marking payment: " + err.message, "error");
+    }
+  };
+
+  const handleUpdatePartner = async () => {
+    if (!editingPartner) return;
+    try {
+      const { error } = await supabase.from('affiliates').update({
+        full_name: editingPartner.full_name,
+        channel_name: editingPartner.channel_name,
+        payment_upi: editingPartner.payment_upi,
+        commission_pct: editingPartner.commission_pct
+      }).eq('user_id', editingPartner.user_id);
+      
+      if (error) throw error;
+      
+      setEditingPartner(null);
+      addNotification("Partner details updated!", "success");
+      loadAllData();
+    } catch (err) {
+      addNotification("Failed to update: " + err.message, "error");
+    }
+  };
+
+  const handleDeletePartner = async (affiliateId, partnerCode) => {
+    if (window.confirm("WARNING: This will delete the partner, their stats, and invalidate their code! Are you sure?")) {
+      try {
+        // First delete their code from affiliate_codes
+        await supabase.from('affiliate_codes').delete().eq('code', partnerCode);
+        
+        // Then delete the partner from affiliates table
+        const { error } = await supabase.from('affiliates').delete().eq('user_id', affiliateId);
+        
+        if (error) throw error;
+        
+        if (selectedAffiliateId === affiliateId) setSelectedAffiliateId(null);
+        addNotification("Partner removed successfully!", "success");
+        loadAllData();
+      } catch (err) {
+        addNotification("Delete Failed: " + err.message, "error");
+      }
     }
   };
 
@@ -703,7 +787,7 @@ export default function PremiumAdminDashboard() {
               { id: "discounts", label: "Discounts", icon: "💰" },
               { id: "coupons", label: "Coupons", icon: "🎟️" },
               { id: "customers", label: "Customers", icon: "👥" },
-              { id: "affiliates", label: "Partners", icon: "🤝" }, // NEW TAB ADDED
+              { id: "affiliates", label: "Partners", icon: "🤝" }, 
               { id: "settings", label: "Settings", icon: "⚙️" }
             ].map(tab => (
               <button
@@ -854,7 +938,7 @@ export default function PremiumAdminDashboard() {
         )}
 
         {/* =========================================
-            AFFILIATE / PARTNER MANAGEMENT TAB (NEW)
+            AFFILIATE / PARTNER MANAGEMENT TAB
             ========================================= */}
         {activeTab === "affiliates" && (
           <div className="space-y-6 animate-in fade-in duration-500">
@@ -911,6 +995,33 @@ export default function PremiumAdminDashboard() {
               </div>
             </div>
 
+            {/* EDIT PARTNER MODAL */}
+            {editingPartner && (
+              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                 <div className="bg-slate-900 border border-blue-500/50 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+                    <div className="flex justify-between items-center mb-6 border-b border-blue-500/20 pb-4">
+                      <h3 className="text-xl font-black text-white">Edit Partner Details</h3>
+                      <button onClick={() => setEditingPartner(null)} className="text-slate-400 hover:text-white"><X size={20}/></button>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-blue-300 mb-1">Full Name</label>
+                        <input value={editingPartner.full_name} onChange={(e) => setEditingPartner({...editingPartner, full_name: e.target.value})} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-400"/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-blue-300 mb-1">Channel Name</label>
+                        <input value={editingPartner.channel_name} onChange={(e) => setEditingPartner({...editingPartner, channel_name: e.target.value})} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-400"/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-blue-300 mb-1">UPI ID</label>
+                        <input value={editingPartner.payment_upi} onChange={(e) => setEditingPartner({...editingPartner, payment_upi: e.target.value})} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-400"/>
+                      </div>
+                      <button onClick={handleUpdatePartner} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-4 transition">Update Partner</button>
+                    </div>
+                 </div>
+              </div>
+            )}
+
             {/* AFFILIATES & CHAT SYSTEM */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
@@ -921,8 +1032,15 @@ export default function PremiumAdminDashboard() {
                   {affiliates.map(aff => {
                     const pendingPayout = (aff.total_earned || 0) - (aff.total_paid || 0);
                     return (
-                      <div key={aff.user_id} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5 hover:border-purple-500/50 transition">
-                        <div className="flex justify-between items-start mb-4">
+                      <div key={aff.user_id} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5 hover:border-purple-500/50 transition relative group">
+                        
+                        {/* Edit and Delete Actions */}
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                           <button onClick={() => setEditingPartner(aff)} className="bg-blue-500/20 text-blue-400 p-2 rounded-lg hover:bg-blue-500 hover:text-white transition"><Edit3 size={16}/></button>
+                           <button onClick={() => handleDeletePartner(aff.user_id, aff.partner_code)} className="bg-red-500/20 text-red-400 p-2 rounded-lg hover:bg-red-500 hover:text-white transition"><Trash2 size={16}/></button>
+                        </div>
+
+                        <div className="flex justify-between items-start mb-4 pr-20">
                           <div>
                             <h4 className="text-lg font-black text-white">{aff.full_name}</h4>
                             <p className="text-sm font-bold text-purple-400">{aff.channel_name}</p>
@@ -1027,7 +1145,9 @@ export default function PremiumAdminDashboard() {
           </div>
         )}
 
-        {/* Existing Tabs Continuation ... */}
+        {/* =========================================
+            BOOKS TAB (Updated with Views/Likes & Fake Reviews)
+            ========================================= */}
         {activeTab === "books" && (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-indigo-500/20 backdrop-blur-md">
@@ -1035,7 +1155,7 @@ export default function PremiumAdminDashboard() {
                 <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300 flex items-center gap-2">
                   <Sparkles className="text-purple-400" /> Book Inventory
                 </h2>
-                <p className="text-indigo-300 text-sm mt-1">Manage your digital products and covers.</p>
+                <p className="text-indigo-300 text-sm mt-1">Manage your digital products and social proof (Views/Likes/Reviews).</p>
               </div>
               <button
                 onClick={() => {
@@ -1105,6 +1225,35 @@ export default function PremiumAdminDashboard() {
                         <input value={discount} onChange={(e) => setDiscount(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-indigo-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition text-pink-300 font-bold" />
                       </div>
                     </div>
+
+                    {/* NEW SECTION: MANUAL VIEWS AND LIKES OVERRIDE */}
+                    <div className="grid grid-cols-3 gap-5 bg-slate-800/40 p-5 rounded-2xl border border-blue-500/30">
+                      <div className="col-span-3"><label className="block text-xs font-bold text-blue-300 uppercase tracking-wide">Social Proof Control (Manual Override)</label></div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-2">Fake Views</label>
+                        <input value={bookViews} onChange={(e) => setBookViews(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-2 text-white outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-2">Fake Likes</label>
+                        <input value={bookLikes} onChange={(e) => setBookLikes(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-2 text-white outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-2">Fake Dislikes</label>
+                        <input value={bookDislikes} onChange={(e) => setBookDislikes(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-2 text-white outline-none" />
+                      </div>
+                    </div>
+
+                    {/* NEW SECTION: FAKE REVIEW INJECTOR */}
+                    {editingBookId && (
+                      <div className="bg-yellow-500/10 p-5 rounded-2xl border border-yellow-500/30">
+                        <label className="block text-xs font-bold text-yellow-500 mb-3 uppercase tracking-wide flex items-center gap-2"><Star size={16}/> Inject Fake Review</label>
+                        <div className="flex flex-col gap-3">
+                          <input value={fakeReviewName} onChange={(e) => setFakeReviewName(e.target.value)} type="text" placeholder="Customer Name (e.g. Rahul Sharma)" className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none" />
+                          <textarea value={fakeReviewText} onChange={(e) => setFakeReviewText(e.target.value)} placeholder="Write 5-star review text here..." className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none h-16 resize-none" />
+                          <button onClick={handleAddFakeReview} type="button" className="bg-yellow-500 text-black font-bold py-2 rounded-xl hover:bg-yellow-400 transition">Add Fake Review Now</button>
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Tags (comma separated)</label>
@@ -1206,8 +1355,13 @@ export default function PremiumAdminDashboard() {
                     </div>
                   </div>
                   
-                  <p className="text-sm text-slate-400 mb-6 flex-1 line-clamp-3 relative z-10">{book.description || "No description provided."}</p>
+                  <p className="text-sm text-slate-400 mb-4 flex-1 line-clamp-3 relative z-10">{book.description || "No description provided."}</p>
                   
+                  <div className="flex items-center gap-4 text-xs font-bold text-slate-500 mb-4 bg-black/40 p-2 rounded-lg justify-center relative z-10">
+                    <span className="flex items-center gap-1"><Eye size={14} className="text-blue-400"/> {book.views || 0}</span>
+                    <span className="flex items-center gap-1"><Star size={14} className="text-yellow-400"/> {book.likes || 0}</span>
+                  </div>
+
                   <div className="space-y-3 relative z-10">
                     <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-indigo-500/10">
                        <span className="text-xs font-bold text-slate-400">PAGES</span>
@@ -1239,6 +1393,7 @@ export default function PremiumAdminDashboard() {
           </div>
         )}
 
+        {/* Existing Tabs Continuation ... */}
         {activeTab === "discounts" && (
           <div className="space-y-6 animate-in fade-in duration-500">
              <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-green-500/20 backdrop-blur-md">
@@ -1344,7 +1499,7 @@ export default function PremiumAdminDashboard() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredDiscounts.map(discount => {
                 const isActive = new Date() >= new Date(discount.startDate) && new Date() <= new Date(discount.endDate);
                 return (
