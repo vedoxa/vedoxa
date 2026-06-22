@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -81,6 +81,9 @@ export default function VedoxaHome() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  // FAVORITES STATE ADDED HERE
+  const [favorites, setFavorites] = useState([]);
 
   // =====================================
   // PARTNER / AFFILIATE LOGIC 
@@ -305,6 +308,18 @@ export default function VedoxaHome() {
     } catch (error) {
       addToast("Error saving avatar.", "error");
     }
+  };
+
+  // FAVORITE TOGGLE LOGIC ADDED HERE
+  const toggleFavorite = (e, bookId) => {
+    e.stopPropagation();
+    setFavorites(prev => {
+      if (prev.includes(bookId)) {
+        return prev.filter(id => id !== bookId);
+      } else {
+        return [...prev, bookId];
+      }
+    });
   };
 
   let partnerDiscountAmount = 0;
@@ -1060,7 +1075,11 @@ export default function VedoxaHome() {
           {/* Inner top shimmer on nav */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/15 to-transparent" />
 
-          <Link href="/brand" className="flex items-center gap-3">
+          {/* VEDOXA LOGO ADDED HERE WITH GLOW AND LINK */}
+          <Link href="/brand" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 bg-[#0c0c1a]">
+              <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
+            </div>
             <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">
               {t.brand}
             </span>
@@ -1089,6 +1108,12 @@ export default function VedoxaHome() {
                 onClick={() => setIsSidebarOpen(true)}
                 className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1.5 rounded-full hover:bg-white/[0.08] hover:border-white/[0.14] transition"
               >
+                {/* PROFILE LOGO ADDED HERE */}
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Profile" className="w-5 h-5 rounded-full object-cover border border-amber-500/40" />
+                ) : (
+                  <UserCircle size={17} className="text-amber-500/80" />
+                )}
                 <Menu size={17} className="text-gray-400" />
               </button>
             ) : (
@@ -1217,7 +1242,21 @@ export default function VedoxaHome() {
                     <h3 className="font-cinzel text-xl font-bold mb-1.5 text-white/95 leading-snug">
                       {book.title}
                     </h3>
-                    <p className="text-gray-500 text-sm mb-6">by {book.author}</p>
+                    
+                    {/* HEART BUTTON ADDED HERE */}
+                    <div className="flex justify-between items-center mb-6">
+                      <p className="text-gray-500 text-sm">by {book.author}</p>
+                      <button 
+                        onClick={(e) => toggleFavorite(e, book.id)} 
+                        className="focus:outline-none hover:scale-110 transition-transform"
+                        title="Add to Favorites"
+                      >
+                        <Heart 
+                          size={18} 
+                          className={`transition-colors duration-300 ${favorites.includes(book.id) ? 'text-red-500 fill-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]' : 'text-gray-500 hover:text-red-400'}`} 
+                        />
+                      </button>
+                    </div>
 
                     <div className="mt-auto flex justify-between items-end border-t border-white/[0.06] pt-5">
                       <div>
