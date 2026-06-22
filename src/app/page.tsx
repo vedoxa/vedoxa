@@ -497,45 +497,168 @@ export default function VedoxaHome() {
   return (
     <>
       <style>{`
-        html, body {
-            touch-action: pan-y;
-            -webkit-text-size-adjust: 100%;
-            overscroll-behavior-y: none;
-        }
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
-        .font-cinzel { font-family: 'Cinzel', serif; }
-        .gold-text { background: linear-gradient(135deg, #f59e0b 0%, #eab308 40%, #fcd34d 70%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .btn-gold { background: linear-gradient(135deg, #eab308, #d97706); color: #000; transition: all 0.25s ease; box-shadow: 0 4px 15px rgba(234,179,8,0.2); }
-        .btn-gold:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(234,179,8,0.45); }
-        #nprogress .bar { background: #eab308 !important; height: 3px !important; }
-        #nprogress .peg { box-shadow: 0 0 10px #eab308, 0 0 5px #eab308 !important; }
-        
+
+        html, body {
+          touch-action: pan-y;
+          -webkit-text-size-adjust: 100%;
+          overscroll-behavior-y: none;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Typography */
+        .font-cinzel {
+          font-family: 'Cinzel', serif;
+          letter-spacing: 0.03em;
+        }
+
+        /* Jewelry-grade gold — warm amber, not neon */
+        .gold-text {
+          background: linear-gradient(130deg, #b8720e 0%, #d4921a 22%, #e8b84b 48%, #f5d880 65%, #d4921a 82%, #b8720e 100%);
+          background-size: 200% 100%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          filter: drop-shadow(0 0 28px rgba(212,146,26,0.18));
+        }
+
+        /* Premium tactile button with spring feedback */
+        .btn-gold {
+          background: linear-gradient(145deg, #e8b84b 0%, #c07d10 55%, #d4921a 100%);
+          color: #150800;
+          font-weight: 800;
+          letter-spacing: 0.025em;
+          transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow:
+            0 1px 0 rgba(255,220,120,0.55) inset,
+            0 -1px 0 rgba(0,0,0,0.35) inset,
+            0 4px 24px rgba(180,100,10,0.22),
+            0 1px 4px rgba(0,0,0,0.4);
+        }
+        .btn-gold:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.025);
+          box-shadow:
+            0 1px 0 rgba(255,220,120,0.55) inset,
+            0 -1px 0 rgba(0,0,0,0.35) inset,
+            0 12px 40px rgba(212,146,26,0.55),
+            0 2px 8px rgba(0,0,0,0.4);
+        }
+        .btn-gold:active:not(:disabled) {
+          transform: translateY(0px) scale(0.985);
+          box-shadow:
+            0 1px 0 rgba(255,220,120,0.3) inset,
+            0 2px 10px rgba(212,146,26,0.3);
+        }
+
+        /* Progress */
+        #nprogress .bar { background: #d4921a !important; height: 2px !important; }
+        #nprogress .peg { box-shadow: 0 0 14px #d4921a, 0 0 6px #d4921a !important; }
+
+        /* Ticker animation */
         @keyframes scrollLeft {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
         .animate-scroll {
-          animation: scrollLeft 20s linear infinite;
+          animation: scrollLeft 28s linear infinite;
           display: inline-block;
           white-space: nowrap;
         }
 
-        /* NEW: Solid White Discount Badge */
+        /* Solid white discount badge */
         .discount-badge {
-            background-color: white !important;
-            color: #b45309 !important; /* Bold Amber/Gold */
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            font-weight: 900;
+          background: rgba(255,255,255,0.97) !important;
+          color: #92400e !important;
+          box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+          font-weight: 900;
+          letter-spacing: 0.03em;
         }
-        .fast-anim { transition: all 0.15s ease-out; }
+
+        /* Smooth transitions */
+        .fast-anim { transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Luminary card — signature premium effect */
+        .luminary-card {
+          position: relative;
+          isolation: isolate;
+        }
+        .luminary-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 1.5rem;
+          background: radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.07) 0%, transparent 55%);
+          pointer-events: none;
+          z-index: 0;
+          opacity: 0;
+          transition: opacity 0.4s ease;
+        }
+        .luminary-card:hover::before { opacity: 1; }
+        .luminary-card:hover {
+          box-shadow:
+            0 0 0 1px rgba(212,146,26,0.2),
+            0 28px 72px rgba(0,0,0,0.75),
+            0 0 50px rgba(212,146,26,0.06);
+        }
+        .luminary-card > * { position: relative; z-index: 1; }
+
+        /* Ambient hero pulse */
+        @keyframes breathe {
+          0%, 100% { opacity: 0.65; transform: translateX(-50%) scale(1); }
+          50% { opacity: 0.95; transform: translateX(-50%) scale(1.06); }
+        }
+        .hero-glow { animation: breathe 7s ease-in-out infinite; }
+
+        @keyframes breathe2 {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.55; transform: scale(1.08); }
+        }
+        .hero-glow-2 { animation: breathe2 9s ease-in-out infinite; }
+        .hero-glow-3 { animation: breathe2 11s ease-in-out 2s infinite; }
+
+        /* Premium subtle grain for tactile depth */
+        .page-root::after {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+          opacity: 0.022;
+          pointer-events: none;
+          z-index: 9999;
+          mix-blend-mode: overlay;
+        }
+
+        /* Refined scrollbar */
+        ::-webkit-scrollbar { width: 3px; background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.22); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(212,146,26,0.42); }
+
+        /* Input focus ring */
+        input:focus, select:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(212,146,26,0.2), 0 0 16px rgba(212,146,26,0.06);
+        }
       `}</style>
 
       {/* Floating Toasts */}
       <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3">
         <AnimatePresence>
           {toasts.map((toast) => (
-            <motion.div key={toast.id} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-              className={`px-5 py-3 rounded-xl text-sm font-bold backdrop-blur-md border ${toast.type === "success" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : toast.type === "error" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-yellow-500/15 border-yellow-500/30 text-yellow-400"}`}>
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 50, scale: 0.92 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.88, x: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              className={`px-5 py-3 rounded-2xl text-sm font-bold backdrop-blur-xl border shadow-2xl ${
+                toast.type === "success"
+                  ? "bg-emerald-950/80 border-emerald-500/25 text-emerald-400"
+                  : toast.type === "error"
+                  ? "bg-red-950/80 border-red-500/25 text-red-400"
+                  : "bg-amber-950/80 border-amber-500/25 text-amber-400"
+              }`}
+            >
               {toast.message}
             </motion.div>
           ))}
@@ -546,76 +669,92 @@ export default function VedoxaHome() {
       <AnimatePresence>
         {isSidebarOpen && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
               onClick={() => setIsSidebarOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000]" 
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[5000]"
             />
-            <motion.div 
-              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.15, ease: "easeOut" }}
-              className="fixed top-0 right-0 w-80 h-full bg-[#0a0a0d] border-l border-white/10 z-[5001] shadow-2xl flex flex-col"
+            <motion.div
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+              className="fixed top-0 right-0 w-80 h-full bg-[#0c0c1a] border-l border-white/[0.07] z-[5001] shadow-[−20px_0_80px_rgba(0,0,0,0.8)] flex flex-col"
             >
-              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/40">
-                <span className="font-bold text-white flex items-center gap-2"><Settings size={18}/> Dashboard</span>
-                <button onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10"><X size={20}/></button>
+              <div className="p-6 border-b border-white/[0.06] flex justify-between items-center bg-black/30">
+                <span className="font-bold text-white/90 flex items-center gap-2 text-sm tracking-wide">
+                  <Settings size={16} className="text-amber-500/70"/> Dashboard
+                </span>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="text-gray-500 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] transition"
+                >
+                  <X size={18}/>
+                </button>
               </div>
 
-              <div className="p-6 flex flex-col items-center gap-4 border-b border-white/5">
+              <div className="p-6 flex flex-col items-center gap-4 border-b border-white/[0.05]">
                 <div className="relative group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
-                   <div className="w-24 h-24 rounded-full border-2 border-yellow-500/50 overflow-hidden bg-white/5 flex items-center justify-center">
-                     {profile?.avatar_url ? (
-                       <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                     ) : (
-                       <UserCircle size={48} className="text-yellow-500 opacity-50" />
-                     )}
-                   </div>
-                   <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                     <Edit3 size={20} className="text-white" />
-                   </div>
+                  <div className="w-24 h-24 rounded-full border border-amber-500/30 overflow-hidden bg-white/[0.04] flex items-center justify-center shadow-[0_0_30px_rgba(212,146,26,0.1)]">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <UserCircle size={48} className="text-amber-500/40" />
+                    )}
+                  </div>
+                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Edit3 size={18} className="text-white" />
+                  </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="font-bold text-white text-lg">{profile?.name || "Vedoxa Reader"}</h3>
-                  <p className="text-gray-500 text-xs">{user?.email}</p>
+                  <h3 className="font-bold text-white text-base">{profile?.name || "Vedoxa Reader"}</h3>
+                  <p className="text-gray-600 text-xs mt-0.5">{user?.email}</p>
                 </div>
               </div>
 
-              <div className="p-6 flex flex-col gap-4">
-                <Link href="/reward-points" className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-yellow-500/20 transition">
-                  <div className="flex items-center gap-2 text-yellow-500 font-bold"><Coins size={20}/> Reward Points</div>
+              <div className="p-6 flex flex-col gap-3">
+                <Link href="/reward-points" className="bg-amber-500/[0.08] border border-amber-500/[0.18] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-amber-500/[0.14] transition-all">
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
+                    <Coins size={18}/> Reward Points
+                  </div>
                   <span className="text-xl font-black text-white">{profile?.reward_points || 0}</span>
                 </Link>
 
-                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center">
-                  <span className="text-gray-300 font-bold text-sm">Language / भाषा</span>
-                  <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-yellow-500/30 text-yellow-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-yellow-500/10 transition">
+                <div className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center">
+                  <span className="text-gray-400 font-semibold text-sm">Language / भाषा</span>
+                  <button
+                    onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
+                    className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition"
+                  >
                     {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
                   </button>
                 </div>
 
-                <Link href="/explore" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
-                  <span className="text-gray-300 font-bold text-sm">Explore</span>
-                  <ChevronRight size={16} className="text-gray-500" />
+                <Link href="/explore" className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/[0.07] transition">
+                  <span className="text-gray-300 font-semibold text-sm">Explore</span>
+                  <ChevronRight size={16} className="text-gray-600" />
                 </Link>
 
-                <Link href="/quiz" className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/10 transition">
-                  <span className="text-gray-300 font-bold text-sm">Quiz</span>
-                  <ChevronRight size={16} className="text-gray-500" />
+                <Link href="/quiz" className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/[0.07] transition">
+                  <span className="text-gray-300 font-semibold text-sm">Quiz</span>
+                  <ChevronRight size={16} className="text-gray-600" />
                 </Link>
-
               </div>
 
-              <div className="mt-auto p-6 border-t border-white/10">
+              <div className="mt-auto p-6 border-t border-white/[0.06]">
                 {showLogoutConfirm ? (
-                  <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-center">
+                  <div className="bg-red-500/[0.08] border border-red-500/[0.18] p-4 rounded-2xl text-center">
                     <p className="text-sm font-bold text-white mb-3">Are you sure you want to log out?</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 bg-white/10 text-white text-xs font-bold py-2 rounded-xl">Cancel</button>
-                      <button onClick={confirmLogout} className="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-xl">Yes, Logout</button>
+                      <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 bg-white/[0.07] text-white text-xs font-bold py-2 rounded-xl hover:bg-white/[0.12] transition">Cancel</button>
+                      <button onClick={confirmLogout} className="flex-1 bg-red-500/80 text-white text-xs font-bold py-2 rounded-xl hover:bg-red-500 transition">Yes, Logout</button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setShowLogoutConfirm(true)} className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition">
-                    <LogOut size={18}/> Logout securely
+                  <button
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="w-full bg-white/[0.03] border border-white/[0.07] text-red-400/80 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/[0.07] hover:text-red-400 transition text-sm"
+                  >
+                    <LogOut size={16}/> Logout securely
                   </button>
                 )}
               </div>
@@ -627,18 +766,31 @@ export default function VedoxaHome() {
       {/* Avatar Picker Modal */}
       <AnimatePresence>
         {showAvatarPicker && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-             <div className="bg-[#0a0a0d] border border-white/10 rounded-3xl p-6 w-full max-w-sm relative">
-                <button onClick={() => setShowAvatarPicker(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={20}/></button>
-                <h3 className="text-lg font-bold text-white mb-6 text-center">Choose your Avatar</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {AVATARS.map((url, idx) => (
-                    <button key={idx} onClick={() => handleSaveAvatar(url)} className="aspect-square rounded-full border-2 border-white/10 hover:border-yellow-500 hover:scale-105 transition overflow-hidden bg-white/5">
-                      <img src={url} alt={`avatar-${idx}`} className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-             </div>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: "spring", stiffness: 380, damping: 28 }}
+              className="bg-[#0c0c1a] border border-white/[0.08] rounded-3xl p-6 w-full max-w-sm relative shadow-[0_40px_100px_rgba(0,0,0,0.9)]"
+            >
+              <button onClick={() => setShowAvatarPicker(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white transition p-1.5 rounded-xl hover:bg-white/[0.08]">
+                <X size={18}/>
+              </button>
+              <h3 className="text-lg font-bold text-white mb-6 text-center">Choose your Avatar</h3>
+              <div className="grid grid-cols-3 gap-4">
+                {AVATARS.map((url, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSaveAvatar(url)}
+                    className="aspect-square rounded-full border border-white/[0.08] hover:border-amber-500/60 hover:scale-110 hover:shadow-[0_0_20px_rgba(212,146,26,0.3)] transition-all duration-200 overflow-hidden bg-white/[0.04]"
+                  >
+                    <img src={url} alt={`avatar-${idx}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -646,7 +798,7 @@ export default function VedoxaHome() {
       {/* COMPONENT INTEGRATION: BOOK DETAILS MODAL */}
       <AnimatePresence>
         {showBookDetails && selectedBook && (
-          <BookDetailsModal 
+          <BookDetailsModal
             selectedBook={selectedBook}
             partnerData={partnerData}
             purchasedBookIds={purchasedBookIds}
@@ -668,25 +820,63 @@ export default function VedoxaHome() {
       {/* Auth Modal */}
       <AnimatePresence>
         {showAuthModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#0a0a0d] border border-white/10 rounded-3xl p-8 w-full max-w-md relative shadow-2xl">
-              <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition"><X size={18} /></button>
-              <h2 className="text-2xl font-extrabold text-white mb-6 text-center">{authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-              
-              <form onSubmit={handleAuth} className="flex flex-col gap-4">
-                <input required type="email" placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
-                <input required type="password" placeholder="Password" value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
-                <button type="submit" className="btn-gold py-3 rounded-xl font-bold text-base mt-2">{authForm.mode === 'login' ? 'Login' : 'Sign Up'}</button>
-              </form>
-              
-              <div className="my-5 text-center text-gray-500 text-xs font-bold uppercase tracking-widest">OR</div>
-              <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white flex justify-center items-center gap-3 hover:bg-white/10 transition">
-                <Globe size={18} /> Continue with Google
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 24, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.92, y: 24, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+              className="bg-[#0c0c1a] border border-white/[0.08] rounded-3xl p-8 w-full max-w-md relative shadow-[0_40px_100px_rgba(0,0,0,0.9)]"
+            >
+              {/* Top inner glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent rounded-full" />
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="absolute top-4 right-4 p-2 bg-white/[0.05] rounded-xl text-gray-500 hover:text-white hover:bg-white/[0.1] transition"
+              >
+                <X size={17} />
               </button>
-              
-              <p className="text-center mt-6 text-sm text-gray-400">
+              <h2 className="text-2xl font-extrabold text-white mb-6 text-center tracking-tight">
+                {authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}
+              </h2>
+
+              <form onSubmit={handleAuth} className="flex flex-col gap-3">
+                <input
+                  required type="email" placeholder="Email"
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.09] text-white placeholder-gray-600 outline-none focus:border-amber-500/50 transition text-sm"
+                />
+                <input
+                  required type="password" placeholder="Password"
+                  value={authForm.password}
+                  onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.09] text-white placeholder-gray-600 outline-none focus:border-amber-500/50 transition text-sm"
+                />
+                <button type="submit" className="btn-gold py-3 rounded-xl font-bold text-sm mt-2">
+                  {authForm.mode === 'login' ? 'Login' : 'Sign Up'}
+                </button>
+              </form>
+
+              <div className="my-5 text-center text-gray-600 text-xs font-bold uppercase tracking-widest">OR</div>
+              <button
+                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+                className="w-full py-3 rounded-xl bg-white/[0.04] border border-white/[0.09] text-gray-300 flex justify-center items-center gap-3 hover:bg-white/[0.08] hover:text-white transition text-sm font-medium"
+              >
+                <Globe size={17} /> Continue with Google
+              </button>
+
+              <p className="text-center mt-6 text-sm text-gray-500">
                 {authForm.mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                <span onClick={() => setAuthForm({...authForm, mode: authForm.mode === 'login' ? 'signup' : 'login'})} className="text-yellow-500 font-bold cursor-pointer hover:underline">{authForm.mode === 'login' ? 'Sign Up' : 'Login'}</span>
+                <span
+                  onClick={() => setAuthForm({...authForm, mode: authForm.mode === 'login' ? 'signup' : 'login'})}
+                  className="text-amber-500 font-bold cursor-pointer hover:text-amber-400 transition"
+                >
+                  {authForm.mode === 'login' ? 'Sign Up' : 'Login'}
+                </span>
               </p>
             </motion.div>
           </motion.div>
@@ -696,76 +886,129 @@ export default function VedoxaHome() {
       {/* Checkout Modal */}
       <AnimatePresence>
         {showCheckout && selectedBook && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }} className="bg-[#0d0d10] border border-yellow-500/20 rounded-3xl p-6 md:p-8 w-full max-w-md relative shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-              <button onClick={() => setShowCheckout(false)} className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition"><X size={18} /></button>
-              <h2 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t.checkout}</h2>
-              <p className="text-xs md:text-sm text-gray-400 mb-6">{t.brand}: <span className="text-yellow-500 font-bold">{selectedBook.title}</span></p>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[3000] bg-black/88 backdrop-blur-lg flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 32, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.92, y: 32, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+              className="bg-[#0d0d1c] border border-amber-500/[0.13] rounded-3xl p-6 md:p-8 w-full max-w-md relative shadow-[0_40px_100px_rgba(0,0,0,0.9),0_0_80px_rgba(212,146,26,0.04)]"
+            >
+              {/* Top shimmer line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent rounded-full" />
 
-              <form onSubmit={handlePayment} className="flex flex-col gap-4">
-                <input placeholder="Full Name (Optional)" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" />
-                
+              <button
+                onClick={() => setShowCheckout(false)}
+                className="absolute top-4 right-4 p-2 bg-white/[0.05] rounded-xl text-gray-500 hover:text-white hover:bg-white/[0.1] transition"
+              >
+                <X size={17} />
+              </button>
+              <h2 className="text-xl md:text-2xl font-extrabold text-white mb-1 tracking-tight">{t.checkout}</h2>
+              <p className="text-xs md:text-sm text-gray-500 mb-6">
+                {t.brand}: <span className="text-amber-500 font-bold">{selectedBook.title}</span>
+              </p>
+
+              <form onSubmit={handlePayment} className="flex flex-col gap-3">
+                <input
+                  placeholder="Full Name (Optional)"
+                  value={checkoutData.name}
+                  onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-gray-600 outline-none focus:border-amber-500/40 transition text-sm"
+                />
+
                 <div className="flex gap-2">
-                  <select 
-                    value={checkoutData.countryCode} 
+                  <select
+                    value={checkoutData.countryCode}
                     onChange={(e) => setCheckoutData({...checkoutData, countryCode: e.target.value})}
-                    className="w-24 px-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition cursor-pointer appearance-none"
+                    className="w-24 px-2 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white outline-none focus:border-amber-500/40 transition cursor-pointer appearance-none text-sm"
                   >
-                    <option value="+91" className="bg-black">🇮🇳 +91</option>
-                    <option value="+1" className="bg-black">🇺🇸 +1</option>
-                    <option value="+44" className="bg-black">🇬🇧 +44</option>
-                    <option value="+61" className="bg-black">🇦🇺 +61</option>
-                    <option value="+971" className="bg-black">🇦🇪 +971</option>
+                    <option value="+91" className="bg-[#0c0c1a]">🇮🇳 +91</option>
+                    <option value="+1" className="bg-[#0c0c1a]">🇺🇸 +1</option>
+                    <option value="+44" className="bg-[#0c0c1a]">🇬🇧 +44</option>
+                    <option value="+61" className="bg-[#0c0c1a]">🇦🇺 +61</option>
+                    <option value="+971" className="bg-[#0c0c1a]">🇦🇪 +971</option>
                   </select>
-                  <input 
-                    required 
-                    type="tel" 
-                    placeholder="Phone Number" 
-                    value={checkoutData.phone} 
-                    onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value.replace(/\D/g, '')})} 
+                  <input
+                    required type="tel" placeholder="Phone Number"
+                    value={checkoutData.phone}
+                    onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value.replace(/\D/g, '')})}
                     maxLength={checkoutData.countryCode === '+91' ? 10 : 15}
-                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-yellow-500 transition" 
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-gray-600 outline-none focus:border-amber-500/40 transition text-sm"
                   />
                 </div>
-                
+
                 <div className="flex gap-2">
-                  <input placeholder={t.haveCoupon} value={checkoutData.coupon} onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})} className="flex-1 px-4 py-3 rounded-xl bg-yellow-500/5 border border-dashed border-yellow-500/30 text-yellow-500 outline-none focus:border-yellow-500" />
-                  <button type="button" onClick={verifyCoupon} className="px-5 rounded-xl bg-yellow-500/15 text-yellow-500 font-bold hover:bg-yellow-500/25 transition">{t.apply}</button>
+                  <input
+                    placeholder={t.haveCoupon}
+                    value={checkoutData.coupon}
+                    onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})}
+                    className="flex-1 px-4 py-3 rounded-xl bg-amber-500/[0.04] border border-dashed border-amber-500/25 text-amber-500 placeholder-amber-900 outline-none focus:border-amber-500/50 text-sm"
+                  />
+                  <button
+                    type="button" onClick={verifyCoupon}
+                    className="px-5 rounded-xl bg-amber-500/[0.1] text-amber-500 font-bold hover:bg-amber-500/[0.2] transition text-sm border border-amber-500/20"
+                  >
+                    {t.apply}
+                  </button>
                 </div>
 
                 {profile?.reward_points > 0 && (
-                  <label className="flex items-center gap-3 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/20 cursor-pointer">
+                  <label className="flex items-center gap-3 bg-emerald-500/[0.05] p-3 rounded-xl border border-emerald-500/[0.18] cursor-pointer hover:bg-emerald-500/[0.08] transition">
                     <input type="checkbox" checked={useRewards} onChange={(e) => setUseRewards(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
                     <span className="text-emerald-400 text-sm font-medium">{t.redeemPoints} ({profile.reward_points} pts)</span>
                   </label>
                 )}
 
-                <div className="bg-white/5 p-4 rounded-xl mt-2">
-                  <div className="flex justify-between text-gray-400 text-sm mb-2"><span>Price:</span> <span>₹{selectedBook.final_price}</span></div>
-                  {partnerData && <div className="flex justify-between text-blue-400 font-bold text-sm mb-2"><span>Partner Discount ({partnerData.discount_pct}%):</span> <span>- ₹{partnerDiscountAmount}</span></div>}
-                  {appliedCoupon && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Coupon Discount:</span> <span>- ₹{couponDiscountAmount}</span></div>}
-                  {useRewards && profile?.reward_points > 0 && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Points Applied:</span> <span>- ₹{profile.reward_points}</span></div>}
-                  <div className="flex justify-between text-white text-lg font-extrabold border-t border-white/10 pt-2 mt-2"><span>Total to Pay:</span> <span>₹{clientFinalPrice}</span></div>
-                  <div className="text-right text-xs text-yellow-500 mt-1 font-medium">{t.rewardEarn}: {earnedPoints} pts</div>
+                <div className="bg-white/[0.035] border border-white/[0.07] p-4 rounded-2xl mt-1">
+                  <div className="flex justify-between text-gray-500 text-sm mb-2">
+                    <span>Price:</span> <span>₹{selectedBook.final_price}</span>
+                  </div>
+                  {partnerData && (
+                    <div className="flex justify-between text-blue-400 font-bold text-sm mb-2">
+                      <span>Partner Discount ({partnerData.discount_pct}%):</span>
+                      <span>- ₹{partnerDiscountAmount}</span>
+                    </div>
+                  )}
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-emerald-400 text-sm mb-2">
+                      <span>Coupon Discount:</span> <span>- ₹{couponDiscountAmount}</span>
+                    </div>
+                  )}
+                  {useRewards && profile?.reward_points > 0 && (
+                    <div className="flex justify-between text-emerald-400 text-sm mb-2">
+                      <span>Points Applied:</span> <span>- ₹{profile.reward_points}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-white text-lg font-extrabold border-t border-white/[0.08] pt-2 mt-2">
+                    <span>Total to Pay:</span> <span>₹{clientFinalPrice}</span>
+                  </div>
+                  <div className="text-right text-xs text-amber-500 mt-1 font-medium">{t.rewardEarn}: {earnedPoints} pts</div>
                 </div>
 
-                <button type="submit" disabled={isProcessing} className="btn-gold w-full py-4 rounded-xl flex justify-center items-center gap-2 text-base font-extrabold mt-2">
-                  {isProcessing ? <RefreshCw className="animate-spin" size={18} /> : <Lock size={18} />}
+                <button
+                  type="submit" disabled={isProcessing}
+                  className="btn-gold w-full py-4 rounded-xl flex justify-center items-center gap-2 text-sm font-extrabold mt-1"
+                >
+                  {isProcessing ? <RefreshCw className="animate-spin" size={17} /> : <Lock size={17} />}
                   {isProcessing ? "Processing..." : `${t.pay} ₹${clientFinalPrice}`}
                 </button>
-                
-                {/* CHECKOUT MODAL PURE SVG RAZORPAY & SSL */}
-                <div className="flex justify-center items-center gap-3 mt-3 opacity-60">
-                   <div className="flex items-center gap-1 font-bold text-white tracking-wide text-[10px] md:text-xs">
-                     <svg viewBox="0 0 100 24" className="h-3 md:h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill="#fff"/>
-                        <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
-                        <text x="24" y="17" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
-                     </svg>
-                   </div>
-                   <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 border border-white/20 px-1.5 py-0.5 rounded"><ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL</div>
-                </div>
 
+                {/* CHECKOUT MODAL PURE SVG RAZORPAY & SSL */}
+                <div className="flex justify-center items-center gap-3 mt-2 opacity-50">
+                  <div className="flex items-center gap-1 font-bold text-white tracking-wide text-[10px] md:text-xs">
+                    <svg viewBox="0 0 100 24" className="h-3 md:h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill="#fff"/>
+                      <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
+                      <text x="24" y="17" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
+                    </svg>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 border border-white/[0.15] px-1.5 py-0.5 rounded">
+                    <ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL
+                  </div>
+                </div>
               </form>
             </motion.div>
           </motion.div>
@@ -775,156 +1018,233 @@ export default function VedoxaHome() {
       {/* Web Reader Modal */}
       <AnimatePresence>
         {showReader && (
-          <motion.div initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-[4000] bg-[#06060a] flex flex-col">
-             <div className="px-4 py-4 md:px-6 md:py-4 bg-white/5 border-b border-white/10 flex justify-between items-center">
-                <div className="flex items-center gap-3"><BookOpen className="text-yellow-500" /> <span className="font-bold text-white text-lg">{t.pdfReader}</span></div>
-                <button onClick={() => setShowReader(false)} className="bg-red-500/10 text-red-400 px-4 py-2 rounded-lg font-bold hover:bg-red-500/20 transition">{t.close}</button>
-             </div>
-             <iframe src={readerUrl} className="flex-1 w-full border-none bg-white" title="Web Reader" />
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 26, stiffness: 300 }}
+            className="fixed inset-0 z-[4000] bg-[#07070d] flex flex-col"
+          >
+            <div className="px-4 py-3.5 md:px-6 bg-white/[0.04] border-b border-white/[0.07] flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <BookOpen className="text-amber-500" size={20}/>
+                <span className="font-bold text-white text-base">{t.pdfReader}</span>
+              </div>
+              <button
+                onClick={() => setShowReader(false)}
+                className="bg-red-500/[0.1] border border-red-500/20 text-red-400 px-4 py-2 rounded-xl font-bold hover:bg-red-500/20 transition text-sm"
+              >
+                {t.close}
+              </button>
+            </div>
+            <iframe src={readerUrl} className="flex-1 w-full border-none bg-white" title="Web Reader" />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main Layout */}
-      <div className="min-h-screen flex flex-col bg-[#06060a] text-gray-200 overflow-x-hidden selection:bg-yellow-500/30">
-        
+      {/* ─── Main Layout ─────────────────────────────────────────── */}
+      <div className="min-h-screen flex flex-col bg-[#07070d] text-gray-200 overflow-x-hidden selection:bg-amber-500/20 page-root">
+
         {/* Dynamic Partner Banner */}
         {partnerData && (
-          <div className="w-full bg-blue-500/20 border-b border-blue-500/40 py-2 px-4 text-center flex items-center justify-center gap-2">
-            <Handshake size={16} className="text-blue-400"/>
-            <span className="text-blue-300 text-xs md:text-sm font-bold tracking-wide uppercase">Partner Discount of {partnerData.discount_pct}% has been applied to all books!</span>
+          <div className="w-full bg-blue-500/[0.12] border-b border-blue-500/25 py-2 px-4 text-center flex items-center justify-center gap-2">
+            <Handshake size={15} className="text-blue-400"/>
+            <span className="text-blue-300/90 text-xs md:text-sm font-bold tracking-wide uppercase">
+              Partner Discount of {partnerData.discount_pct}% has been applied to all books!
+            </span>
           </div>
         )}
 
         {/* Responsive Navbar */}
-        <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center">
+        <nav className="sticky top-0 z-[500] px-4 py-4 md:px-8 bg-[#07070d]/92 backdrop-blur-2xl border-b border-white/[0.06] flex justify-between items-center">
+          {/* Inner top shimmer on nav */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/15 to-transparent" />
+
           <Link href="/brand" className="flex items-center gap-3">
-             <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">{t.brand}</span>
+            <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">
+              {t.brand}
+            </span>
           </Link>
 
           <div className="flex items-center gap-3">
             {/* SEARCH BAR UI */}
-            <div className={`flex items-center bg-white/5 border border-white/10 rounded-full px-3 py-1.5 transition-all ${isSearchOpen ? 'w-48 md:w-64' : 'w-10'}`}>
-               <Search size={18} className="text-gray-400 cursor-pointer shrink-0" onClick={() => setIsSearchOpen(!isSearchOpen)} />
-               {isSearchOpen && (
-                 <input 
-                   autoFocus
-                   type="text" 
-                   placeholder="Search books..." 
-                   className="bg-transparent border-none outline-none text-xs ml-2 w-full text-white"
-                   value={searchQuery}
-                   onChange={(e) => setSearchQuery(e.target.value)}
-                 />
-               )}
+            <div className={`flex items-center bg-white/[0.04] border border-white/[0.08] rounded-full px-3 py-1.5 transition-all duration-300 ${isSearchOpen ? 'w-48 md:w-64' : 'w-10'}`}>
+              <Search
+                size={17}
+                className="text-gray-500 cursor-pointer shrink-0 hover:text-gray-300 transition"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+              />
+              {isSearchOpen && (
+                <input
+                  autoFocus type="text" placeholder="Search books..."
+                  className="bg-transparent border-none outline-none text-xs ml-2 w-full text-white placeholder-gray-600"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              )}
             </div>
 
             {user ? (
-              <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1.5 rounded-full">
-                <Menu size={18} className="text-gray-400" />
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1.5 rounded-full hover:bg-white/[0.08] hover:border-white/[0.14] transition"
+              >
+                <Menu size={17} className="text-gray-400" />
               </button>
             ) : (
-              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-4 py-2 rounded-full text-xs font-bold">Login</button>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="btn-gold px-5 py-2 rounded-full text-xs font-bold"
+              >
+                Login
+              </button>
             )}
           </div>
         </nav>
 
-        {/* Hero Section */}
-        <section className="relative px-4 pt-10 pb-8 md:pt-16 md:pb-12 text-center flex flex-col items-center justify-center overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150vw] md:w-[800px] h-[300px] md:h-[600px] bg-yellow-500/10 blur-[100px] rounded-full pointer-events-none -z-10" />
-          
-          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-4 max-w-4xl mx-auto">
-            {lang === "EN" ? <>{t.heroTitle.split(" ")[0]} <span className="gold-text">{t.heroTitle.split(" ")[1]}</span> {t.heroTitle.split(" ")[2]}</> : <><span className="gold-text">अपनी चेतना</span> को जागृत करें</>}
+        {/* ─── Hero Section ─────────────────────────────────────── */}
+        <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
+          {/* Multi-layer ambient glow — signature breathing effect */}
+          <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.07] blur-[140px] rounded-full pointer-events-none -z-10 hero-glow" />
+          <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none -z-10 hero-glow-2" />
+          <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.025] blur-[70px] rounded-full pointer-events-none -z-10 hero-glow-3" />
+
+          <motion.h1
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+            className="font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto"
+          >
+            {lang === "EN" ? (
+              <>
+                {t.heroTitle.split(" ")[0]}{" "}
+                <span className="gold-text">{t.heroTitle.split(" ")[1]}</span>{" "}
+                {t.heroTitle.split(" ")[2]}
+              </>
+            ) : (
+              <><span className="gold-text">अपनी चेतना</span> को जागृत करें</>
+            )}
           </motion.h1>
-          
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="text-gray-400 max-w-2xl mx-auto text-sm md:text-lg px-2">
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="text-gray-500 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed"
+          >
             {t.heroSub}
           </motion.p>
         </section>
 
         {/* Animated Gap Section */}
-        <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-80">
-          <div className="h-8 md:h-12 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 animate-pulse"></div>
-          <div className="border border-yellow-500/30 bg-yellow-500/5 px-6 py-2 rounded-full text-xs md:text-sm font-bold text-yellow-500 mt-2 tracking-widest uppercase text-center shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+        <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-75">
+          <div className="h-8 md:h-12 w-px bg-gradient-to-b from-amber-500/0 via-amber-500/40 to-amber-500/0 animate-pulse" />
+          <div className="border border-amber-500/[0.18] bg-amber-500/[0.04] px-6 py-2.5 rounded-full text-xs md:text-sm font-semibold text-amber-400/75 mt-2 tracking-widest uppercase text-center shadow-[0_0_20px_rgba(212,146,26,0.06)] backdrop-blur-sm">
             {t.journeyText}
           </div>
-          <div className="h-4 md:h-8 w-px bg-gradient-to-b from-yellow-500/0 via-yellow-500/50 to-yellow-500/0 mt-2"></div>
+          <div className="h-4 md:h-8 w-px bg-gradient-to-b from-amber-500/0 via-amber-500/40 to-amber-500/0 mt-2" />
         </section>
 
-        {/* Dynamic Book Library Grid */}
-        <section className="px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
-          <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="font-cinzel text-2xl md:text-4xl font-bold mb-10 md:mb-16 text-center">
-            {t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
+        {/* ─── Dynamic Book Library Grid ────────────────────────── */}
+        <section className="px-4 py-8 md:py-14 w-full max-w-7xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="font-cinzel text-2xl md:text-4xl font-bold mb-10 md:mb-16 text-center"
+          >
+            {t.premiumLib.split(" ")[0]}{" "}
+            <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
           </motion.h2>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {loading ? (
               [1, 2, 3].map((n) => (
-                <div key={n} className="bg-white/5 border border-white/10 rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse">
-                  <div className="w-full h-44 bg-white/10 rounded-2xl" />
-                  <div className="w-3/4 h-6 bg-white/10 rounded mt-2" />
-                  <div className="w-1/2 h-4 bg-white/10 rounded" />
-                  <div className="w-full h-12 bg-white/10 rounded-xl mt-auto" />
+                <div key={n} className="bg-white/[0.025] border border-white/[0.06] rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse">
+                  <div className="w-full h-44 bg-white/[0.06] rounded-2xl" />
+                  <div className="w-3/4 h-5 bg-white/[0.06] rounded-lg mt-2" />
+                  <div className="w-1/2 h-4 bg-white/[0.06] rounded-lg" />
+                  <div className="w-full h-11 bg-white/[0.06] rounded-xl mt-auto" />
                 </div>
               ))
             ) : (
               filteredBooks.map((book, i) => {
                 const isPurchased = purchasedBookIds.includes(book.id);
-                
+
                 const originalPrice = book.final_price;
                 const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
                 const displayPrice = originalPrice - pDiscount;
 
                 return (
-                  <motion.div 
+                  <motion.div
                     layout
-                    initial={{ opacity: 0, y: 40 }} 
-                    whileInView={{ opacity: 1, y: 0 }} 
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.5, delay: i * 0.1 }} 
-                    key={book.id} 
-                    onClick={() => openBookDetails(book)} 
-                    className="bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:bg-white/10 hover:border-yellow-500/30 hover:-translate-y-2 shadow-lg"
+                    transition={{ duration: 0.55, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    key={book.id}
+                    onClick={() => openBookDetails(book)}
+                    className="luminary-card bg-white/[0.025] border border-white/[0.065] rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:bg-white/[0.055] hover:border-amber-500/[0.22] hover:-translate-y-3 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
                   >
                     {book.discount > 0 && !isPurchased && !partnerData && (
                       <div className="absolute top-4 right-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
                         {book.discount}% OFF
                       </div>
                     )}
-                    {partnerData && !isPurchased && <div className="absolute top-4 right-4 bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/40 z-10 shadow-[0_0_10px_rgba(59,130,246,0.3)]">-{partnerData.discount_pct}% (Partner)</div>}
-                    
+                    {partnerData && !isPurchased && (
+                      <div className="absolute top-4 right-4 bg-blue-500/[0.15] text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/30 z-10 shadow-[0_0_14px_rgba(59,130,246,0.2)]">
+                        -{partnerData.discount_pct}% (Partner)
+                      </div>
+                    )}
+
                     <div className="w-full h-44 mb-6">
                       {book.cover_path ? (
                         <div className="w-full h-full relative overflow-hidden rounded-xl">
-                          <img 
-                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} 
+                          <img
+                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`}
                             alt={book.title}
-                            className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
+                            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                           />
                         </div>
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-xl border border-yellow-500/20">
-                          <BookOpen size={48} className="text-yellow-500 opacity-80" />
+                        <div className="w-full h-full bg-gradient-to-br from-amber-500/[0.08] to-amber-700/[0.04] flex items-center justify-center rounded-xl border border-amber-500/[0.15]">
+                          <BookOpen size={46} className="text-amber-500/60" />
                         </div>
                       )}
                     </div>
-                    
-                    <h3 className="font-cinzel text-xl font-bold mb-2 text-white leading-snug">{book.title}</h3>
-                    <p className="text-gray-400 text-sm mb-6">by {book.author}</p>
-                    
-                    <div className="mt-auto flex justify-between items-end border-t border-white/10 pt-5">
+
+                    <h3 className="font-cinzel text-xl font-bold mb-1.5 text-white/95 leading-snug">
+                      {book.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-6">by {book.author}</p>
+
+                    <div className="mt-auto flex justify-between items-end border-t border-white/[0.06] pt-5">
                       <div>
-                        {book.discount > 0 && !isPurchased && !partnerData && <div className="text-xs text-gray-500 line-through mb-1">₹{book.base_price}</div>}
-                        {partnerData && !isPurchased && <div className="text-xs text-gray-500 line-through mb-1">₹{originalPrice}</div>}
-                        <div className={`text-2xl font-black ${isPurchased ? "text-emerald-400" : "text-white"}`}>{isPurchased ? 'Owned' : `₹${displayPrice}`}</div>
+                        {book.discount > 0 && !isPurchased && !partnerData && (
+                          <div className="text-xs text-gray-600 line-through mb-1">₹{book.base_price}</div>
+                        )}
+                        {partnerData && !isPurchased && (
+                          <div className="text-xs text-gray-600 line-through mb-1">₹{originalPrice}</div>
+                        )}
+                        <div className={`text-2xl font-black ${isPurchased ? "text-emerald-400" : "text-white"}`}>
+                          {isPurchased ? 'Owned' : `₹${displayPrice}`}
+                        </div>
                       </div>
-                      
+
                       {isPurchased ? (
-                        <button onClick={(e) => { e.stopPropagation(); openWebReader(book); }} className="px-5 py-2.5 rounded-xl text-sm bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-2 font-bold hover:bg-emerald-500/25 transition">
-                          <CheckCircle2 size={16} /> {t.readNow}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openWebReader(book); }}
+                          className="px-5 py-2.5 rounded-xl text-sm bg-emerald-500/[0.1] text-emerald-400 border border-emerald-500/25 flex items-center gap-2 font-bold hover:bg-emerald-500/[0.18] transition"
+                        >
+                          <CheckCircle2 size={15} /> {t.readNow}
                         </button>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedBook(book); setShowCheckout(true); }} className="btn-gold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 font-bold">
-                          {t.buyNow} <ChevronRight size={16} />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedBook(book); setShowCheckout(true); }}
+                          className="btn-gold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5 font-bold"
+                        >
+                          {t.buyNow} <ChevronRight size={15} />
                         </button>
                       )}
                     </div>
@@ -935,74 +1255,91 @@ export default function VedoxaHome() {
           </div>
         </section>
 
-        <footer className="py-10 w-full flex flex-col items-center gap-6 border-t border-white/10 mt-auto bg-black/20">
-          <Link href="/brand" className="bg-white/5 border border-white/10 px-8 py-3 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 hover:text-yellow-500 hover:border-yellow-500/30 transition-all shadow-lg">
+        {/* Footer */}
+        <footer className="py-12 w-full flex flex-col items-center gap-6 border-t border-white/[0.06] mt-auto bg-black/25">
+          <Link
+            href="/brand"
+            className="bg-white/[0.04] border border-white/[0.08] px-8 py-3 rounded-full text-sm font-bold text-gray-400 hover:bg-white/[0.08] hover:text-amber-500 hover:border-amber-500/25 transition-all shadow-lg"
+          >
             About Us
           </Link>
-          
+
           <div className="flex justify-center gap-4 md:gap-8 flex-wrap px-4 mb-4">
-            <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10"><ShieldCheck size={16} className="text-yellow-500"/> {t.secure}</div>
-            <button onClick={() => user ? setIsSidebarOpen(true) : setShowAuthModal(true)} className="flex items-center gap-2 text-gray-400 text-xs md:text-sm font-semibold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition cursor-pointer"><Zap size={16} className="text-yellow-500"/> {t.instant}</button>
+            <div className="flex items-center gap-2 text-gray-500 text-xs md:text-sm font-semibold bg-white/[0.03] px-4 py-2 rounded-full border border-white/[0.07]">
+              <ShieldCheck size={15} className="text-amber-500"/> {t.secure}
+            </div>
+            <button
+              onClick={() => user ? setIsSidebarOpen(true) : setShowAuthModal(true)}
+              className="flex items-center gap-2 text-gray-500 text-xs md:text-sm font-semibold bg-white/[0.03] px-4 py-2 rounded-full border border-white/[0.07] hover:bg-white/[0.07] hover:text-gray-300 transition cursor-pointer"
+            >
+              <Zap size={15} className="text-amber-500"/> {t.instant}
+            </button>
           </div>
         </footer>
 
-        {/* Scrolling Line Loop at the very bottom */}
-        <div className="w-full bg-yellow-500/5 border-t border-yellow-500/20 overflow-hidden cursor-pointer py-1.5" onClick={() => window.location.reload()}>
-           <div className="animate-scroll text-[10px] text-yellow-500/60 tracking-[0.2em] uppercase font-black flex w-max">
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-              <span className="px-8">Vedoxa Library</span>
-           </div>
+        {/* Scrolling Line Loop */}
+        <div
+          className="w-full bg-amber-500/[0.03] border-t border-amber-500/[0.12] overflow-hidden cursor-pointer py-2"
+          onClick={() => window.location.reload()}
+        >
+          <div className="animate-scroll text-[10px] text-amber-500/40 tracking-[0.25em] uppercase font-black flex w-max">
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+            <span className="px-8">Vedoxa Library</span>
+          </div>
         </div>
 
         {/* PURE SVG TRUST LOGOS SECTION */}
-        <div className="w-full py-6 flex flex-col items-center bg-[#0a0a0d] border-b border-white/5">
-           <p className="text-gray-500 text-[10px] font-bold mb-4 tracking-widest uppercase">Trusted By & Verified Secure</p>
-           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 opacity-70 hover:opacity-100 transition-all duration-300">
-              
-              {/* Google Verified Pure SVG */}
-              <div className="flex items-center gap-2 font-bold text-white tracking-wide text-sm">
-                <svg viewBox="0 0 48 48" className="h-5 md:h-6 w-auto grayscale hover:grayscale-0 transition-all cursor-pointer">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                </svg>
-                Google Verified
-              </div>
+        <div className="w-full py-7 flex flex-col items-center bg-[#090914] border-b border-white/[0.04]">
+          <p className="text-gray-700 text-[10px] font-bold mb-5 tracking-widest uppercase">Trusted By & Verified Secure</p>
+          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 opacity-60 hover:opacity-90 transition-all duration-500">
 
-              {/* Razorpay Pure SVG Text + Icon */}
-              <div className="flex items-center gap-1 font-bold text-white tracking-wide text-sm">
-                <svg viewBox="0 0 100 24" className="h-4 md:h-5 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill="#fff"/>
-                  <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
-                  <text x="24" y="17" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
-                </svg>
-              </div>
-              
-              {/* Lucide Vector Icons */}
-              <div className="flex items-center gap-1.5 text-sm font-bold text-white"><ShieldCheck className="text-green-500" size={20}/> McAfee Secure</div>
-              <div className="flex items-center gap-1.5 text-sm font-bold text-white"><Lock className="text-yellow-500" size={20}/> SSL 256-bit</div>
-           </div>
+            {/* Google Verified Pure SVG */}
+            <div className="flex items-center gap-2 font-bold text-white/80 tracking-wide text-sm">
+              <svg viewBox="0 0 48 48" className="h-5 md:h-6 w-auto grayscale hover:grayscale-0 transition-all cursor-pointer">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              Google Verified
+            </div>
+
+            {/* Razorpay Pure SVG */}
+            <div className="flex items-center gap-1 font-bold text-white/80 tracking-wide text-sm">
+              <svg viewBox="0 0 100 24" className="h-4 md:h-5 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill="#fff"/>
+                <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
+                <text x="24" y="17" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
+              </svg>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-sm font-bold text-white/80">
+              <ShieldCheck className="text-green-500" size={19}/> McAfee Secure
+            </div>
+            <div className="flex items-center gap-1.5 text-sm font-bold text-white/80">
+              <Lock className="text-amber-500" size={19}/> SSL 256-bit
+            </div>
+          </div>
         </div>
 
         {/* Floating Share Button */}
         <div className="fixed bottom-12 right-8 z-[4000] flex flex-col gap-4 items-center">
-          <button 
+          <button
             onClick={handleShare}
-            className="w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 transition-all shadow-lg"
+            className="w-12 h-12 bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.14] hover:scale-110 hover:border-white/[0.2] transition-all duration-200 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
             title="Share Website"
           >
-            <Share2 size={20} />
+            <Share2 size={19} />
           </button>
         </div>
 
