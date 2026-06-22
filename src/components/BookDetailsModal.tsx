@@ -2,7 +2,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, UserCircle, Star, Eye, ThumbsUp, ThumbsDown } from "lucide-react";
+import { 
+  X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, 
+  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag 
+} from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
@@ -123,6 +126,25 @@ export default function BookDetailsModal({
     setIsUpdatingStat(false);
   };
 
+  // NEW DIRECT BOOK SHARE LOGIC
+  const handleShareBook = async () => {
+    // Generate direct link with the book ID
+    const shareUrl = `${window.location.origin}${window.location.pathname}?book=${selectedBook.id}`;
+    
+    const shareData = {
+      title: `${selectedBook.title} - Vedoxa`,
+      text: `Check out this amazing book: ${selectedBook.title} by ${selectedBook.author}`,
+      url: shareUrl,
+    };
+
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch (err) {}
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert("Book link copied to clipboard! 📋");
+    }
+  };
+
   return (
     <motion.div 
       key="book-details-modal"
@@ -134,26 +156,38 @@ export default function BookDetailsModal({
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       <div className="flex flex-col md:flex-row min-h-full w-full relative">
+          
+          {/* TOP LEFT ARROW (REPLACED CROSS) */}
           <motion.button 
              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
              onClick={() => setShowBookDetails(false)} 
-             className="fixed top-6 right-6 z-[850] p-3 bg-white/10 rounded-full text-white hover:bg-red-500/80 transition-colors shadow-lg"
+             className="fixed top-5 left-5 md:top-8 md:left-8 z-[850] p-2 md:p-2.5 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-lg flex items-center justify-center"
           >
-             <X size={24} />
+             <ArrowLeft size={20} className="md:w-6 md:h-6" />
+          </motion.button>
+
+          {/* TOP RIGHT SHARE BUTTON */}
+          <motion.button 
+             initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+             onClick={handleShareBook} 
+             className="fixed top-5 right-5 md:top-8 md:right-8 z-[850] p-2 md:p-2.5 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 hover:scale-105 transition-all shadow-lg flex items-center justify-center"
+             title="Share this book"
+          >
+             <Share2 size={18} className="md:w-5 md:h-5" />
           </motion.button>
 
           {/* Book Info Section */}
           <div className="w-full md:w-1/2 p-5 md:p-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
              
              {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-8 left-8 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-20 md:top-8 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap">
                  <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
                </motion.div>
              )}
 
              <motion.div 
                initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
-               className="w-full h-64 md:h-96 mb-6 mt-10 md:mt-0 relative"
+               className="w-full h-64 md:h-96 mb-6 mt-16 md:mt-0 relative"
              >
                <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
                
@@ -199,9 +233,29 @@ export default function BookDetailsModal({
 
              <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg text-center md:text-left">{selectedBook.title}</motion.h1>
              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md text-center md:text-left">by {selectedBook.author}</motion.p>
-             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-8 text-sm md:text-base text-center md:text-left">
+             
+             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-6 text-sm md:text-base text-center md:text-left">
                {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
              </motion.p>
+
+             {/* PAGES AND TAGS DETAILS UI ADDED HERE */}
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
+                {selectedBook.pages && (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
+                    <FileText size={14} className="text-yellow-500" /> {selectedBook.pages} Pages
+                  </div>
+                )}
+                {selectedBook.tags && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Tag size={14} className="text-yellow-500" />
+                    {(Array.isArray(selectedBook.tags) ? selectedBook.tags : selectedBook.tags.split(',')).map((tag, idx) => (
+                      <span key={idx} className="text-[10px] uppercase tracking-wider font-bold text-gray-300 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/10 hover:border-yellow-500/30 transition-colors">
+                        {tag.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+             </motion.div>
 
              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-col md:flex-row items-center gap-6 mt-auto">
                <div className="text-center md:text-left">
@@ -245,8 +299,14 @@ export default function BookDetailsModal({
                    placeholder={t.writeReview}
                    className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-yellow-500 resize-none h-20 mb-3 transition"
                  />
-                 <button onClick={handleSubmitReview} className="btn-gold px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ml-auto">
-                   {userExistingReview ? t.updateReview : t.submitReview}
+                 
+                 {/* SMALL PENCIL BUTTON REPLACED TEXT HERE */}
+                 <button 
+                   onClick={handleSubmitReview} 
+                   className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 ${userExistingReview ? 'p-2.5 rounded-full' : 'px-5 py-2 rounded-lg text-xs font-bold gap-2'}`}
+                   title={userExistingReview ? "Update Review" : "Submit Review"}
+                 >
+                   {userExistingReview ? <Edit3 size={16} /> : t.submitReview}
                  </button>
                </div>
              )}
@@ -279,4 +339,4 @@ export default function BookDetailsModal({
       </div>
     </motion.div>
   );
-               }
+}
