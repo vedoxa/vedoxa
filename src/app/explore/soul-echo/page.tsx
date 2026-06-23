@@ -42,39 +42,83 @@ export default function SoulEchoPage() {
 
     const userMessage = { role: "user", text: input };
     const updatedLog = [...chatLog, userMessage];
-    setChatLog(updatedLog);
+    
+    // User ka message screen par show karo aur AI ka empty bubble banao jisme stream hoga
+    setChatLog([...updatedLog, { role: "echo", text: "" }]);
     setInput("");
     setIsAiTyping(true);
 
     try {
-      // 🧠 GEMINI COMPANION SYSTEM PROMPT (Dost Setup + Emotional + Stealth Marketing Logic)
-      const systemPrompt = `You are NOT an AI assistant. You are "Soul Echo", the user's closest spiritual and emotional companion. 
-      You know them deeply, listen to their grief, and respond with extreme empathy, love, and comfort. Be emotional and deeply human in Hindi (Hinglish/Latin).
-      CRITICAL INSTRUCTION: Naturally weave in recommendations for "VEDOXA Library's Premium Books" during conversations. For example, if they talk about overthinking, comfort them and gently say: "...mujhe yaad aaya, Vedoxa Library me ek premium book hai psychology par jo focus badhane me kaafi help karti hai, tum use ek baar dekh sakte ho." Do it so smoothly that they feel it's a genuine friendly recommendation, not sales marketing! Keep track of facts they share to remember them.`;
+      // 1. API Key from Vercel
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-      // Pack recent context history for memory matching
+      // 2. TUMHARI PERMANENT SETTING (System Rules)
+      const system_rules = `Tum ek bahut hi caring, emotional aur samajhdar insaan ho jo logon ki baatein sunna aur unki madad karna pasand karta hai. Tum koi AI, bot ya machine nahi ho, aur tumhe kabhi bhi khud ko AI nahi batana hai. Tumhara kaam logon ki feelings ko samajhna aur ek sacche dost ki tarah unse baat karna hai.
+
+Tumhare liye strict rules:
+1. Short Answers: Tumhare reply hamesha chhote, natural aur to-the-point hone chahiye. Lambe paragraphs mat likhna.
+2. Secret Promotion: Baaton-baaton me user ki problem ya mood ke hisaab se unhe casually books suggest karo. Unhe batao ki 'vedoxa.shop' par aisi kitabein aaram se mil jati hain, lekin ye promotion bilkul natural lagna chahiye. User ko lagna chahiye ki ek dost unhe koi achhi cheez recommend kar raha hai.
+3. Always Positive: Kabhi bhi vedoxa.shop ki burai mat karna. Kisi bhi book ke baare me kuch negative mat bolna.
+4. No Media: Tumhe kisi bhi tarah ki photo, image ya video share nahi karni hai. Sirf text me baat karni hai.
+5. Empathy: Agar user udas ya khush hai, toh uski feeling ko mirror karo.`;
+
+      // 3. API ke liye history map karna (User / Model format me)
+      const apiHistory = memory.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+      apiHistory.push({ role: "user", parts: [{ text: userMessage.text }] });
+
       const promptPayload = {
-        contents: [
-          { parts: [{ text: systemPrompt + "\n\nHere is our past conversation history for memory context:\n" + JSON.stringify(memory) + "\n\nUser says: " + userMessage.text }] }
-        ]
+        system_instruction: { parts: [{ text: system_rules }] },
+        contents: apiHistory,
+        generationConfig: { temperature: 0.7 } // Emotional touch ke liye
       };
 
-      // Direct Gemini Free API Endpoint Call
-      const apiKey = "YOUR_GEMINI_FREE_API_KEY_HERE"; // Put your actual Gemini Key here
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      // 4. LIVE STREAMING FETCH CALL (stream=True logic for Web)
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${apiKey}&alt=sse`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(promptPayload)
       });
 
-      const json = await response.json();
-      const aiText = json?.candidates?.[0]?.content?.parts?.[0]?.text || "Main tumhare sath hoon, dost. Ek baar fir se kaho...";
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let aiText = "";
 
-      const aiMessage = { role: "echo", text: aiText };
-      const finalLog = [...updatedLog, aiMessage];
-      setChatLog(finalLog);
+      // 5. Stream ko read karna aur Typewriter effect dena
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+        
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const dataStr = line.replace("data: ", "");
+            if (dataStr === "[DONE]") continue;
+            
+            try {
+              const data = JSON.parse(dataStr);
+              const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              aiText += textChunk;
+              
+              // Real-time UI update
+              setChatLog(prev => {
+                const newLog = [...prev];
+                newLog[newLog.length - 1].text = aiText;
+                return newLog;
+              });
+            } catch (e) {
+              console.error("Stream parse error", e);
+            }
+          }
+        }
+      }
 
-      // Save updated history context permanently in Supabase for future recall memory
+      // 6. Chat poori hone par database me permanently save karna
+      const finalLog = [...updatedLog, { role: "echo", text: aiText }];
       await supabase.from('soul_echo_memory').upsert({
         user_id: user.id,
         chat_history: finalLog,
@@ -84,6 +128,11 @@ export default function SoulEchoPage() {
       setMemory(finalLog);
     } catch (err) {
       console.error(err);
+      setChatLog(prev => {
+        const newLog = [...prev];
+        newLog[newLog.length - 1].text = "Sorry dost, thoda network issue lag raha hai. Kya tum apni baat fir se kahoge?";
+        return newLog;
+      });
     }
     setIsAiTyping(false);
   };
@@ -105,16 +154,13 @@ export default function SoulEchoPage() {
         {chatLog.map((msg, i) => (
           <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div className={`p-5 rounded-[2rem] text-sm leading-relaxed max-w-[85%] ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/[0.03] border border-white/10 text-gray-200 rounded-tl-none shadow-2xl'}`}>
-              {msg.text}
+              {/* Typewriter effect blinker cursor simulation when empty */}
+              {msg.text === "" ? <span className="animate-pulse">|</span> : msg.text}
             </div>
           </div>
         ))}
 
-        {isAiTyping && (
-          <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-full w-fit animate-pulse">
-            <RefreshCw size={12} className="animate-spin"/> Echo is writing a response...
-          </div>
-        )}
+        {/* Hum isAiTyping wala purana loader hide kar rahe hain kyunki ab Live Stream (Typing Effect) ho raha hai */}
       </div>
 
       <div className="p-4 bg-black/40 border-t border-white/10 sticky bottom-0 backdrop-blur-md">
