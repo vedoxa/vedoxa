@@ -1,3 +1,4 @@
+```react
 // @ts-nocheck
 "use client";
 import { useState, useEffect, useCallback } from "react";
@@ -48,6 +49,9 @@ export default function VedoxaHome() {
   const [lang, setLang] = useState("EN");
   const t = dict[lang];
 
+  // THEME STATE
+  const [theme, setTheme] = useState("light");
+
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBook, setSelectedBook] = useState(null);
@@ -91,6 +95,33 @@ export default function VedoxaHome() {
   const [partnerData, setPartnerData] = useState(null);
 
   NProgress.configure({ showSpinner: false, speed: 400 });
+
+  // Theme Initialization
+  useEffect(() => {
+    const storedTheme = localStorage.getItem('vedoxa_theme');
+    if (storedTheme) {
+      setTheme(storedTheme);
+      document.documentElement.setAttribute('data-theme', storedTheme);
+    } else {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = prefersDark ? 'dark' : 'light';
+      setTheme(initialTheme);
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    }
+  }, []);
+
+  // Theme Toggle Handler
+  const toggleTheme = () => {
+    document.documentElement.classList.add('theme-transitioning');
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('vedoxa_theme', newTheme);
+    
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transitioning');
+    }, 300);
+  };
 
   useEffect(() => {
     const preventZoom = (e) => { e.preventDefault(); };
@@ -248,12 +279,10 @@ export default function VedoxaHome() {
     }
   };
 
-  // WRAPPER FUNCTION TO ADD FAKE HISTORY STATE FOR BACK BUTTON
   const openBookDetails = (book) => {
     setSelectedBook(book);
     fetchReviews(book.id);
     setShowBookDetails(true);
-    // Push fake state so mobile back button works correctly
     if (typeof window !== "undefined") {
       window.history.pushState({ modal: "book-details" }, "", window.location.pathname);
     }
@@ -310,7 +339,6 @@ export default function VedoxaHome() {
     }
   };
 
-  // FAVORITE TOGGLE LOGIC ADDED HERE
   const toggleFavorite = (e, bookId) => {
     e.stopPropagation();
     setFavorites(prev => {
@@ -514,6 +542,135 @@ export default function VedoxaHome() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
 
+        /* ==========================================================================
+           DUAL THEME ARCHITECTURE (Purely Additive Implementation)
+           ========================================================================== */
+        
+        /* Light Theme Variable Overrides */
+        html[data-theme='light'] {
+          --bg-root: #F8F9FA;
+          --bg-surface: #FFFFFF;
+          --bg-surface-2: #F3F4F6;
+          --text-primary: #111827;
+          --text-secondary: #374151;
+          --text-muted: #6B7280;
+          --border-soft: rgba(0, 0, 0, 0.08);
+          --border-hover: rgba(0, 0, 0, 0.15);
+          --bg-glass: rgba(0, 0, 0, 0.025);
+          --bg-glass-hover: rgba(0, 0, 0, 0.06);
+          --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.03);
+          --shadow-hover: 0 12px 30px rgba(0, 0, 0, 0.08);
+          --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Fluid Theme Switch State Manager */
+        .theme-transitioning * {
+          transition: all 0.3s ease !important;
+        }
+
+        /* Core Structural Class Overrides (No JSX modification required) */
+        html[data-theme='light'] body,
+        html[data-theme='light'] .page-root {
+          background-color: var(--bg-root) !important;
+          color: var(--text-primary) !important;
+        }
+
+        html[data-theme='light'] .bg-\[\#07070d\],
+        html[data-theme='light'] .bg-\[\#0c0c1a\],
+        html[data-theme='light'] .bg-\[\#0d0d1c\],
+        html[data-theme='light'] .bg-\[\#090914\] {
+          background-color: var(--bg-surface) !important;
+        }
+
+        html[data-theme='light'] .bg-black\/70,
+        html[data-theme='light'] .bg-black\/85,
+        html[data-theme='light'] .bg-black\/88,
+        html[data-theme='light'] .bg-black\/90 {
+          background-color: rgba(255, 255, 255, 0.8) !important;
+        }
+
+        /* Typographic Color Overrides */
+        html[data-theme='light'] [class*="text-white"] { color: var(--text-primary) !important; }
+        html[data-theme='light'] [class*="text-gray-2"],
+        html[data-theme='light'] [class*="text-gray-3"] { color: var(--text-secondary) !important; }
+        html[data-theme='light'] [class*="text-gray-4"],
+        html[data-theme='light'] [class*="text-gray-5"],
+        html[data-theme='light'] [class*="text-gray-6"],
+        html[data-theme='light'] [class*="text-gray-7"] { color: var(--text-muted) !important; }
+
+        /* Dynamic Glass & Border Overrides */
+        html[data-theme='light'] [class*="border-white"] { border-color: var(--border-soft) !important; }
+        html[data-theme='light'] [class*="border-white"]:hover { border-color: var(--border-hover) !important; }
+        
+        html[data-theme='light'] [class*="bg-white/"] { background-color: var(--bg-glass) !important; }
+        html[data-theme='light'] [class*="bg-white/"]:hover { background-color: var(--bg-glass-hover) !important; }
+
+        /* Elevation & Component Polish */
+        html[data-theme='light'] .shadow-\[0_40px_100px_rgba\(0\,0\,0\,0\.9\)\] {
+          box-shadow: var(--shadow-modal) !important;
+        }
+        html[data-theme='light'] .shadow-\[0_40px_100px_rgba\(0\,0\,0\,0\.9\)\,0_0_80px_rgba\(212\,146\,26\,0\.04\)\] {
+          box-shadow: var(--shadow-modal), 0 0 40px rgba(212,146,26,0.08) !important;
+        }
+
+        html[data-theme='light'] .luminary-card {
+          background-color: var(--bg-surface) !important;
+          border: 1px solid var(--border-soft) !important;
+          box-shadow: var(--shadow-card) !important;
+        }
+        html[data-theme='light'] .luminary-card:hover {
+          box-shadow: var(--shadow-hover) !important;
+          border-color: rgba(212,146,26,0.4) !important;
+        }
+        
+        html[data-theme='light'] nav.sticky {
+          background-color: rgba(255, 255, 255, 0.88) !important;
+          border-bottom: 1px solid var(--border-soft) !important;
+        }
+
+        /* Interactive Elements Adaptation */
+        html[data-theme='light'] input,
+        html[data-theme='light'] select,
+        html[data-theme='light'] textarea {
+          color: var(--text-primary) !important;
+          background-color: var(--bg-surface-2) !important;
+          border-color: var(--border-soft) !important;
+        }
+        html[data-theme='light'] input::placeholder {
+          color: var(--text-muted) !important;
+        }
+        html[data-theme='light'] input:focus, 
+        html[data-theme='light'] select:focus {
+          background-color: var(--bg-surface) !important;
+        }
+
+        /* SVG Preservation */
+        html[data-theme='light'] svg path[fill="#fff"],
+        html[data-theme='light'] svg text[fill="#fff"] {
+          fill: var(--text-primary) !important;
+        }
+
+        /* Refined Gold Gradient Contrast */
+        html[data-theme='light'] .gold-text {
+          background: linear-gradient(130deg, #925406 0%, #b8720e 22%, #d4921a 48%, #e8b84b 65%, #b8720e 82%, #925406 100%);
+          background-size: 200% 100%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          filter: drop-shadow(0 2px 12px rgba(212,146,26,0.12));
+        }
+
+        /* Soft Ambient Glows */
+        html[data-theme='light'] .hero-glow,
+        html[data-theme='light'] .hero-glow-2,
+        html[data-theme='light'] .hero-glow-3 {
+          mix-blend-mode: multiply;
+          opacity: 0.15 !important;
+        }
+
+        /* ==========================================================================
+           EXISTING CSS (Unmodified Base Dark Theme & Layouts)
+           ========================================================================== */
         html, body {
           touch-action: pan-y;
           -webkit-text-size-adjust: 100%;
@@ -734,14 +891,27 @@ export default function VedoxaHome() {
                   <span className="text-xl font-black text-white">{profile?.reward_points || 0}</span>
                 </Link>
 
-                <div className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center">
-                  <span className="text-gray-400 font-semibold text-sm">Language / भाषा</span>
-                  <button
-                    onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
-                    className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition"
-                  >
-                    {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
-                  </button>
+                <div className="flex flex-col gap-3">
+                  {/* PURELY ADDITIVE THEME TOGGLE — Placed Cohesively */}
+                  <div className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center">
+                    <span className="text-gray-400 font-semibold text-sm">Theme / रूप</span>
+                    <button
+                      onClick={toggleTheme}
+                      className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition"
+                    >
+                      {theme === "light" ? "Dark Mode" : "Light Mode"}
+                    </button>
+                  </div>
+
+                  <div className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center">
+                    <span className="text-gray-400 font-semibold text-sm">Language / भाषा</span>
+                    <button
+                      onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
+                      className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition"
+                    >
+                      {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
+                    </button>
+                  </div>
                 </div>
 
                 <Link href="/explore" className="bg-white/[0.03] border border-white/[0.07] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-white/[0.07] transition">
@@ -854,7 +1024,7 @@ export default function VedoxaHome() {
               >
                 <X size={17} />
               </button>
-              <h2 className="text-2xl font-extrabold text-white mb-6 text-center tracking-tight">
+              <h2 className="text-xl font-extrabold text-white mb-6 text-center tracking-tight">
                 {authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h2>
 
@@ -1386,3 +1556,5 @@ export default function VedoxaHome() {
     </>
   );
 }
+
+```
