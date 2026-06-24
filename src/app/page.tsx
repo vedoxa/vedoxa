@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Eye
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1077,7 +1077,7 @@ export default function VedoxaHome() {
 
           {/* VEDOXA LOGO ADDED HERE WITH GLOW AND LINK */}
           <Link href="/brand" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 bg-[#0c0c1a]">
+            <div className="w-8 h-8 md:w-10 h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 bg-[#0c0c1a]">
               <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
             </div>
             <span className="font-cinzel text-lg md:text-2xl font-black tracking-widest text-white">
@@ -1128,7 +1128,17 @@ export default function VedoxaHome() {
         </nav>
 
         {/* ─── Hero Section ─────────────────────────────────────── */}
-        <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
+        <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden min-h-[50vh]">
+          
+          {/* LIBRARY BACKGROUND IMAGE ADDED HERE */}
+          <div className="absolute inset-0 z-[-5] opacity-20 md:opacity-25 pointer-events-none">
+             <img 
+               src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=2000" 
+               alt="Library Background" 
+               className="w-full h-full object-cover [mask-image:linear-gradient(to_bottom,white_30%,transparent_100%)]" 
+             />
+          </div>
+
           {/* Multi-layer ambient glow — signature breathing effect */}
           <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.07] blur-[140px] rounded-full pointer-events-none -z-10 hero-glow" />
           <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none -z-10 hero-glow-2" />
@@ -1155,7 +1165,7 @@ export default function VedoxaHome() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.75, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="text-gray-500 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed"
+            className="text-gray-500 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed font-medium bg-black/30 md:bg-transparent rounded-xl md:rounded-none py-2"
           >
             {t.heroSub}
           </motion.p>
@@ -1212,18 +1222,19 @@ export default function VedoxaHome() {
                     onClick={() => openBookDetails(book)}
                     className="luminary-card bg-white/[0.025] border border-white/[0.065] rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:bg-white/[0.055] hover:border-amber-500/[0.22] hover:-translate-y-3 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
                   >
+                    {/* DISCOUNT BADGE POSITION CHANGED TO LEFT */}
                     {book.discount > 0 && !isPurchased && !partnerData && (
-                      <div className="absolute top-4 right-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
+                      <div className="absolute top-4 left-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
                         {book.discount}% OFF
                       </div>
                     )}
                     {partnerData && !isPurchased && (
-                      <div className="absolute top-4 right-4 bg-blue-500/[0.15] text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/30 z-10 shadow-[0_0_14px_rgba(59,130,246,0.2)]">
+                      <div className="absolute top-4 left-4 bg-blue-500/[0.15] text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/30 z-10 shadow-[0_0_14px_rgba(59,130,246,0.2)]">
                         -{partnerData.discount_pct}% (Partner)
                       </div>
                     )}
 
-                    <div className="w-full h-44 mb-6">
+                    <div className="w-full h-44 mb-3">
                       {book.cover_path ? (
                         <div className="w-full h-full relative overflow-hidden rounded-xl">
                           <img
@@ -1237,6 +1248,12 @@ export default function VedoxaHome() {
                           <BookOpen size={46} className="text-amber-500/60" />
                         </div>
                       )}
+                    </div>
+
+                    {/* EYE VIEW COUNT ADDED HERE */}
+                    <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium mb-3">
+                      <Eye size={14} className="text-amber-500/80" />
+                      <span>{1200 + (i * 345)} Views</span>
                     </div>
 
                     <h3 className="font-cinzel text-xl font-bold mb-1.5 text-white/95 leading-snug">
