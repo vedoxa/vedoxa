@@ -864,17 +864,18 @@ export default function VedoxaHome() {
         {/* ─── Hero Section ─────────────────────────────────────── */}
         <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
           
-          {/* NEW LIBRARY BACKGROUND IMAGE WITH THEME REACTIVE GLOW (20% VISIBLE) */}
+          {/* NEW LIBRARY BACKGROUND IMAGE - FIXED Z-INDEX & OPACITY */}
           <div 
-            className={`absolute inset-0 bg-cover bg-center pointer-events-none -z-20 transition-all duration-700 ease-in-out ${isDark ? 'opacity-20 brightness-125 saturate-150 mix-blend-screen' : 'opacity-20 brightness-95 mix-blend-multiply'}`}
+            className={`absolute inset-0 bg-cover bg-center pointer-events-none transition-all duration-700 ease-in-out z-[1] ${isDark ? 'opacity-20 brightness-125' : 'opacity-20'}`}
             style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop')" }}
           />
 
-          <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.07] blur-[140px] rounded-full pointer-events-none -z-10 hero-glow" />
-          <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none -z-10 hero-glow-2" />
-          <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.025] blur-[70px] rounded-full pointer-events-none -z-10 hero-glow-3" />
+          <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.07] blur-[140px] rounded-full pointer-events-none z-[1] hero-glow" />
+          <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none z-[1] hero-glow-2" />
+          <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.025] blur-[70px] rounded-full pointer-events-none z-[1] hero-glow-3" />
 
-          <motion.h1 initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto">
+          {/* TEXT CONTENT - ADDED relative z-10 SO IT STAYS ABOVE THE IMAGE */}
+          <motion.h1 initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto">
             {lang === "EN" ? (
               <>
                 {t.heroTitle.split(" ")[0]} <span className="gold-text">{t.heroTitle.split(" ")[1]}</span> {t.heroTitle.split(" ")[2]}
@@ -884,13 +885,13 @@ export default function VedoxaHome() {
             )}
           </motion.h1>
 
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.12, ease: [0.16, 1, 0.3, 1] }} className={`max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed ${isDark ? 'text-gray-500' : 'text-slate-600'}`}>
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.12, ease: [0.16, 1, 0.3, 1] }} className={`relative z-10 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed ${isDark ? 'text-gray-500' : 'text-slate-600'}`}>
             {t.heroSub}
           </motion.p>
         </section>
 
         {/* Animated Gap Section */}
-        <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-75">
+        <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-75 relative z-10">
           <div className="h-8 md:h-12 w-px bg-gradient-to-b from-amber-500/0 via-amber-500/40 to-amber-500/0 animate-pulse" />
           <div className={`border px-6 py-2.5 rounded-full text-xs md:text-sm font-semibold mt-2 tracking-widest uppercase text-center backdrop-blur-sm ${isDark ? 'border-amber-500/[0.18] bg-amber-500/[0.04] text-amber-400/75 shadow-[0_0_20px_rgba(212,146,26,0.06)]' : 'border-amber-500/30 bg-amber-50 text-amber-600 shadow-sm'}`}>
             {t.journeyText}
@@ -899,7 +900,7 @@ export default function VedoxaHome() {
         </section>
 
         {/* ─── Dynamic Book Library Grid ────────────────────────── */}
-        <section className="px-4 py-8 md:py-14 w-full max-w-7xl mx-auto">
+        <section className="px-4 py-8 md:py-14 w-full max-w-7xl mx-auto relative z-10">
           <motion.h2 initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="font-cinzel text-2xl md:text-4xl font-bold mb-10 md:mb-16 text-center">
             {t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
           </motion.h2>
@@ -992,7 +993,7 @@ export default function VedoxaHome() {
         </section>
 
         {/* Footer */}
-        <footer className={`py-12 w-full flex flex-col items-center gap-6 border-t mt-auto ${isDark ? 'bg-black/25 border-white/[0.06]' : 'bg-slate-50 border-slate-200'}`}>
+        <footer className={`py-12 w-full flex flex-col items-center gap-6 border-t mt-auto relative z-10 ${isDark ? 'bg-black/25 border-white/[0.06]' : 'bg-slate-50 border-slate-200'}`}>
           <Link href="/brand" className={`border px-8 py-3 rounded-full text-sm font-bold transition-all shadow-sm ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-amber-500 hover:border-amber-500/25' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-amber-600 hover:border-amber-500/30'}`}>
             About Us
           </Link>
@@ -1008,14 +1009,14 @@ export default function VedoxaHome() {
         </footer>
 
         {/* Scrolling Line Loop */}
-        <div className="w-full bg-amber-500/[0.03] border-t border-amber-500/[0.12] overflow-hidden cursor-pointer py-2" onClick={() => window.location.reload()}>
+        <div className="w-full bg-amber-500/[0.03] border-t border-amber-500/[0.12] overflow-hidden cursor-pointer py-2 relative z-10" onClick={() => window.location.reload()}>
           <div className={`animate-scroll text-[10px] tracking-[0.25em] uppercase font-black flex w-max ${isDark ? 'text-amber-500/40' : 'text-amber-500/60'}`}>
             <span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span>
           </div>
         </div>
 
         {/* PURE SVG TRUST LOGOS SECTION */}
-        <div className={`w-full py-7 flex flex-col items-center border-b ${isDark ? 'bg-[#090914] border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
+        <div className={`w-full py-7 flex flex-col items-center border-b relative z-10 ${isDark ? 'bg-[#090914] border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
           <p className={`text-[10px] font-bold mb-5 tracking-widest uppercase ${isDark ? 'text-gray-700' : 'text-slate-500'}`}>Trusted By & Verified Secure</p>
           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 opacity-70 hover:opacity-100 transition-all duration-500">
             <div className={`flex items-center gap-2 font-bold tracking-wide text-sm ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
