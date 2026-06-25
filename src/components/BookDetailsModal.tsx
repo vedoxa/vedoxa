@@ -321,7 +321,7 @@ export default function BookDetailsModal({
                       <div className="flex justify-between items-start mb-2">
                          <div className="font-bold text-white text-sm flex items-center gap-2">
                            <UserCircle size={16} className="text-gray-400"/>
-                           {review.profiles?.name || "Vedoxa Reader"}
+                           {review.fake_author_name || review.profiles?.name || "Vedoxa Reader"}
                          </div>
                       </div>
                       <div className="flex text-yellow-500 mb-2 gap-0.5"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
