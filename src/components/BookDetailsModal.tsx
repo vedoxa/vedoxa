@@ -36,6 +36,9 @@ export default function BookDetailsModal({
   const [stats, setStats] = useState({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
   const [userInteraction, setUserInteraction] = useState(null); // 'like', 'dislike', or null
   const [isUpdatingStat, setIsUpdatingStat] = useState(false);
+  
+  // NEW: State for limiting visible reviews to speed up loading
+  const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
 
   useEffect(() => {
     // 1. Increment View Count
@@ -283,9 +286,15 @@ export default function BookDetailsModal({
           >
              <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500/5 blur-[100px] pointer-events-none" />
              
+             {/* HEADER MEIN REVIEW COUNT ADD KIYA GAYA HAI */}
              <div className="flex items-center gap-3 mb-8 relative z-10">
                <MessageSquare className="text-yellow-500" />
-               <h2 className="text-2xl font-bold text-white">{t.reviews}</h2>
+               <h2 className="text-2xl font-bold text-white">
+                 {t.reviews} 
+                 {!loadingReviews && reviews.length > 0 && (
+                   <span className="text-sm text-gray-400 font-normal ml-2">({reviews.length})</span>
+                 )}
+               </h2>
              </div>
 
              {purchasedBookIds.includes(selectedBook.id) && (
@@ -300,7 +309,6 @@ export default function BookDetailsModal({
                    className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-yellow-500 resize-none h-20 mb-3 transition"
                  />
                  
-                 {/* SMALL PENCIL BUTTON REPLACED TEXT HERE */}
                  <button 
                    onClick={handleSubmitReview} 
                    className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 ${userExistingReview ? 'p-2.5 rounded-full' : 'px-5 py-2 rounded-lg text-xs font-bold gap-2'}`}
@@ -311,23 +319,37 @@ export default function BookDetailsModal({
                </div>
              )}
 
-             <div className="flex flex-col gap-3 relative z-10">
+             <div className="flex flex-col gap-3 relative z-10 pb-10">
                {loadingReviews ? (
                   <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
                ) : reviews.length > 0 ? (
-                  reviews.map(review => (
-                    <div key={review.id} className="bg-white/5 border border-white/5 p-4 rounded-xl relative hover:bg-white/10 transition duration-300">
-                      {review.user_id === user?.id && <div className="absolute top-3 right-3 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
-                      <div className="flex justify-between items-start mb-2">
-                         <div className="font-bold text-white text-sm flex items-center gap-2">
-                           <UserCircle size={16} className="text-gray-400"/>
-                           {review.fake_author_name || review.profiles?.name || "Vedoxa Reader"}
-                         </div>
+                  <>
+                    {/* YAHAN PAR SLICE LAGA KAR SIRF VISIBLE COMMENTS DIKHAYE HAIN */}
+                    {reviews.slice(0, visibleReviewsCount).map(review => (
+                      <div key={review.id} className="bg-white/5 border border-white/5 p-4 rounded-xl relative hover:bg-white/10 transition duration-300">
+                        {review.user_id === user?.id && <div className="absolute top-3 right-3 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
+                        <div className="flex justify-between items-start mb-2">
+                           {/* NAAM KA SIZE TEXT-SM SE TEXT-BASE KAR DIYA HAI */}
+                           <div className="font-bold text-white text-base flex items-center gap-2">
+                             <UserCircle size={18} className="text-gray-400"/>
+                             {review.fake_author_name || review.profiles?.name || "Vedoxa Reader"}
+                           </div>
+                        </div>
+                        <div className="flex text-yellow-500 mb-2 gap-0.5"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
+                        <p className="text-gray-300 text-xs leading-relaxed">{review.review_text}</p>
                       </div>
-                      <div className="flex text-yellow-500 mb-2 gap-0.5"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
-                      <p className="text-gray-300 text-xs leading-relaxed">{review.review_text}</p>
-                    </div>
-                  ))
+                    ))}
+                    
+                    {/* LOAD MORE BUTTON ADD KIYA HAI */}
+                    {reviews.length > visibleReviewsCount && (
+                      <button 
+                        onClick={() => setVisibleReviewsCount(prev => prev + 4)}
+                        className="mt-4 py-2.5 w-full bg-white/5 hover:bg-white/10 text-yellow-500 text-sm font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                      >
+                        More comments...
+                      </button>
+                    )}
+                  </>
                ) : (
                   <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
                      <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
