@@ -863,6 +863,13 @@ export default function VedoxaHome() {
 
         {/* ─── Hero Section ─────────────────────────────────────── */}
         <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
+          
+          {/* NEW LIBRARY BACKGROUND IMAGE WITH THEME REACTIVE GLOW (20% VISIBLE) */}
+          <div 
+            className={`absolute inset-0 bg-cover bg-center pointer-events-none -z-20 transition-all duration-700 ease-in-out ${isDark ? 'opacity-20 brightness-125 saturate-150 mix-blend-screen' : 'opacity-20 brightness-95 mix-blend-multiply'}`}
+            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop')" }}
+          />
+
           <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.07] blur-[140px] rounded-full pointer-events-none -z-10 hero-glow" />
           <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none -z-10 hero-glow-2" />
           <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.025] blur-[70px] rounded-full pointer-events-none -z-10 hero-glow-3" />
