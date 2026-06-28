@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, 
-  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag 
+  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag, ChevronRight 
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,7 +26,8 @@ export default function BookDetailsModal({
   handleSubmitReview,
   setShowBookDetails,
   openWebReader,
-  setShowCheckout
+  setShowCheckout,
+  suggestedBooks = [] // NEW: Passing suggested books as a prop
 }) {
   const originalPrice = selectedBook.final_price;
   const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
@@ -40,10 +41,21 @@ export default function BookDetailsModal({
   // State for limiting visible reviews
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
 
-  // NEW: Advanced States
-  const [userRating, setUserRating] = useState(5); // User's input star rating
-  const [helpfulVotes, setHelpfulVotes] = useState({}); // Stores Yes/No clicks for reviews
-  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); // Fullscreen Photo State
+  // Advanced States
+  const [userRating, setUserRating] = useState(5);
+  const [helpfulVotes, setHelpfulVotes] = useState({});
+  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false);
+
+  // Fallback Suggested Books Demo Array (If backend is not yet connected)
+  const defaultSuggestions = [
+    { id: 101, title: "The Psychology of Money", author: "Morgan Housel", price: 299, rating: 4.8 },
+    { id: 102, title: "Atomic Habits", author: "James Clear", price: 349, rating: 4.9 },
+    { id: 103, title: "Rich Dad Poor Dad", author: "Robert Kiyosaki", price: 249, rating: 4.7 },
+    { id: 104, title: "Deep Work", author: "Cal Newport", price: 199, rating: 4.6 },
+    { id: 105, title: "Think and Grow Rich", author: "Napoleon Hill", price: 149, rating: 4.5 },
+  ];
+  
+  const booksToShow = suggestedBooks.length > 0 ? suggestedBooks : defaultSuggestions;
 
   useEffect(() => {
     incrementView();
@@ -148,7 +160,7 @@ export default function BookDetailsModal({
   let totalStars = 0;
   
   reviews.forEach(r => {
-    const rStar = r.rating || 5; // Fallback to 5 if db doesn't have rating yet
+    const rStar = r.rating || 5; 
     ratingStats[rStar] = (ratingStats[rStar] || 0) + 1;
     totalStars += rStar;
   });
@@ -185,11 +197,11 @@ export default function BookDetailsModal({
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed inset-0 z-[800] bg-[#0a0a0d]"
       >
-        {/* FIXED TOP BUTTONS (Inhe bahar rakha hai taaki scroll karne par gayab na hon) */}
+        {/* FIXED TOP BUTTONS (Ab ye strictly fixed hain, scroll nahi honge) */}
         <motion.button 
             initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
             onClick={() => setShowBookDetails(false)} 
-            className="absolute top-5 left-5 md:top-8 md:left-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-lg flex items-center justify-center"
+            className="fixed top-5 left-5 md:top-8 md:left-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-lg flex items-center justify-center"
         >
             <ArrowLeft size={20} className="md:w-6 md:h-6" />
         </motion.button>
@@ -197,7 +209,7 @@ export default function BookDetailsModal({
         <motion.button 
             initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
             onClick={handleShareBook} 
-            className="absolute top-5 right-5 md:top-8 md:right-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 hover:scale-105 transition-all shadow-lg flex items-center justify-center"
+            className="fixed top-5 right-5 md:top-8 md:right-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 hover:scale-105 transition-all shadow-lg flex items-center justify-center"
             title="Share this book"
         >
             <Share2 size={18} className="md:w-5 md:h-5" />
@@ -205,10 +217,12 @@ export default function BookDetailsModal({
 
         {/* SCROLLING CONTAINER */}
         <div className="w-full h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          
+          {/* Main Book Content Section */}
           <div className="flex flex-col md:flex-row min-h-full w-full relative">
               
               {/* Book Info Section */}
-              <div className="w-full md:w-1/2 p-5 pt-20 md:p-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
+              <div className="w-full md:w-1/2 p-5 pt-20 md:p-16 flex flex-col justify-center relative shrink-0 pb-16 md:pb-16 border-b md:border-b-0 md:border-r border-white/10">
                 
                 {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-20 md:top-8 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap mt-4 md:mt-0">
@@ -290,8 +304,8 @@ export default function BookDetailsModal({
                     )}
                 </motion.div>
 
-                {/* PRICE ADJUSTED TO SIDE PERFECTLY */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-row items-center justify-between gap-4">
+                {/* PRICE AND BUY NOW (ADDED EXTRA MARGIN-BOTTOM to increase distance from reviews in mobile) */}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto mb-10 md:mb-0 bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-row items-center justify-between gap-4">
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold text-gray-400 mb-1">Total Price</span>
                     <div className="flex items-center gap-3">
@@ -377,10 +391,7 @@ export default function BookDetailsModal({
                     />
                     
                     <button 
-                      onClick={() => {
-                        // Agar parent ko rating pass karni ho toh parent me update kar lena, filhal UI ready hai.
-                        handleSubmitReview();
-                      }} 
+                      onClick={() => handleSubmitReview()} 
                       className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 px-6 py-2.5 rounded-lg text-sm font-bold gap-2`}
                     >
                       {userExistingReview ? <><Edit3 size={16} /> Update</> : "Post"}
@@ -397,7 +408,6 @@ export default function BookDetailsModal({
                           <div key={review.id} className="bg-transparent border-b border-white/5 pb-5 relative transition duration-300">
                             {review.user_id === user?.id && <div className="absolute top-0 right-0 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
                             
-                            {/* Increased Gap for Name */}
                             <div className="flex justify-between items-start mb-4">
                               <div className="font-bold text-white text-base flex items-center gap-3">
                                 <UserCircle size={32} className="text-gray-400 bg-white/5 rounded-full p-1"/>
@@ -405,17 +415,14 @@ export default function BookDetailsModal({
                               </div>
                             </div>
                             
-                            {/* Dynamic Star Rating Display with Gap */}
                             <div className="flex text-yellow-500 mb-3 gap-0.5">
                               {[...Array(5)].map((_, i) => (
                                 <Star key={i} size={14} fill={i < (review.rating || 5) ? "currentColor" : "none"} className={i < (review.rating || 5) ? "" : "text-gray-600"}/>
                               ))}
                             </div>
                             
-                            {/* Review Text */}
                             <p className="text-gray-300 text-sm leading-relaxed mb-4">{review.review_text}</p>
 
-                            {/* "Was this review helpful?" Section */}
                             <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
                               <span>Was this review helpful?</span>
                               <button 
@@ -452,6 +459,56 @@ export default function BookDetailsModal({
                 </div>
               </motion.div>
           </div>
+
+          {/* NEW: SUGGESTED / SIMILAR BOOKS SECTION (Amazon/Flipkart Style) */}
+          <div className="w-full bg-[#050508] p-5 md:p-16 border-t border-white/10 relative z-20 overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+             
+             <div className="flex items-center justify-between mb-8">
+               <h3 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
+                  <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
+                  Similar Books You Might Like
+               </h3>
+               <button className="text-yellow-500 text-sm font-bold flex items-center gap-1 hover:text-yellow-400 transition">
+                  View All <ChevronRight size={16} />
+               </button>
+             </div>
+
+             {/* Horizontal Scrollable Book List */}
+             <div 
+               className="flex gap-4 md:gap-6 overflow-x-auto pb-6 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+             >
+                {booksToShow.map((book, idx) => (
+                  <div 
+                    key={idx} 
+                    className="snap-start shrink-0 w-36 md:w-48 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/10 hover:border-yellow-500/50 hover:shadow-[0_0_20px_rgba(234,179,8,0.1)] transition-all cursor-pointer group flex flex-col"
+                  >
+                     <div className="w-full h-48 md:h-64 bg-black/50 rounded-xl mb-4 overflow-hidden relative border border-white/5 group-hover:border-yellow-500/30 transition-colors">
+                        {book.cover_path ? (
+                          <img src={book.cover_path} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-white/5 to-transparent text-gray-600">
+                             <BookOpen size={32} className="mb-2 opacity-50" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1 text-[10px] text-yellow-500 font-bold border border-white/10">
+                           <Star size={10} fill="currentColor" /> {book.rating || "4.5"}
+                        </div>
+                     </div>
+                     <h4 className="text-white font-bold text-sm leading-tight line-clamp-1 group-hover:text-yellow-500 transition-colors mb-1">{book.title}</h4>
+                     <p className="text-gray-400 text-[11px] line-clamp-1 mb-3">{book.author}</p>
+                     
+                     <div className="mt-auto flex items-center justify-between">
+                        <span className="text-white font-black text-sm md:text-base">₹{book.price}</span>
+                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-yellow-500 group-hover:text-black transition-colors">
+                           <ChevronRight size={14} />
+                        </div>
+                     </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+          
         </div>
       </motion.div>
     </>
