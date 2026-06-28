@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon, Info
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,14 @@ import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 // IMPORTING THE SEPARATED COMPONENT
 import BookDetailsModal from "../components/BookDetailsModal";
+
+// ==========================================
+// VERCEL API ENDPOINTS (Placeholder Variables)
+// Tumhe in values ko Vercel Environment variables me dalna hai.
+// ==========================================
+const API_FREE_BOOKS = process.env.NEXT_PUBLIC_GUTENDEX_API_URL || ""; 
+const API_WIKIPEDIA = process.env.NEXT_PUBLIC_WIKIPEDIA_API_URL || "";
+const API_ZENQUOTES = process.env.NEXT_PUBLIC_ZENQUOTES_API_URL || "";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
@@ -31,8 +39,8 @@ function loadRazorpayScript() {
 }
 
 const dict = {
-  EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Pay Now", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!", journeyText: "True knowledge begins when you look within. Start your journey today." },
-  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "Pay Now", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!", journeyText: "सच्चा ज्ञान तब शुरू होता है जब आप अपने भीतर झांकते हैं। आज ही अपनी यात्रा शुरू करें।" }
+  EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Pay Now", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!" },
+  HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "Pay Now", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
 };
 
 const AVATARS = [
@@ -57,6 +65,15 @@ export default function VedoxaHome() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // NEW STATES FOR API TABS & DYNAMIC CONTENT
+  const [activeTab, setActiveTab] = useState("all"); // 'all', 'premium', 'free', 'articles', 'quotes'
+  const [apiBooks, setApiBooks] = useState([
+    { id: 'api-1', title: 'The Art of War (Classic)', author: 'Sun Tzu', base_price: 0, final_price: 0, discount: 0, cover_path: null, isApi: true },
+    { id: 'api-2', title: 'Meditations (Wisdom)', author: 'Marcus Aurelius', base_price: 0, final_price: 0, discount: 0, cover_path: null, isApi: true },
+    { id: 'api-3', title: 'Beyond Good & Evil', author: 'Friedrich Nietzsche', base_price: 0, final_price: 0, discount: 0, cover_path: null, isApi: true }
+  ]); // Mock API books structure that will load from your Vercel API
+  const [mixedDailyBooks, setMixedDailyBooks] = useState([]);
 
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -136,6 +153,17 @@ export default function VedoxaHome() {
       subscription.unsubscribe();
     };
   }, [showBookDetails]);
+
+  // DAILY MIX LOGIC: API books + 2-3 Random Premium Books
+  useEffect(() => {
+    if (books.length > 0) {
+      // Pick 2-3 random premium books from Supabase DB
+      const randomCount = Math.floor(Math.random() * 2) + 2; // 2 or 3
+      const shuffledPremium = [...books].sort(() => 0.5 - Math.random()).slice(0, randomCount);
+      // Mix them with API Free books and shuffle the final list
+      setMixedDailyBooks([...shuffledPremium, ...apiBooks].sort(() => 0.5 - Math.random()));
+    }
+  }, [books, apiBooks]);
 
   useEffect(() => {
     if (showBookDetails || showCheckout || showAuthModal || showReader || isSidebarOpen) {
@@ -400,10 +428,25 @@ export default function VedoxaHome() {
     else { navigator.clipboard.writeText(urlToShare); addToast("Website link copied to clipboard! 📋", "success"); }
   };
 
-  const filteredBooks = books.filter(b => {
+  // ADVANCED FILTER LOGIC BASED ON ACTIVE TAB
+  const getDisplayBooks = () => {
+    let list = [];
+    if (activeTab === "premium") list = books; // Only user uploaded paid books
+    else if (activeTab === "free") list = apiBooks; // Only free api books
+    else if (activeTab === "articles" || activeTab === "quotes") list = []; // Keep empty or show specific components when these tabs are clicked
+    else if (activeTab === "all") list = mixedDailyBooks.length > 0 ? mixedDailyBooks : books; // Mixed dynamic feed
+    
     const query = searchQuery.toLowerCase();
-    return ( b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query) || (b.tags && b.tags.some(tag => tag.toLowerCase().includes(query))) );
-  });
+    if (!query) return list;
+    
+    return list.filter(b => 
+      b.title.toLowerCase().includes(query) || 
+      b.author.toLowerCase().includes(query) || 
+      (b.tags && b.tags.some(tag => tag.toLowerCase().includes(query)))
+    );
+  };
+
+  const finalFilteredBooks = getDisplayBooks();
 
   return (
     <>
@@ -485,6 +528,9 @@ export default function VedoxaHome() {
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
           opacity: 0.022; pointer-events: none; z-index: 9999; mix-blend-mode: overlay;
         }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         ::-webkit-scrollbar { width: 3px; background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.22); border-radius: 99px; }
@@ -569,7 +615,6 @@ export default function VedoxaHome() {
                   </button>
                 </div>
 
-                {/* THEME TOGGLE ADDED HERE */}
                 <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Theme / थीम</span>
                   <button onClick={toggleTheme} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition flex items-center gap-2">
@@ -655,7 +700,6 @@ export default function VedoxaHome() {
             setShowBookDetails={closeBookDetails} 
             openWebReader={openWebReader}
             setShowCheckout={setShowCheckout}
-            // Passing theme properties so you can handle styles inside the component
             theme={theme}
             isDark={isDark}
           />
@@ -862,9 +906,8 @@ export default function VedoxaHome() {
         </nav>
 
         {/* ─── Hero Section ─────────────────────────────────────── */}
-        <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
+        <section className="relative px-4 pt-12 pb-6 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
           
-          {/* NEW LIBRARY BACKGROUND IMAGE - FIXED Z-INDEX & OPACITY */}
           <div 
             className={`absolute inset-0 bg-cover bg-center pointer-events-none transition-all duration-700 ease-in-out z-[1] ${isDark ? 'opacity-20 brightness-125' : 'opacity-20'}`}
             style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop')" }}
@@ -874,7 +917,6 @@ export default function VedoxaHome() {
           <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none z-[1] hero-glow-2" />
           <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.025] blur-[70px] rounded-full pointer-events-none z-[1] hero-glow-3" />
 
-          {/* TEXT CONTENT - ADDED relative z-10 SO IT STAYS ABOVE THE IMAGE */}
           <motion.h1 initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto">
             {lang === "EN" ? (
               <>
@@ -890,106 +932,134 @@ export default function VedoxaHome() {
           </motion.p>
         </section>
 
-        {/* Animated Gap Section */}
-        <section className="w-full max-w-4xl mx-auto px-4 py-2 md:py-4 flex flex-col items-center opacity-75 relative z-10">
-          <div className="h-8 md:h-12 w-px bg-gradient-to-b from-amber-500/0 via-amber-500/40 to-amber-500/0 animate-pulse" />
-          <div className={`border px-6 py-2.5 rounded-full text-xs md:text-sm font-semibold mt-2 tracking-widest uppercase text-center backdrop-blur-sm ${isDark ? 'border-amber-500/[0.18] bg-amber-500/[0.04] text-amber-400/75 shadow-[0_0_20px_rgba(212,146,26,0.06)]' : 'border-amber-500/30 bg-amber-50 text-amber-600 shadow-sm'}`}>
-            {t.journeyText}
+        {/* ─── API TAB NAVIGATION ROW ────────────────────────── */}
+        <div className="w-full max-w-7xl mx-auto px-4 relative z-10 mt-4 md:mt-8">
+          <div className="flex overflow-x-auto gap-3 md:gap-4 pb-4 mb-2 w-full justify-start lg:justify-center hide-scrollbar">
+            <button onClick={() => setActiveTab("all")} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'all' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <Globe size={15} className="inline mr-1.5"/> Explore All
+            </button>
+            <button onClick={() => setActiveTab("premium")} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'premium' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <Lock size={15} className="inline mr-1.5"/> Premium Library 💎
+            </button>
+            <button onClick={() => setActiveTab("free")} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'free' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <BookOpen size={15} className="inline mr-1.5"/> Free Classics API
+            </button>
+            <button onClick={() => { addToast("Wiki API page will be integrated here!", "info"); setActiveTab("articles"); }} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'articles' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <Search size={15} className="inline mr-1.5"/> Articles API
+            </button>
+            <button onClick={() => { addToast("Daily Quote will be shown from API!", "info"); setActiveTab("quotes"); }} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'quotes' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <Sun size={15} className="inline mr-1.5"/> Daily Quote API
+            </button>
           </div>
-          <div className="h-4 md:h-8 w-px bg-gradient-to-b from-amber-500/0 via-amber-500/40 to-amber-500/0 mt-2" />
-        </section>
+        </div>
 
-        {/* ─── Dynamic Book Library Grid ────────────────────────── */}
-        <section className="px-4 py-8 md:py-14 w-full max-w-7xl mx-auto relative z-10">
-          <motion.h2 initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="font-cinzel text-2xl md:text-4xl font-bold mb-10 md:mb-16 text-center">
-            {t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
+        {/* ─── Dynamic Book Library Grid (2 Books on Mobile) ─── */}
+        <section className="px-3 py-6 md:px-4 md:py-10 w-full max-w-7xl mx-auto relative z-10">
+          <motion.h2 initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="font-cinzel text-2xl md:text-4xl font-bold mb-8 md:mb-12 text-center">
+            {activeTab === 'premium' ? <>{t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span></> : 
+             activeTab === 'free' ? <>Free <span className="gold-text">Classics</span></> :
+             activeTab === 'articles' ? <>Wiki <span className="gold-text">Articles</span></> :
+             activeTab === 'quotes' ? <>Daily <span className="gold-text">Wisdom</span></> :
+             <>Explore <span className="gold-text">Library</span></>}
           </motion.h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {loading ? (
-              [1, 2, 3].map((n) => (
-                <div key={n} className={`border rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
-                  <div className={`w-full h-44 rounded-2xl ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
-                  <div className={`w-3/4 h-5 rounded-lg mt-2 ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
-                  <div className={`w-1/2 h-4 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
-                  <div className={`w-full h-11 rounded-xl mt-auto ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
-                </div>
-              ))
-            ) : (
-              filteredBooks.map((book, i) => {
-                const isPurchased = purchasedBookIds.includes(book.id);
-                const originalPrice = book.final_price;
-                const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
-                const displayPrice = originalPrice - pDiscount;
+          {activeTab === 'articles' || activeTab === 'quotes' ? (
+            <div className="flex flex-col items-center justify-center py-20 opacity-50">
+              <Info size={40} className="text-amber-500 mb-4" />
+              <p className="font-bold">Yeh features API ke through doosre page par khulengi</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8">
+              {loading ? (
+                [1, 2, 3, 4].map((n) => (
+                  <div key={n} className={`border rounded-2xl md:rounded-3xl p-3 md:p-6 h-[260px] md:h-[380px] flex flex-col gap-3 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
+                    <div className={`w-full h-28 md:h-44 rounded-xl ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                    <div className={`w-3/4 h-4 rounded-lg mt-1 ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                    <div className={`w-1/2 h-3 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                    <div className={`w-full h-9 md:h-11 rounded-xl mt-auto ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                  </div>
+                ))
+              ) : (
+                finalFilteredBooks.map((book, i) => {
+                  const isPurchased = purchasedBookIds.includes(book.id);
+                  const originalPrice = book.final_price || 0;
+                  const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
+                  const displayPrice = originalPrice - pDiscount;
 
-                return (
-                  <motion.div
-                    layout initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.55, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                    key={book.id} onClick={() => openBookDetails(book)}
-                    className={`luminary-card border rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:-translate-y-3 ${isDark ? 'bg-white/[0.025] border-white/[0.065] hover:bg-white/[0.055] hover:border-amber-500/[0.22] shadow-[0_4px_24px_rgba(0,0,0,0.4)]' : 'bg-white border-slate-200 shadow-md hover:shadow-2xl hover:border-amber-500/40'}`}
-                  >
-                    {book.discount > 0 && !isPurchased && !partnerData && (
-                      <div className="absolute top-4 right-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
-                        {book.discount}% OFF
-                      </div>
-                    )}
-                    {partnerData && !isPurchased && (
-                      <div className="absolute top-4 right-4 bg-blue-500/[0.15] text-blue-400 px-3 py-1 rounded-lg text-xs font-black border border-blue-500/30 z-10 shadow-[0_0_14px_rgba(59,130,246,0.2)]">
-                        -{partnerData.discount_pct}% (Partner)
-                      </div>
-                    )}
-
-                    <div className="w-full h-44 mb-6">
-                      {book.cover_path ? (
-                        <div className="w-full h-full relative overflow-hidden rounded-xl">
-                          <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} alt={book.title} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-amber-500/[0.08] to-amber-700/[0.04] flex items-center justify-center rounded-xl border border-amber-500/[0.15]">
-                          <BookOpen size={46} className="text-amber-500/60" />
+                  return (
+                    <motion.div
+                      layout initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.55, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                      key={book.id} onClick={() => openBookDetails(book)}
+                      className={`luminary-card border rounded-2xl md:rounded-3xl p-3 md:p-6 relative flex flex-col group cursor-pointer fast-anim hover:-translate-y-3 ${isDark ? 'bg-white/[0.025] border-white/[0.065] hover:bg-white/[0.055] hover:border-amber-500/[0.22] shadow-[0_4px_24px_rgba(0,0,0,0.4)]' : 'bg-white border-slate-200 shadow-md hover:shadow-2xl hover:border-amber-500/40'}`}
+                    >
+                      {book.discount > 0 && !isPurchased && !partnerData && !book.isApi && (
+                        <div className="absolute top-2 right-2 md:top-4 md:right-4 discount-badge px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs z-10">
+                          {book.discount}% OFF
                         </div>
                       )}
-                    </div>
-
-                    <h3 className={`font-cinzel text-xl font-bold mb-1.5 leading-snug ${isDark ? 'text-white/95' : 'text-slate-900'}`}>
-                      {book.title}
-                    </h3>
-                    
-                    <div className="flex justify-between items-center mb-6">
-                      <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>by {book.author}</p>
-                      <button onClick={(e) => toggleFavorite(e, book.id)} className="focus:outline-none hover:scale-110 transition-transform" title="Add to Favorites">
-                        <Heart size={18} className={`transition-colors duration-300 ${favorites.includes(book.id) ? 'text-red-500 fill-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]' : (isDark ? 'text-gray-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500')}`} />
-                      </button>
-                    </div>
-
-                    <div className={`mt-auto flex justify-between items-end border-t pt-5 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-                      <div>
-                        {book.discount > 0 && !isPurchased && !partnerData && (
-                          <div className={`text-xs line-through mb-1 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>₹{book.base_price}</div>
-                        )}
-                        {partnerData && !isPurchased && (
-                          <div className={`text-xs line-through mb-1 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>₹{originalPrice}</div>
-                        )}
-                        <div className={`text-2xl font-black ${isPurchased ? (isDark ? "text-emerald-400" : "text-emerald-600") : (isDark ? "text-white" : "text-slate-900")}`}>
-                          {isPurchased ? 'Owned' : `₹${displayPrice}`}
+                      {partnerData && !isPurchased && !book.isApi && (
+                        <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-blue-500/[0.15] text-blue-400 px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs font-black border border-blue-500/30 z-10 shadow-[0_0_14px_rgba(59,130,246,0.2)]">
+                          -{partnerData.discount_pct}%
                         </div>
+                      )}
+                      {book.isApi && (
+                        <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-emerald-500/[0.15] text-emerald-400 px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs font-black border border-emerald-500/30 z-10">
+                          FREE API
+                        </div>
+                      )}
+
+                      <div className="w-full h-28 md:h-44 mb-3 md:mb-6">
+                        {book.cover_path ? (
+                          <div className="w-full h-full relative overflow-hidden rounded-xl">
+                            <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} alt={book.title} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                          </div>
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-amber-500/[0.08] to-amber-700/[0.04] flex items-center justify-center rounded-xl border border-amber-500/[0.15]">
+                            <BookOpen size={30} className="text-amber-500/60 md:w-[46px] md:h-[46px]" />
+                          </div>
+                        )}
                       </div>
 
-                      {isPurchased ? (
-                        <button onClick={(e) => { e.stopPropagation(); openWebReader(book); }} className="px-5 py-2.5 rounded-xl text-sm bg-emerald-500/[0.1] text-emerald-500 border border-emerald-500/25 flex items-center gap-2 font-bold hover:bg-emerald-500/[0.18] transition">
-                          <CheckCircle2 size={15} /> {t.readNow}
+                      <h3 className={`font-cinzel text-[13px] md:text-xl font-bold mb-1 md:mb-1.5 leading-tight line-clamp-2 ${isDark ? 'text-white/95' : 'text-slate-900'}`}>
+                        {book.title}
+                      </h3>
+                      
+                      <div className="flex justify-between items-center mb-3 md:mb-6">
+                        <p className={`text-[10px] md:text-sm truncate pr-2 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>by {book.author}</p>
+                        <button onClick={(e) => toggleFavorite(e, book.id)} className="focus:outline-none hover:scale-110 transition-transform shrink-0" title="Add to Favorites">
+                          <Heart size={16} className={`transition-colors duration-300 md:w-[18px] md:h-[18px] ${favorites.includes(book.id) ? 'text-red-500 fill-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]' : (isDark ? 'text-gray-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500')}`} />
                         </button>
-                      ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedBook(book); setShowCheckout(true); }} className="btn-gold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5 font-bold">
-                          {t.buyNow} <ChevronRight size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })
-            )}
-          </div>
+                      </div>
+
+                      <div className={`mt-auto flex flex-col md:flex-row justify-between items-start md:items-end border-t pt-3 md:pt-5 gap-2 md:gap-0 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                        <div>
+                          {book.discount > 0 && !isPurchased && !partnerData && !book.isApi && (
+                            <div className={`text-[10px] md:text-xs line-through mb-0.5 md:mb-1 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>₹{book.base_price}</div>
+                          )}
+                          {partnerData && !isPurchased && !book.isApi && (
+                            <div className={`text-[10px] md:text-xs line-through mb-0.5 md:mb-1 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>₹{originalPrice}</div>
+                          )}
+                          <div className={`text-base md:text-2xl font-black ${isPurchased || book.isApi ? (isDark ? "text-emerald-400" : "text-emerald-600") : (isDark ? "text-white" : "text-slate-900")}`}>
+                            {isPurchased ? 'Owned' : (book.isApi || displayPrice === 0 ? 'FREE' : `₹${displayPrice}`)}
+                          </div>
+                        </div>
+
+                        {isPurchased || book.isApi ? (
+                          <button onClick={(e) => { e.stopPropagation(); openWebReader(book); }} className="w-full md:w-auto px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[11px] md:text-sm bg-emerald-500/[0.1] text-emerald-500 border border-emerald-500/25 flex justify-center items-center gap-1.5 md:gap-2 font-bold hover:bg-emerald-500/[0.18] transition">
+                            <CheckCircle2 size={14} /> {t.readNow}
+                          </button>
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setSelectedBook(book); setShowCheckout(true); }} className="btn-gold w-full md:w-auto px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[11px] md:text-sm flex justify-center items-center gap-1 md:gap-1.5 font-bold">
+                            {t.buyNow} <ChevronRight size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </section>
 
         {/* Footer */}
