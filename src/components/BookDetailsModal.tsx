@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, 
-  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag, ChevronRight 
+  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag 
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,8 +26,7 @@ export default function BookDetailsModal({
   handleSubmitReview,
   setShowBookDetails,
   openWebReader,
-  setShowCheckout,
-  suggestedBooks = [] // NEW: Passing suggested books as a prop
+  setShowCheckout
 }) {
   const originalPrice = selectedBook.final_price;
   const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
@@ -42,24 +41,15 @@ export default function BookDetailsModal({
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
 
   // Advanced States
-  const [userRating, setUserRating] = useState(5);
-  const [helpfulVotes, setHelpfulVotes] = useState({});
-  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false);
-
-  // Fallback Suggested Books Demo Array (If backend is not yet connected)
-  const defaultSuggestions = [
-    { id: 101, title: "The Psychology of Money", author: "Morgan Housel", price: 299, rating: 4.8 },
-    { id: 102, title: "Atomic Habits", author: "James Clear", price: 349, rating: 4.9 },
-    { id: 103, title: "Rich Dad Poor Dad", author: "Robert Kiyosaki", price: 249, rating: 4.7 },
-    { id: 104, title: "Deep Work", author: "Cal Newport", price: 199, rating: 4.6 },
-    { id: 105, title: "Think and Grow Rich", author: "Napoleon Hill", price: 149, rating: 4.5 },
-  ];
-  
-  const booksToShow = suggestedBooks.length > 0 ? suggestedBooks : defaultSuggestions;
+  const [userRating, setUserRating] = useState(5); // User's input star rating
+  const [helpfulVotes, setHelpfulVotes] = useState({}); // Stores Yes/No clicks for reviews
+  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); // Fullscreen Photo State
+  const [suggestedBooks, setSuggestedBooks] = useState([]); // Suggested Books State
 
   useEffect(() => {
     incrementView();
     if (user) fetchUserInteraction();
+    fetchSuggestedBooks();
   }, [selectedBook.id, user]);
 
   const incrementView = async () => {
@@ -81,6 +71,19 @@ export default function BookDetailsModal({
       .eq('user_id', user.id).single();
     
     if (data) setUserInteraction(data.interaction_type);
+  };
+
+  const fetchSuggestedBooks = async () => {
+    try {
+      const { data } = await supabase
+        .from('books')
+        .select('*')
+        .neq('id', selectedBook.id)
+        .limit(10);
+      if (data) setSuggestedBooks(data);
+    } catch (error) {
+      console.error("Failed to fetch suggestions", error);
+    }
   };
 
   const handleInteraction = async (type) => {
@@ -160,7 +163,7 @@ export default function BookDetailsModal({
   let totalStars = 0;
   
   reviews.forEach(r => {
-    const rStar = r.rating || 5; 
+    const rStar = r.rating || 5; // Fallback to 5 if db doesn't have rating yet
     ratingStats[rStar] = (ratingStats[rStar] || 0) + 1;
     totalStars += rStar;
   });
@@ -197,318 +200,314 @@ export default function BookDetailsModal({
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed inset-0 z-[800] bg-[#0a0a0d]"
       >
-        {/* FIXED TOP BUTTONS (Ab ye strictly fixed hain, scroll nahi honge) */}
-        <motion.button 
-            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-            onClick={() => setShowBookDetails(false)} 
-            className="fixed top-5 left-5 md:top-8 md:left-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-lg flex items-center justify-center"
-        >
-            <ArrowLeft size={20} className="md:w-6 md:h-6" />
-        </motion.button>
-
-        <motion.button 
-            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-            onClick={handleShareBook} 
-            className="fixed top-5 right-5 md:top-8 md:right-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 hover:scale-105 transition-all shadow-lg flex items-center justify-center"
-            title="Share this book"
-        >
-            <Share2 size={18} className="md:w-5 md:h-5" />
-        </motion.button>
-
         {/* SCROLLING CONTAINER */}
         <div className="w-full h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           
-          {/* Main Book Content Section */}
-          <div className="flex flex-col md:flex-row min-h-full w-full relative">
-              
-              {/* Book Info Section */}
-              <div className="w-full md:w-1/2 p-5 pt-20 md:p-16 flex flex-col justify-center relative shrink-0 pb-16 md:pb-16 border-b md:border-b-0 md:border-r border-white/10">
-                
-                {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-20 md:top-8 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap mt-4 md:mt-0">
-                    <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
-                  </motion.div>
-                )}
+          {/* Main Wrapper set to relative so absolute buttons scroll with the page */}
+          <div className="relative min-h-full flex flex-col">
 
-                <motion.div 
-                  initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
-                  className="w-full h-64 md:h-96 mb-6 mt-16 md:mt-0 relative cursor-pointer"
-                  onClick={() => setIsPhotoFullScreen(true)}
-                  title="Click to view full screen"
-                >
-                  <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
+            {/* SCROLLING TOP BUTTONS - Now they will scroll up instead of staying fixed on screen */}
+            <motion.button 
+                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+                onClick={() => setShowBookDetails(false)} 
+                className="absolute top-5 left-5 md:top-8 md:left-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-lg flex items-center justify-center"
+            >
+                <ArrowLeft size={20} className="md:w-6 md:h-6" />
+            </motion.button>
+
+            <motion.button 
+                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+                onClick={handleShareBook} 
+                className="absolute top-5 right-5 md:top-8 md:right-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 hover:scale-105 transition-all shadow-lg flex items-center justify-center"
+                title="Share this book"
+            >
+                <Share2 size={18} className="md:w-5 md:h-5" />
+            </motion.button>
+
+            <div className="flex flex-col md:flex-row w-full relative flex-1">
+                
+                {/* Book Info Section - Removed excess top/bottom empty space and added separation from reviews */}
+                <div className="w-full md:w-1/2 p-5 pt-20 md:p-16 pb-12 md:pb-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
                   
+                  {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-20 md:top-8 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap mt-4 md:mt-0">
+                      <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
+                    </motion.div>
+                  )}
+
+                  {/* Cover Image - Reduced mt-16 to mt-4 to prevent excessive empty space at top */}
                   <motion.div 
-                    animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-full h-full relative z-10 shadow-2xl rounded-3xl"
+                    initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
+                    className="w-full h-64 md:h-96 mb-6 mt-4 md:mt-0 relative cursor-pointer"
+                    onClick={() => setIsPhotoFullScreen(true)}
+                    title="Click to view full screen"
                   >
-                  {selectedBook.cover_path ? (
-                    <div className="w-full h-full relative overflow-hidden rounded-3xl">
-                      <img 
-                        src={`${supabaseUrl}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
-                        alt={selectedBook.title}
-                        className="w-full h-full object-contain transition-transform duration-300 hover:scale-105 drop-shadow-[0_0_15px_rgba(234,179,8,0.2)]"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-3xl border border-yellow-500/20">
-                      <BookOpen size={64} className="text-yellow-500 opacity-80" />
-                    </div>
-                  )}
-                  </motion.div>
-                </motion.div>
-
-                {/* MODERN SOCIAL STATS BAR */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-400 font-bold bg-white/5 w-fit mx-auto px-6 py-2.5 rounded-full border border-white/10 shadow-inner">
-                    <div className="flex items-center gap-2 text-blue-400">
-                      <Eye size={18} /> {stats.views} Views
-                    </div>
-                    <div className="w-px h-4 bg-white/20"></div>
-                    <button 
-                      onClick={() => handleInteraction('like')} 
-                      className={`flex items-center gap-2 transition ${userInteraction === 'like' ? 'text-yellow-500' : 'hover:text-white'}`}
+                    <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
+                    
+                    <motion.div 
+                      animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      className="w-full h-full relative z-10 shadow-2xl rounded-3xl"
                     >
-                      <ThumbsUp size={18} className={userInteraction === 'like' ? 'fill-current' : ''} /> {stats.likes}
-                    </button>
-                    <button 
-                      onClick={() => handleInteraction('dislike')} 
-                      className={`flex items-center gap-2 transition ${userInteraction === 'dislike' ? 'text-red-500' : 'hover:text-white'}`}
-                    >
-                      <ThumbsDown size={18} className={userInteraction === 'dislike' ? 'fill-current' : ''} />
-                    </button>
-                </motion.div>
-
-                <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg text-center md:text-left">{selectedBook.title}</motion.h1>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md text-center md:text-left">by {selectedBook.author}</motion.p>
-                
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-6 text-sm md:text-base text-center md:text-left">
-                  {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
-                </motion.p>
-
-                {/* PAGES AND TAGS */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8">
-                    {selectedBook.pages && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
-                        <FileText size={14} className="text-yellow-500" /> {selectedBook.pages} Pages
+                    {selectedBook.cover_path ? (
+                      <div className="w-full h-full relative overflow-hidden rounded-3xl">
+                        <img 
+                          src={`${supabaseUrl}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
+                          alt={selectedBook.title}
+                          className="w-full h-full object-contain transition-transform duration-300 hover:scale-105 drop-shadow-[0_0_15px_rgba(234,179,8,0.2)]"
+                        />
                       </div>
-                    )}
-                    {selectedBook.tags && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Tag size={14} className="text-yellow-500" />
-                        {(Array.isArray(selectedBook.tags) ? selectedBook.tags : selectedBook.tags.split(',')).map((tag, idx) => (
-                          <span key={idx} className="text-[10px] uppercase tracking-wider font-bold text-gray-300 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/10 hover:border-yellow-500/30 transition-colors">
-                            {tag.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                </motion.div>
-
-                {/* PRICE AND BUY NOW (ADDED EXTRA MARGIN-BOTTOM to increase distance from reviews in mobile) */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto mb-10 md:mb-0 bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-row items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-400 mb-1">Total Price</span>
-                    <div className="flex items-center gap-3">
-                      {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-                        <span className="text-base text-gray-500 line-through">₹{originalPrice}</span>
-                      )}
-                      <span className="text-4xl font-black text-white">₹{displayPrice}</span>
-                    </div>
-                  </div>
-                  
-                  {purchasedBookIds.includes(selectedBook.id) ? (
-                      <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-2 font-bold hover:bg-emerald-500/25 transition shadow-lg w-auto">
-                        <CheckCircle2 size={20} /> {t.readNow}
-                      </button>
                     ) : (
-                      <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-auto">
-                        <Lock size={18}/> Pay Now
-                      </button>
-                  )}
-                </motion.div>
-              </div>
-
-              {/* Reviews Section - Play Store Style */}
-              <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
-                className="w-full md:w-1/2 p-5 md:p-16 bg-[#0a0a0d] relative overflow-hidden shrink-0 flex flex-col"
-              >
-                <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500/5 blur-[100px] pointer-events-none" />
-                
-                <div className="flex flex-col mb-8 relative z-10">
-                  <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                    <MessageSquare className="text-yellow-500" /> Ratings and reviews
-                  </h2>
-
-                  {/* Play Store Style Rating Overview */}
-                  <div className="flex items-center gap-6">
-                    <div className="flex flex-col items-center justify-center">
-                      <h1 className="text-6xl font-black text-white leading-none">{avgRating}</h1>
-                      <div className="flex text-yellow-500 my-2 gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={14} fill={i < Math.round(avgRating) ? "currentColor" : "none"} className={i < Math.round(avgRating) ? "" : "text-gray-600"} />
-                        ))}
+                      <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-3xl border border-yellow-500/20">
+                        <BookOpen size={64} className="text-yellow-500 opacity-80" />
                       </div>
-                      <span className="text-xs text-gray-400">{totalReviewsCount.toLocaleString()} reviews</span>
-                    </div>
+                    )}
+                    </motion.div>
+                  </motion.div>
 
-                    <div className="flex-1 flex flex-col gap-1.5 border-l border-white/10 pl-6">
-                      {[5, 4, 3, 2, 1].map(star => {
-                        const percentage = totalReviewsCount > 0 ? (ratingStats[star] / totalReviewsCount) * 100 : 0;
-                        return (
-                          <div key={star} className="flex items-center gap-3 text-xs text-gray-400 font-bold">
-                            <span className="w-2">{star}</span>
-                            <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                              <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${percentage}%` }}></div>
-                            </div>
-                          </div>
-                        )
-                      })}
+                  {/* MODERN SOCIAL STATS BAR */}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-400 font-bold bg-white/5 w-fit mx-auto px-6 py-2.5 rounded-full border border-white/10 shadow-inner">
+                      <div className="flex items-center gap-2 text-blue-400">
+                        <Eye size={18} /> {stats.views} Views
+                      </div>
+                      <div className="w-px h-4 bg-white/20"></div>
+                      <button 
+                        onClick={() => handleInteraction('like')} 
+                        className={`flex items-center gap-2 transition ${userInteraction === 'like' ? 'text-yellow-500' : 'hover:text-white'}`}
+                      >
+                        <ThumbsUp size={18} className={userInteraction === 'like' ? 'fill-current' : ''} /> {stats.likes}
+                      </button>
+                      <button 
+                        onClick={() => handleInteraction('dislike')} 
+                        className={`flex items-center gap-2 transition ${userInteraction === 'dislike' ? 'text-red-500' : 'hover:text-white'}`}
+                      >
+                        <ThumbsDown size={18} className={userInteraction === 'dislike' ? 'fill-current' : ''} />
+                      </button>
+                  </motion.div>
+
+                  <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg text-center md:text-left">{selectedBook.title}</motion.h1>
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md text-center md:text-left">by {selectedBook.author}</motion.p>
+                  
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-6 text-sm md:text-base text-center md:text-left">
+                    {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
+                  </motion.p>
+
+                  {/* PAGES AND TAGS */}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-10">
+                      {selectedBook.pages && (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
+                          <FileText size={14} className="text-yellow-500" /> {selectedBook.pages} Pages
+                        </div>
+                      )}
+                      {selectedBook.tags && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Tag size={14} className="text-yellow-500" />
+                          {(Array.isArray(selectedBook.tags) ? selectedBook.tags : selectedBook.tags.split(',')).map((tag, idx) => (
+                            <span key={idx} className="text-[10px] uppercase tracking-wider font-bold text-gray-300 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/10 hover:border-yellow-500/30 transition-colors">
+                              {tag.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                  </motion.div>
+
+                  {/* PRICE ADJUSTED - Extra margin bottom created implicitly by parent pb-12 for clear separation on mobile */}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-row items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-400 mb-1">Total Price</span>
+                      <div className="flex items-center gap-3">
+                        {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
+                          <span className="text-base text-gray-500 line-through">₹{originalPrice}</span>
+                        )}
+                        <span className="text-4xl font-black text-white">₹{displayPrice}</span>
+                      </div>
                     </div>
-                  </div>
+                    
+                    {purchasedBookIds.includes(selectedBook.id) ? (
+                        <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-2 font-bold hover:bg-emerald-500/25 transition shadow-lg w-auto">
+                          <CheckCircle2 size={20} /> {t.readNow}
+                        </button>
+                      ) : (
+                        <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-auto">
+                          <Lock size={18}/> Pay Now
+                        </button>
+                    )}
+                  </motion.div>
                 </div>
 
-                {purchasedBookIds.includes(selectedBook.id) && (
-                  <div className="bg-white/5 border border-white/10 p-5 rounded-xl mb-8 relative z-10 shadow-lg">
-                    <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                      <CheckCircle2 size={18} className="text-emerald-400"/> {userExistingReview ? "Update your review" : "Rate this book"}
-                    </h3>
-                    
-                    {/* User Dynamic Star Rating Input */}
-                    <div className="flex items-center gap-2 mb-4">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button key={star} onClick={() => setUserRating(star)} className="focus:outline-none transition-transform hover:scale-110">
-                          <Star size={24} fill={star <= userRating ? "#EAB308" : "none"} className={star <= userRating ? "text-yellow-500" : "text-gray-600"} />
-                        </button>
-                      ))}
-                    </div>
+                {/* Reviews Section - Play Store Style */}
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
+                  className="w-full md:w-1/2 p-5 pt-12 md:p-16 bg-[#0a0a0d] relative overflow-hidden shrink-0 flex flex-col"
+                >
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500/5 blur-[100px] pointer-events-none" />
+                  
+                  <div className="flex flex-col mb-8 relative z-10">
+                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                      <MessageSquare className="text-yellow-500" /> Ratings and reviews
+                    </h2>
 
-                    <textarea 
-                      value={newReviewText}
-                      onChange={(e) => setNewReviewText(e.target.value)}
-                      placeholder="Describe your experience (optional)"
-                      className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-yellow-500 resize-none h-24 mb-4 transition"
-                    />
-                    
-                    <button 
-                      onClick={() => handleSubmitReview()} 
-                      className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 px-6 py-2.5 rounded-lg text-sm font-bold gap-2`}
-                    >
-                      {userExistingReview ? <><Edit3 size={16} /> Update</> : "Post"}
-                    </button>
-                  </div>
-                )}
+                    {/* Play Store Style Rating Overview */}
+                    <div className="flex items-center gap-6">
+                      <div className="flex flex-col items-center justify-center">
+                        <h1 className="text-6xl font-black text-white leading-none">{avgRating}</h1>
+                        <div className="flex text-yellow-500 my-2 gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} size={14} fill={i < Math.round(avgRating) ? "currentColor" : "none"} className={i < Math.round(avgRating) ? "" : "text-gray-600"} />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400">{totalReviewsCount.toLocaleString()} reviews</span>
+                      </div>
 
-                <div className="flex flex-col gap-5 relative z-10 pb-10">
-                  {loadingReviews ? (
-                      <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
-                  ) : reviews.length > 0 ? (
-                      <>
-                        {reviews.slice(0, visibleReviewsCount).map(review => (
-                          <div key={review.id} className="bg-transparent border-b border-white/5 pb-5 relative transition duration-300">
-                            {review.user_id === user?.id && <div className="absolute top-0 right-0 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
-                            
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="font-bold text-white text-base flex items-center gap-3">
-                                <UserCircle size={32} className="text-gray-400 bg-white/5 rounded-full p-1"/>
-                                {review.fake_author_name || review.profiles?.name || "Vedoxa Reader"}
+                      <div className="flex-1 flex flex-col gap-1.5 border-l border-white/10 pl-6">
+                        {[5, 4, 3, 2, 1].map(star => {
+                          const percentage = totalReviewsCount > 0 ? (ratingStats[star] / totalReviewsCount) * 100 : 0;
+                          return (
+                            <div key={star} className="flex items-center gap-3 text-xs text-gray-400 font-bold">
+                              <span className="w-2">{star}</span>
+                              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${percentage}%` }}></div>
                               </div>
                             </div>
-                            
-                            <div className="flex text-yellow-500 mb-3 gap-0.5">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} size={14} fill={i < (review.rating || 5) ? "currentColor" : "none"} className={i < (review.rating || 5) ? "" : "text-gray-600"}/>
-                              ))}
-                            </div>
-                            
-                            <p className="text-gray-300 text-sm leading-relaxed mb-4">{review.review_text}</p>
-
-                            <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
-                              <span>Was this review helpful?</span>
-                              <button 
-                                onClick={() => setHelpfulVotes(prev => ({...prev, [review.id]: 'yes'}))}
-                                className={`px-4 py-1.5 rounded-full border transition-all ${helpfulVotes[review.id] === 'yes' ? 'bg-white/20 border-white/50 text-white' : 'border-white/10 hover:bg-white/10 hover:text-white'}`}
-                              >
-                                Yes
-                              </button>
-                              <button 
-                                onClick={() => setHelpfulVotes(prev => ({...prev, [review.id]: 'no'}))}
-                                className={`px-4 py-1.5 rounded-full border transition-all ${helpfulVotes[review.id] === 'no' ? 'bg-white/20 border-white/50 text-white' : 'border-white/10 hover:bg-white/10 hover:text-white'}`}
-                              >
-                                No
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        {reviews.length > visibleReviewsCount && (
-                          <button 
-                            onClick={() => setVisibleReviewsCount(prev => prev + 4)}
-                            className="mt-2 py-3 w-full bg-white/5 hover:bg-white/10 text-yellow-500 text-sm font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
-                          >
-                            See all reviews
-                          </button>
-                        )}
-                      </>
-                  ) : (
-                      <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
-                        <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                        <p>{t.noReviews}</p>
+                          )
+                        })}
                       </div>
+                    </div>
+                  </div>
+
+                  {purchasedBookIds.includes(selectedBook.id) && (
+                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl mb-8 relative z-10 shadow-lg">
+                      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                        <CheckCircle2 size={18} className="text-emerald-400"/> {userExistingReview ? "Update your review" : "Rate this book"}
+                      </h3>
+                      
+                      {/* User Dynamic Star Rating Input */}
+                      <div className="flex items-center gap-2 mb-4">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button key={star} onClick={() => setUserRating(star)} className="focus:outline-none transition-transform hover:scale-110">
+                            <Star size={24} fill={star <= userRating ? "#EAB308" : "none"} className={star <= userRating ? "text-yellow-500" : "text-gray-600"} />
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea 
+                        value={newReviewText}
+                        onChange={(e) => setNewReviewText(e.target.value)}
+                        placeholder="Describe your experience (optional)"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-yellow-500 resize-none h-24 mb-4 transition"
+                      />
+                      
+                      <button 
+                        onClick={() => {
+                          handleSubmitReview();
+                        }} 
+                        className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 px-6 py-2.5 rounded-lg text-sm font-bold gap-2`}
+                      >
+                        {userExistingReview ? <><Edit3 size={16} /> Update</> : "Post"}
+                      </button>
+                    </div>
                   )}
-                </div>
-              </motion.div>
-          </div>
 
-          {/* NEW: SUGGESTED / SIMILAR BOOKS SECTION (Amazon/Flipkart Style) */}
-          <div className="w-full bg-[#050508] p-5 md:p-16 border-t border-white/10 relative z-20 overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-             
-             <div className="flex items-center justify-between mb-8">
-               <h3 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
-                  <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
-                  Similar Books You Might Like
-               </h3>
-               <button className="text-yellow-500 text-sm font-bold flex items-center gap-1 hover:text-yellow-400 transition">
-                  View All <ChevronRight size={16} />
-               </button>
-             </div>
+                  <div className="flex flex-col gap-5 relative z-10 pb-10">
+                    {loadingReviews ? (
+                        <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
+                    ) : reviews.length > 0 ? (
+                        <>
+                          {reviews.slice(0, visibleReviewsCount).map(review => (
+                            <div key={review.id} className="bg-transparent border-b border-white/5 pb-5 relative transition duration-300">
+                              {review.user_id === user?.id && <div className="absolute top-0 right-0 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
+                              
+                              <div className="flex justify-between items-start mb-4">
+                                <div className="font-bold text-white text-base flex items-center gap-3">
+                                  <UserCircle size={32} className="text-gray-400 bg-white/5 rounded-full p-1"/>
+                                  {review.fake_author_name || review.profiles?.name || "Vedoxa Reader"}
+                                </div>
+                              </div>
+                              
+                              <div className="flex text-yellow-500 mb-3 gap-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} size={14} fill={i < (review.rating || 5) ? "currentColor" : "none"} className={i < (review.rating || 5) ? "" : "text-gray-600"}/>
+                                ))}
+                              </div>
+                              
+                              <p className="text-gray-300 text-sm leading-relaxed mb-4">{review.review_text}</p>
 
-             {/* Horizontal Scrollable Book List */}
-             <div 
-               className="flex gap-4 md:gap-6 overflow-x-auto pb-6 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-             >
-                {booksToShow.map((book, idx) => (
-                  <div 
-                    key={idx} 
-                    className="snap-start shrink-0 w-36 md:w-48 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/10 hover:border-yellow-500/50 hover:shadow-[0_0_20px_rgba(234,179,8,0.1)] transition-all cursor-pointer group flex flex-col"
-                  >
-                     <div className="w-full h-48 md:h-64 bg-black/50 rounded-xl mb-4 overflow-hidden relative border border-white/5 group-hover:border-yellow-500/30 transition-colors">
+                              <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
+                                <span>Was this review helpful?</span>
+                                <button 
+                                  onClick={() => setHelpfulVotes(prev => ({...prev, [review.id]: 'yes'}))}
+                                  className={`px-4 py-1.5 rounded-full border transition-all ${helpfulVotes[review.id] === 'yes' ? 'bg-white/20 border-white/50 text-white' : 'border-white/10 hover:bg-white/10 hover:text-white'}`}
+                                >
+                                  Yes
+                                </button>
+                                <button 
+                                  onClick={() => setHelpfulVotes(prev => ({...prev, [review.id]: 'no'}))}
+                                  className={`px-4 py-1.5 rounded-full border transition-all ${helpfulVotes[review.id] === 'no' ? 'bg-white/20 border-white/50 text-white' : 'border-white/10 hover:bg-white/10 hover:text-white'}`}
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {reviews.length > visibleReviewsCount && (
+                            <button 
+                              onClick={() => setVisibleReviewsCount(prev => prev + 4)}
+                              className="mt-2 py-3 w-full bg-white/5 hover:bg-white/10 text-yellow-500 text-sm font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                            >
+                              See all reviews
+                            </button>
+                          )}
+                        </>
+                    ) : (
+                        <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
+                          <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                          <p>{t.noReviews}</p>
+                        </div>
+                    )}
+                  </div>
+                </motion.div>
+            </div>
+
+            {/* SUGGESTED BOOKS SECTION - Appears at the very bottom, complex & clean look */}
+            {suggestedBooks.length > 0 && (
+              <div className="w-full bg-[#050508] border-t border-white/10 p-6 md:p-12 pb-16 relative z-10">
+                <h3 className="text-xl md:text-2xl font-black text-white mb-6 flex items-center gap-2">
+                  <BookOpen className="text-yellow-500" size={24} />
+                  More Books You Might Like
+                </h3>
+                
+                {/* Horizontal scrollable container without visible scrollbar */}
+                <div className="flex overflow-x-auto gap-4 md:gap-6 snap-x pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {suggestedBooks.map((book) => (
+                    <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer">
+                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative mb-3 border border-white/10 group-hover:border-yellow-500/50 transition-all duration-300 shadow-lg group-hover:shadow-[0_0_15px_rgba(234,179,8,0.2)] bg-white/5">
                         {book.cover_path ? (
-                          <img src={book.cover_path} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <img 
+                            src={`${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path}`} 
+                            alt={book.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-white/5 to-transparent text-gray-600">
-                             <BookOpen size={32} className="mb-2 opacity-50" />
+                          <div className="w-full h-full flex items-center justify-center bg-white/5">
+                            <BookOpen size={24} className="text-gray-600" />
                           </div>
                         )}
-                        <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1 text-[10px] text-yellow-500 font-bold border border-white/10">
-                           <Star size={10} fill="currentColor" /> {book.rating || "4.5"}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-3">
+                          <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">View Book</span>
                         </div>
-                     </div>
-                     <h4 className="text-white font-bold text-sm leading-tight line-clamp-1 group-hover:text-yellow-500 transition-colors mb-1">{book.title}</h4>
-                     <p className="text-gray-400 text-[11px] line-clamp-1 mb-3">{book.author}</p>
-                     
-                     <div className="mt-auto flex items-center justify-between">
-                        <span className="text-white font-black text-sm md:text-base">₹{book.price}</span>
-                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-yellow-500 group-hover:text-black transition-colors">
-                           <ChevronRight size={14} />
-                        </div>
-                     </div>
-                  </div>
-                ))}
-             </div>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-200 line-clamp-1 group-hover:text-yellow-400 transition-colors" title={book.title}>{book.title}</h4>
+                      <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{book.author}</p>
+                      <div className="flex items-center gap-1 mt-1.5 text-sm font-black text-white">
+                        ₹{book.final_price || book.price || 0}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
           </div>
-          
         </div>
       </motion.div>
     </>
