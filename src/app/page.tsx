@@ -18,9 +18,9 @@ import BookDetailsModal from "../components/BookDetailsModal";
 // ==========================================
 // VERCEL ENDPOINTS (Configured in Vercel Dashboard)
 // ==========================================
-const PUBLIC_FREE_BOOKS = process.env.NEXT_PUBLIC_GUTENDEX_API_URL || ""; 
-const PUBLIC_WIKIPEDIA = process.env.NEXT_PUBLIC_WIKIPEDIA_API_URL || "";
-const PUBLIC_ZENQUOTES = process.env.NEXT_PUBLIC_ZENQUOTES_API_URL || "";
+const PUBLIC_FREE_BOOKS = process.env.NEXT_PUBLIC_GUTENDEX_API_URL || "https://gutendex.com/books"; 
+const PUBLIC_WIKIPEDIA = process.env.NEXT_PUBLIC_WIKIPEDIA_API_URL || "https://en.wikipedia.org/api/rest_v1/page/summary/";
+const PUBLIC_ZENQUOTES = process.env.NEXT_PUBLIC_ZENQUOTES_API_URL || "https://zenquotes.io/api/today";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
