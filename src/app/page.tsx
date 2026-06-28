@@ -16,12 +16,11 @@ import "nprogress/nprogress.css";
 import BookDetailsModal from "../components/BookDetailsModal";
 
 // ==========================================
-// VERCEL API ENDPOINTS (Placeholder Variables)
-// Tumhe in values ko Vercel Environment variables me dalna hai.
+// VERCEL ENDPOINTS (Configured in Vercel Dashboard)
 // ==========================================
-const API_FREE_BOOKS = process.env.NEXT_PUBLIC_GUTENDEX_API_URL || ""; 
-const API_WIKIPEDIA = process.env.NEXT_PUBLIC_WIKIPEDIA_API_URL || "";
-const API_ZENQUOTES = process.env.NEXT_PUBLIC_ZENQUOTES_API_URL || "";
+const PUBLIC_FREE_BOOKS = process.env.NEXT_PUBLIC_GUTENDEX_API_URL || ""; 
+const PUBLIC_WIKIPEDIA = process.env.NEXT_PUBLIC_WIKIPEDIA_API_URL || "";
+const PUBLIC_ZENQUOTES = process.env.NEXT_PUBLIC_ZENQUOTES_API_URL || "";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
@@ -66,14 +65,11 @@ export default function VedoxaHome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // NEW STATES FOR API TABS & DYNAMIC CONTENT
+  // NEW STATES FOR TABS & DYNAMIC CONTENT
   const [activeTab, setActiveTab] = useState("all"); // 'all', 'premium', 'free', 'articles', 'quotes'
-  const [apiBooks, setApiBooks] = useState([
-    { id: 'api-1', title: 'The Art of War (Classic)', author: 'Sun Tzu', base_price: 0, final_price: 0, discount: 0, cover_path: null, isApi: true },
-    { id: 'api-2', title: 'Meditations (Wisdom)', author: 'Marcus Aurelius', base_price: 0, final_price: 0, discount: 0, cover_path: null, isApi: true },
-    { id: 'api-3', title: 'Beyond Good & Evil', author: 'Friedrich Nietzsche', base_price: 0, final_price: 0, discount: 0, cover_path: null, isApi: true }
-  ]); // Mock API books structure that will load from your Vercel API
+  const [publicBooks, setPublicBooks] = useState([]); // This will hold real fetched data
   const [mixedDailyBooks, setMixedDailyBooks] = useState([]);
+  const [loadingPublicBooks, setLoadingPublicBooks] = useState(false);
 
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -130,6 +126,7 @@ export default function VedoxaHome() {
     document.addEventListener('gesturechange', preventZoom);
     
     fetchBooks();
+    fetchPublicData(); // Initializing fetch call here
     initPartnerSystem(); 
 
     const handlePopState = (e) => {
@@ -154,16 +151,46 @@ export default function VedoxaHome() {
     };
   }, [showBookDetails]);
 
-  // DAILY MIX LOGIC: API books + 2-3 Random Premium Books
+  // NEW: FETCH PUBLIC DATA LOGIC
+  const fetchPublicData = async () => {
+    if (!PUBLIC_FREE_BOOKS) return; 
+    setLoadingPublicBooks(true);
+    try {
+      const res = await fetch(PUBLIC_FREE_BOOKS);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          // Format public books to match our app's structure
+          const formattedBooks = data.results.slice(0, 15).map(book => ({
+            id: `pub-${book.id}`,
+            title: book.title,
+            author: book.authors && book.authors.length > 0 ? book.authors[0].name : 'Unknown Author',
+            base_price: 0,
+            final_price: 0,
+            discount: 0,
+            cover_path: book.formats['image/jpeg'] || null, 
+            isPublic: true,
+            pdf_path: book.formats['application/pdf'] || book.formats['text/html'] || null
+          }));
+          setPublicBooks(formattedBooks);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load free books", err);
+    }
+    setLoadingPublicBooks(false);
+  };
+
+  // DAILY MIX LOGIC: Public books + 2-3 Random Premium Books
   useEffect(() => {
-    if (books.length > 0) {
+    if (books.length > 0 || publicBooks.length > 0) {
       // Pick 2-3 random premium books from Supabase DB
       const randomCount = Math.floor(Math.random() * 2) + 2; // 2 or 3
       const shuffledPremium = [...books].sort(() => 0.5 - Math.random()).slice(0, randomCount);
-      // Mix them with API Free books and shuffle the final list
-      setMixedDailyBooks([...shuffledPremium, ...apiBooks].sort(() => 0.5 - Math.random()));
+      // Mix them with Public Free books and shuffle the final list
+      setMixedDailyBooks([...shuffledPremium, ...publicBooks].sort(() => 0.5 - Math.random()));
     }
-  }, [books, apiBooks]);
+  }, [books, publicBooks]);
 
   useEffect(() => {
     if (showBookDetails || showCheckout || showAuthModal || showReader || isSidebarOpen) {
@@ -407,6 +434,16 @@ export default function VedoxaHome() {
   };
 
   const openWebReader = async (book) => {
+    if (book.isPublic) {
+      if (book.pdf_path) {
+        setReaderUrl(book.pdf_path);
+        setShowReader(true);
+      } else {
+        addToast("No reader format available for this public book.", "error");
+      }
+      return;
+    }
+
     NProgress.start();
     try {
         const { data: pdfData, error } = await supabase.storage.from('books-pdfs').createSignedUrl(book.pdf_path, 3600);
@@ -432,8 +469,8 @@ export default function VedoxaHome() {
   const getDisplayBooks = () => {
     let list = [];
     if (activeTab === "premium") list = books; // Only user uploaded paid books
-    else if (activeTab === "free") list = apiBooks; // Only free api books
-    else if (activeTab === "articles" || activeTab === "quotes") list = []; // Keep empty or show specific components when these tabs are clicked
+    else if (activeTab === "free") list = publicBooks; // Only free public books
+    else if (activeTab === "articles" || activeTab === "quotes") list = []; 
     else if (activeTab === "all") list = mixedDailyBooks.length > 0 ? mixedDailyBooks : books; // Mixed dynamic feed
     
     const query = searchQuery.toLowerCase();
@@ -932,7 +969,7 @@ export default function VedoxaHome() {
           </motion.p>
         </section>
 
-        {/* ─── API TAB NAVIGATION ROW ────────────────────────── */}
+        {/* ─── TAB NAVIGATION ROW ────────────────────────── */}
         <div className="w-full max-w-7xl mx-auto px-4 relative z-10 mt-4 md:mt-8">
           <div className="flex overflow-x-auto gap-3 md:gap-4 pb-4 mb-2 w-full justify-start lg:justify-center hide-scrollbar">
             <button onClick={() => setActiveTab("all")} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'all' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
@@ -942,13 +979,13 @@ export default function VedoxaHome() {
               <Lock size={15} className="inline mr-1.5"/> Premium Library 💎
             </button>
             <button onClick={() => setActiveTab("free")} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'free' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
-              <BookOpen size={15} className="inline mr-1.5"/> Free Classics API
+              <BookOpen size={15} className="inline mr-1.5"/> Free Classics
             </button>
-            <button onClick={() => { addToast("Wiki API page will be integrated here!", "info"); setActiveTab("articles"); }} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'articles' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
-              <Search size={15} className="inline mr-1.5"/> Articles API
+            <button onClick={() => { addToast("Wiki page will be integrated here!", "info"); setActiveTab("articles"); }} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'articles' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <Search size={15} className="inline mr-1.5"/> Wiki Articles
             </button>
-            <button onClick={() => { addToast("Daily Quote will be shown from API!", "info"); setActiveTab("quotes"); }} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'quotes' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
-              <Sun size={15} className="inline mr-1.5"/> Daily Quote API
+            <button onClick={() => { addToast("Daily Wisdom will be shown here!", "info"); setActiveTab("quotes"); }} className={`px-4 md:px-6 py-2.5 rounded-full whitespace-nowrap text-xs md:text-sm font-bold transition-all border ${activeTab === 'quotes' ? 'bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.5)]' : (isDark ? 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-white/[0.1]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}>
+              <Sun size={15} className="inline mr-1.5"/> Daily Wisdom
             </button>
           </div>
         </div>
@@ -966,12 +1003,12 @@ export default function VedoxaHome() {
           {activeTab === 'articles' || activeTab === 'quotes' ? (
             <div className="flex flex-col items-center justify-center py-20 opacity-50">
               <Info size={40} className="text-amber-500 mb-4" />
-              <p className="font-bold">Yeh features API ke through doosre page par khulengi</p>
+              <p className="font-bold">Features loading...</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8">
-              {loading ? (
-                [1, 2, 3, 4].map((n) => (
+              {loading || loadingPublicBooks ? (
+                [1, 2, 3, 4, 5, 6].map((n) => (
                   <div key={n} className={`border rounded-2xl md:rounded-3xl p-3 md:p-6 h-[260px] md:h-[380px] flex flex-col gap-3 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
                     <div className={`w-full h-28 md:h-44 rounded-xl ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
                     <div className={`w-3/4 h-4 rounded-lg mt-1 ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
@@ -989,29 +1026,29 @@ export default function VedoxaHome() {
                   return (
                     <motion.div
                       layout initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.55, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                      key={book.id} onClick={() => openBookDetails(book)}
+                      key={book.id} onClick={() => book.isPublic ? openWebReader(book) : openBookDetails(book)}
                       className={`luminary-card border rounded-2xl md:rounded-3xl p-3 md:p-6 relative flex flex-col group cursor-pointer fast-anim hover:-translate-y-3 ${isDark ? 'bg-white/[0.025] border-white/[0.065] hover:bg-white/[0.055] hover:border-amber-500/[0.22] shadow-[0_4px_24px_rgba(0,0,0,0.4)]' : 'bg-white border-slate-200 shadow-md hover:shadow-2xl hover:border-amber-500/40'}`}
                     >
-                      {book.discount > 0 && !isPurchased && !partnerData && !book.isApi && (
+                      {book.discount > 0 && !isPurchased && !partnerData && !book.isPublic && (
                         <div className="absolute top-2 right-2 md:top-4 md:right-4 discount-badge px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs z-10">
                           {book.discount}% OFF
                         </div>
                       )}
-                      {partnerData && !isPurchased && !book.isApi && (
+                      {partnerData && !isPurchased && !book.isPublic && (
                         <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-blue-500/[0.15] text-blue-400 px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs font-black border border-blue-500/30 z-10 shadow-[0_0_14px_rgba(59,130,246,0.2)]">
                           -{partnerData.discount_pct}%
                         </div>
                       )}
-                      {book.isApi && (
+                      {book.isPublic && (
                         <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-emerald-500/[0.15] text-emerald-400 px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs font-black border border-emerald-500/30 z-10">
-                          FREE API
+                          FREE
                         </div>
                       )}
 
                       <div className="w-full h-28 md:h-44 mb-3 md:mb-6">
                         {book.cover_path ? (
                           <div className="w-full h-full relative overflow-hidden rounded-xl">
-                            <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} alt={book.title} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                            <img src={book.isPublic ? book.cover_path : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} alt={book.title} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
                           </div>
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-amber-500/[0.08] to-amber-700/[0.04] flex items-center justify-center rounded-xl border border-amber-500/[0.15]">
@@ -1033,18 +1070,18 @@ export default function VedoxaHome() {
 
                       <div className={`mt-auto flex flex-col md:flex-row justify-between items-start md:items-end border-t pt-3 md:pt-5 gap-2 md:gap-0 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
                         <div>
-                          {book.discount > 0 && !isPurchased && !partnerData && !book.isApi && (
+                          {book.discount > 0 && !isPurchased && !partnerData && !book.isPublic && (
                             <div className={`text-[10px] md:text-xs line-through mb-0.5 md:mb-1 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>₹{book.base_price}</div>
                           )}
-                          {partnerData && !isPurchased && !book.isApi && (
+                          {partnerData && !isPurchased && !book.isPublic && (
                             <div className={`text-[10px] md:text-xs line-through mb-0.5 md:mb-1 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>₹{originalPrice}</div>
                           )}
-                          <div className={`text-base md:text-2xl font-black ${isPurchased || book.isApi ? (isDark ? "text-emerald-400" : "text-emerald-600") : (isDark ? "text-white" : "text-slate-900")}`}>
-                            {isPurchased ? 'Owned' : (book.isApi || displayPrice === 0 ? 'FREE' : `₹${displayPrice}`)}
+                          <div className={`text-base md:text-2xl font-black ${isPurchased || book.isPublic ? (isDark ? "text-emerald-400" : "text-emerald-600") : (isDark ? "text-white" : "text-slate-900")}`}>
+                            {isPurchased ? 'Owned' : (book.isPublic || displayPrice === 0 ? 'FREE' : `₹${displayPrice}`)}
                           </div>
                         </div>
 
-                        {isPurchased || book.isApi ? (
+                        {isPurchased || book.isPublic ? (
                           <button onClick={(e) => { e.stopPropagation(); openWebReader(book); }} className="w-full md:w-auto px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[11px] md:text-sm bg-emerald-500/[0.1] text-emerald-500 border border-emerald-500/25 flex justify-center items-center gap-1.5 md:gap-2 font-bold hover:bg-emerald-500/[0.18] transition">
                             <CheckCircle2 size={14} /> {t.readNow}
                           </button>
