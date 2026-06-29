@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, 
@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function BookDetailsModal({
   selectedBook,
-  setSelectedBook, // Added this prop to handle suggested book clicks
+  onBookChange, // Naya prop jo dono kaam karega (book update + reviews load)
   partnerData,
   purchasedBookIds,
   t,
@@ -44,9 +44,19 @@ export default function BookDetailsModal({
   // Advanced States
   // Initialize with existing review's rating or default to 5
   const [userRating, setUserRating] = useState(userExistingReview?.rating || 5); 
-  const [helpfulVotes, setHelpfulVotes] = useState({}); // Stores Yes/No clicks for reviews
-  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); // Fullscreen Photo State
-  const [suggestedBooks, setSuggestedBooks] = useState([]); // Suggested Books State
+  const [helpfulVotes, setHelpfulVotes] = useState({}); 
+  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); 
+  const [suggestedBooks, setSuggestedBooks] = useState([]); 
+
+  // Scroll reset ke liye Ref
+  const scrollContainerRef = useRef(null);
+
+  // Jab bhi selectedBook change ho, scroll ko wapas top par bhej do
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [selectedBook.id]);
 
   // Sync userRating if userExistingReview changes
   useEffect(() => {
@@ -207,8 +217,8 @@ export default function BookDetailsModal({
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed inset-0 z-[800] bg-[#0a0a0d]"
       >
-        {/* SCROLLING CONTAINER */}
-        <div className="w-full h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* SCROLLING CONTAINER (Added ref here) */}
+        <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           
           {/* Main Wrapper set to relative so absolute buttons scroll with the page */}
           <div className="relative min-h-full flex flex-col">
@@ -486,7 +496,7 @@ export default function BookDetailsModal({
                 {/* Horizontal scrollable container without visible scrollbar */}
                 <div className="flex overflow-x-auto gap-4 md:gap-6 snap-x pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {suggestedBooks.map((book) => (
-                    <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer" onClick={() => setSelectedBook && setSelectedBook(book)}>
+                    <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer" onClick={() => onBookChange && onBookChange(book)}>
                       <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative mb-3 border border-white/10 group-hover:border-yellow-500/50 transition-all duration-300 shadow-lg group-hover:shadow-[0_0_15px_rgba(234,179,8,0.2)] bg-white/5">
                         {book.cover_path ? (
                           <img 
