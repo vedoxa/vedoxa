@@ -672,6 +672,7 @@ export default function VedoxaHome() {
         {showBookDetails && selectedBook && (
           <BookDetailsModal
             selectedBook={selectedBook}
+            setSelectedBook={setSelectedBook}
             partnerData={partnerData}
             purchasedBookIds={purchasedBookIds}
             t={t}
@@ -857,7 +858,7 @@ export default function VedoxaHome() {
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/15 to-transparent" />
 
           <Link href="/brand" className="flex items-center gap-3 group">
-            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 ${isDark ? 'bg-[#0c0c1a]' : 'bg-white'}`}>
+            <div className={`w-8 h-8 md:w-10 h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 ${isDark ? 'bg-[#0c0c1a]' : 'bg-white'}`}>
               <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
             </div>
             <span className={`font-cinzel text-lg md:text-2xl font-black tracking-widest ${isDark ? 'text-white' : 'text-slate-900'}`}>
