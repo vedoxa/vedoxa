@@ -14,6 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function BookDetailsModal({
   selectedBook,
+  setSelectedBook, // Added this prop to handle suggested book clicks
   partnerData,
   purchasedBookIds,
   t,
@@ -41,10 +42,16 @@ export default function BookDetailsModal({
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
 
   // Advanced States
-  const [userRating, setUserRating] = useState(5); // User's input star rating
+  // Initialize with existing review's rating or default to 5
+  const [userRating, setUserRating] = useState(userExistingReview?.rating || 5); 
   const [helpfulVotes, setHelpfulVotes] = useState({}); // Stores Yes/No clicks for reviews
   const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); // Fullscreen Photo State
   const [suggestedBooks, setSuggestedBooks] = useState([]); // Suggested Books State
+
+  // Sync userRating if userExistingReview changes
+  useEffect(() => {
+    setUserRating(userExistingReview?.rating || 5);
+  }, [userExistingReview]);
 
   useEffect(() => {
     incrementView();
@@ -398,7 +405,7 @@ export default function BookDetailsModal({
                       
                       <button 
                         onClick={() => {
-                          handleSubmitReview();
+                          handleSubmitReview(userRating); // Passed userRating here so it saves exact stars!
                         }} 
                         className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 px-6 py-2.5 rounded-lg text-sm font-bold gap-2`}
                       >
@@ -479,7 +486,7 @@ export default function BookDetailsModal({
                 {/* Horizontal scrollable container without visible scrollbar */}
                 <div className="flex overflow-x-auto gap-4 md:gap-6 snap-x pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {suggestedBooks.map((book) => (
-                    <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer">
+                    <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer" onClick={() => setSelectedBook && setSelectedBook(book)}>
                       <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative mb-3 border border-white/10 group-hover:border-yellow-500/50 transition-all duration-300 shadow-lg group-hover:shadow-[0_0_15px_rgba(234,179,8,0.2)] bg-white/5">
                         {book.cover_path ? (
                           <img 
