@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 import { useState, useEffect, useRef } from "react";
@@ -48,6 +47,11 @@ export default function BookDetailsModal({
   const [helpfulVotes, setHelpfulVotes] = useState({}); 
   const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); 
   const [suggestedBooks, setSuggestedBooks] = useState([]); 
+
+  // Free Sample States
+  const [showSampleReader, setShowSampleReader] = useState(false);
+  const [samplePage, setSamplePage] = useState(0);
+  const maxSamplePages = 3;
 
   // Scroll reset ke liye Ref
   const scrollContainerRef = useRef(null);
@@ -189,6 +193,113 @@ export default function BookDetailsModal({
 
   return (
     <>
+      {/* Free Sample Book Reader Modal */}
+      <AnimatePresence>
+        {showSampleReader && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowSampleReader(false)} 
+              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-50"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Book Container with 3D Perspective */}
+            <div className="relative w-full max-w-lg h-[80vh] md:h-[85vh] bg-[#fdfaf6] rounded-r-2xl rounded-l-md shadow-[0_0_50px_rgba(255,255,255,0.1)] overflow-hidden flex flex-col" style={{ perspective: '2000px' }}>
+                {/* Book Spine Simulation */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/20 via-black/5 to-transparent z-20 pointer-events-none" />
+                
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={samplePage}
+                    initial={{ rotateY: 90, opacity: 0, originX: 0 }}
+                    animate={{ rotateY: 0, opacity: 1, originX: 0 }}
+                    exit={{ rotateY: -90, opacity: 0, originX: 0 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className="flex-1 p-8 md:p-12 pl-12 md:pl-16 overflow-y-auto text-gray-900 flex flex-col relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]"
+                  >
+                    {/* Content based on page */}
+                    {samplePage === 0 && (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center">
+                            <h2 className="font-cinzel text-3xl md:text-4xl font-black mb-4 text-black">{selectedBook.title}</h2>
+                            <p className="text-lg md:text-xl text-gray-700 italic border-b border-gray-400 pb-2">by {selectedBook.author}</p>
+                            <div className="mt-16 inline-block px-4 py-1 border border-gray-400 rounded-full text-xs text-gray-500 font-bold uppercase tracking-widest">Free Sample</div>
+                        </div>
+                    )}
+                    {samplePage === 1 && (
+                        <div className="flex-1">
+                            <h3 className="font-bold text-2xl mb-6 text-black border-b pb-2 border-gray-300">Chapter 1</h3>
+                            <p className="text-gray-800 leading-relaxed mb-4 text-justify font-serif text-lg first-letter:text-5xl first-letter:font-bold first-letter:mr-1 first-letter:float-left">
+                                {selectedBook.description || "The journey begins here. You are currently reading a special preview of this exclusive content..."}
+                            </p>
+                            <p className="text-gray-800 leading-relaxed text-justify font-serif text-lg mb-4">
+                                In this opening section, the author sets the stage for an incredible journey. The themes explored here will resonate throughout the entire work, drawing you deeper into the narrative.
+                            </p>
+                        </div>
+                    )}
+                    {samplePage === 2 && (
+                        <div className="flex-1">
+                            <p className="text-gray-800 leading-relaxed mb-4 text-justify font-serif text-lg">
+                                As you delve deeper, the story begins to unfold, revealing complex ideas and intriguing concepts. Every page brings a new discovery, challenging your thoughts and captivating your imagination.
+                            </p>
+                            <div className="w-full h-px bg-gray-300 my-8"></div>
+                            <p className="text-gray-500 italic text-center font-serif">
+                                ...The text continues in the full version.
+                            </p>
+                        </div>
+                    )}
+                    {samplePage === 3 && (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center">
+                            <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                                <Lock size={36} className="text-gray-500" />
+                            </div>
+                            <h3 className="font-black text-2xl mb-4 text-black">End of Free Sample</h3>
+                            <p className="text-gray-600 mb-8 max-w-xs">You've reached the end of this preview. Purchase the book now to unlock the full experience instantly.</p>
+                            <button 
+                                onClick={() => {
+                                    setShowSampleReader(false);
+                                    setShowCheckout(true);
+                                }}
+                                className="px-8 py-4 w-full rounded-xl text-lg bg-gradient-to-r from-violet-600 to-purple-800 hover:from-violet-500 hover:to-purple-700 text-white font-black shadow-[0_10px_20px_rgba(139,92,246,0.3)] transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Lock size={20} /> Buy Now to Continue
+                            </button>
+                        </div>
+                    )}
+                    
+                    {/* Page Number */}
+                    <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-gray-400 font-bold font-serif">
+                        - {samplePage + 1} -
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Navigation Buttons for Book */}
+                <div className="absolute bottom-4 left-4 right-4 flex justify-between z-30 pointer-events-none">
+                    <button 
+                        onClick={() => setSamplePage(prev => Math.max(0, prev - 1))}
+                        disabled={samplePage === 0}
+                        className={`pointer-events-auto p-3 rounded-full bg-white border border-gray-200 shadow-lg text-gray-800 transition-all ${samplePage === 0 ? 'opacity-0' : 'hover:bg-gray-50 hover:scale-110'}`}
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <button 
+                        onClick={() => setSamplePage(prev => Math.min(maxSamplePages, prev + 1))}
+                        disabled={samplePage === maxSamplePages}
+                        className={`pointer-events-auto p-3 rounded-full bg-white border border-gray-200 shadow-lg text-gray-800 transition-all ${samplePage === maxSamplePages ? 'opacity-0' : 'hover:bg-gray-50 hover:scale-110'}`}
+                    >
+                        <ArrowLeft size={20} className="rotate-180" />
+                    </button>
+                </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Full Screen Photo Modal */}
       <AnimatePresence>
         {isPhotoFullScreen && selectedBook.cover_path && (
@@ -345,9 +456,20 @@ export default function BookDetailsModal({
                           <CheckCircle2 size={20} /> {t.readNow}
                         </button>
                       ) : (
-                        <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-auto">
-                          <Lock size={18}/> Pay Now
-                        </button>
+                        <div className="flex flex-col items-end gap-2.5">
+                          <button 
+                            onClick={() => {
+                              setSamplePage(0);
+                              setShowSampleReader(true);
+                            }} 
+                            className="text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-1.5 rounded-full border border-emerald-500/30 transition-all flex items-center gap-1.5 hover:scale-105 shadow-sm"
+                          >
+                            <BookOpen size={14} /> Free Sample
+                          </button>
+                          <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-auto">
+                            <Lock size={18}/> Buy Now
+                          </button>
+                        </div>
                     )}
                   </motion.div>
                 </div>
