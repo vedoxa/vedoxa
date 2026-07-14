@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image"; 
+import dynamic from "next/dynamic"; // NEW ADDITION
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
@@ -14,6 +15,16 @@ import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 // IMPORTING THE SEPARATED COMPONENT
 import BookDetailsModal from "../components/BookDetailsModal";
+
+// NEW ADDITION: Dynamic import ensures fast homepage loading. Flipbook only loads when clicked.
+const FlipbookReader = dynamic(() => import("../components/FlipbookReader"), { 
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 w-full flex items-center justify-center bg-[#07070d]">
+      <div className="text-amber-500 font-bold animate-pulse">Initializing Secure Reader...</div>
+    </div>
+  )
+});
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
@@ -399,8 +410,8 @@ export default function VedoxaHome() {
     try {
         const { data: pdfData, error } = await supabase.storage.from('books-pdfs').createSignedUrl(book.pdf_path, 3600);
         if (!error && pdfData?.signedUrl) { 
-            const secureViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfData.signedUrl)}&embedded=true`;
-            setReaderUrl(secureViewerUrl); setShowReader(true); 
+            // Removed Google Viewer integration, passing secure signed URL directly to Flipbook
+            setReaderUrl(pdfData.signedUrl); setShowReader(true); 
         } else throw error;
     } catch(err) { addToast("Failed to load secure reader", "error"); }
     NProgress.done();
@@ -678,7 +689,7 @@ export default function VedoxaHome() {
         {showBookDetails && selectedBook && (
           <BookDetailsModal
             selectedBook={selectedBook}
-            onBookChange={handleSuggestedBookChange} // Yaha par function pass kiya jo scroll+review update karega
+            onBookChange={handleSuggestedBookChange} 
             partnerData={partnerData}
             purchasedBookIds={purchasedBookIds}
             t={t}
@@ -825,7 +836,7 @@ export default function VedoxaHome() {
         )}
       </AnimatePresence>
 
-      {/* Web Reader Modal */}
+      {/* Web Reader Modal - NEW FLIPBOOK IMPLEMENTATION */}
       <AnimatePresence>
         {showReader && (
           <motion.div
@@ -833,7 +844,7 @@ export default function VedoxaHome() {
             transition={{ type: "spring", damping: 26, stiffness: 300 }}
             className={`fixed inset-0 z-[4000] flex flex-col ${isDark ? 'bg-[#07070d]' : 'bg-slate-50'}`}
           >
-            <div className={`px-4 py-3.5 md:px-6 border-b flex justify-between items-center ${isDark ? 'bg-white/[0.04] border-white/[0.07]' : 'bg-white border-slate-200'}`}>
+            <div className={`px-4 py-3.5 md:px-6 border-b flex justify-between items-center z-10 ${isDark ? 'bg-[#07070d] border-white/[0.07]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center gap-3">
                 <BookOpen className="text-amber-500" size={20}/>
                 <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>{t.pdfReader}</span>
@@ -842,7 +853,11 @@ export default function VedoxaHome() {
                 {t.close}
               </button>
             </div>
-            <iframe src={readerUrl} className="flex-1 w-full border-none bg-white" title="Web Reader" />
+            
+            {/* SECURE CONTAINER WITH NO-RIGHT-CLICK AND NO-SELECT */}
+            <div className="flex-1 w-full bg-[#07070d] relative overflow-hidden flex items-center justify-center select-none pointer-events-auto" onContextMenu={(e) => e.preventDefault()}>
+              <FlipbookReader pdfUrl={readerUrl} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
