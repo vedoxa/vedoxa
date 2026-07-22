@@ -882,7 +882,7 @@ export default function VedoxaHome() {
         <nav className={`sticky top-0 z-[500] px-4 py-4 md:px-8 backdrop-blur-2xl border-b flex justify-between items-center transition-colors duration-300 ${isDark ? 'bg-[#07070d]/92 border-white/[0.06]' : 'bg-white/90 border-slate-200 shadow-sm'}`}>
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/15 to-transparent" />
 
-          <Link href="/about-us" className="flex items-center gap-3 group">
+          <Link href="/brand" className="flex items-center gap-3 group">
             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 ${isDark ? 'bg-[#0c0c1a]' : 'bg-white'}`}>
               <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
             </div>
