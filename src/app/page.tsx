@@ -457,10 +457,13 @@ export default function VedoxaHome() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
 
+        /* APPLE SCROLL FEEL AND UI SOFTNESS UPDATE */
         html, body {
           touch-action: pan-y;
           -webkit-text-size-adjust: 100%;
-          overscroll-behavior-y: none;
+          overscroll-behavior-y: auto; /* Re-enabled for Apple Bounce */
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
@@ -506,13 +509,14 @@ export default function VedoxaHome() {
           font-weight: 900; letter-spacing: 0.03em;
         }
 
-        .fast-anim { transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* SOFT UI UPDATE: Smoother easing matching Apple's standard transition curve */
+        .fast-anim { transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1); }
 
         .luminary-card { position: relative; isolation: isolate; }
         .luminary-card::before {
           content: ''; position: absolute; inset: 0; border-radius: 1.5rem;
           background: radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.07) 0%, transparent 55%);
-          pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.4s ease;
+          pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.5s ease;
         }
         .luminary-card:hover::before { opacity: 1; }
         .luminary-card:hover {
@@ -878,7 +882,7 @@ export default function VedoxaHome() {
         <nav className={`sticky top-0 z-[500] px-4 py-4 md:px-8 backdrop-blur-2xl border-b flex justify-between items-center transition-colors duration-300 ${isDark ? 'bg-[#07070d]/92 border-white/[0.06]' : 'bg-white/90 border-slate-200 shadow-sm'}`}>
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/15 to-transparent" />
 
-          <Link href="/brand" className="flex items-center gap-3 group">
+          <Link href="/about-us" className="flex items-center gap-3 group">
             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 ${isDark ? 'bg-[#0c0c1a]' : 'bg-white'}`}>
               <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
             </div>
@@ -1066,7 +1070,7 @@ export default function VedoxaHome() {
 
         {/* Footer */}
         <footer className={`py-12 w-full flex flex-col items-center gap-6 border-t mt-auto relative z-10 ${isDark ? 'bg-black/25 border-white/[0.06]' : 'bg-slate-50 border-slate-200'}`}>
-          <Link href="/brand" className={`border px-8 py-3 rounded-full text-sm font-bold transition-all shadow-sm ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-amber-500 hover:border-amber-500/25' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-amber-600 hover:border-amber-500/30'}`}>
+          <Link href="/about-us" className={`border px-8 py-3 rounded-full text-sm font-bold transition-all shadow-sm ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-amber-500 hover:border-amber-500/25' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-amber-600 hover:border-amber-500/30'}`}>
             About Us
           </Link>
 
@@ -1078,6 +1082,11 @@ export default function VedoxaHome() {
               <Zap size={15} className="text-amber-500"/> {t.instant}
             </button>
           </div>
+          
+          {/* New Clean Share Button Appears Only in Footer */}
+          <button onClick={handleShare} className={`mt-1 flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border ${isDark ? 'bg-white/[0.02] border-white/[0.05] text-gray-500 hover:text-white hover:bg-white/[0.05] hover:border-white/[0.15]' : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}>
+            <Share2 size={15} /> Share Page
+          </button>
         </footer>
 
         {/* Scrolling Line Loop */}
@@ -1114,13 +1123,6 @@ export default function VedoxaHome() {
               <Lock className="text-amber-500" size={19}/> SSL 256-bit
             </div>
           </div>
-        </div>
-
-        {/* Floating Share Button */}
-        <div className="fixed bottom-12 right-8 z-[4000] flex flex-col gap-4 items-center">
-          <button onClick={handleShare} className={`w-12 h-12 backdrop-blur-xl border rounded-full flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-[0_8px_32px_rgba(0,0,0,0.3)] ${isDark ? 'bg-white/[0.07] border-white/[0.12] text-gray-400 hover:text-white hover:bg-white/[0.14] hover:border-white/[0.2]' : 'bg-white border-slate-300 text-slate-500 hover:text-slate-800 hover:bg-slate-50 hover:border-slate-400'}`} title="Share Website">
-            <Share2 size={19} />
-          </button>
         </div>
 
       </div>
