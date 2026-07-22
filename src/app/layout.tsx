@@ -30,7 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* NAYA ADD KIYA GAYA CODE: Monetag Verification ke liye */}
         <meta name="monetag" content="d3a8d1a2e7efeac87a31a2a723b36b6c" />
       </head>
-      <body className="bg-black text-white flex flex-col min-h-screen">
+      {/* UI/UX UPGRADE: 
+        1. 'antialiased' - Apple jaisi smooth aur sharp font rendering ke liye.
+        2. 'selection:bg-white/30 selection:text-white' - Jab user text select karega toh default blue ki jagah premium transparent white color aayega.
+      */}
+      <body className="bg-black text-white flex flex-col min-h-screen antialiased selection:bg-white/30 selection:text-white">
         
         {/* Main Content */}
         <main className="flex-grow">
