@@ -7,7 +7,7 @@ import dynamic from "next/dynamic"; // NEW ADDITION
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon, Crown, Sparkles
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,14 +46,19 @@ const dict = {
   HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "Pay Now", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
 };
 
-// NEW ADDITION: Unique and different Men/Women "emoji" style avatars with reading/smart vibes
+// Generate Data URI SVGs instead of external links for Avatars.
+// Beautiful distinct avatars with man/woman reading emojis.
+const encodeSvg = (emoji, bg) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${bg}"/><text x="50" y="50" font-size="50" text-anchor="middle" dominant-baseline="central">${emoji}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
+
 const AVATARS = [
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderMale1&backgroundColor=eab308&accessories=prescription02&clothing=blazerAndShirt&facialHair=beardLight",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderFemale1&backgroundColor=059669&accessories=round&clothing=collarAndSweater&top=longHairStraight",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderMale2&backgroundColor=dc2626&accessories=reading&clothing=hoodie&top=shortHairShortFlat",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderFemale2&backgroundColor=2563eb&accessories=prescription01&clothing=overall&top=longHairCurvy",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderMale3&backgroundColor=7c3aed&accessories=wayfarers&clothing=shirtCrewNeck&top=shortHairFrizzle",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderFemale3&backgroundColor=ec4899&accessories=kurt&clothing=blazerAndSweater&top=longHairBob"
+  encodeSvg('👩🏻‍🏫📖', '#eab308'), // Yellow background, Woman reading
+  encodeSvg('👨🏽‍🎓📘', '#059669'), // Green background, Man graduating/reading
+  encodeSvg('👩🏾‍💻📚', '#dc2626'), // Red background, Woman studying
+  encodeSvg('👨🏻‍🏫📗', '#2563eb'), // Blue background, Man reading
+  encodeSvg('🧕🏼📖', '#7c3aed')  // Purple background, Diverse reading
 ];
 
 export default function VedoxaHome() {
@@ -533,9 +538,6 @@ export default function VedoxaHome() {
         .hero-glow-2 { animation: breathe2 9s ease-in-out infinite; }
         .hero-glow-3 { animation: breathe2 11s ease-in-out 2s infinite; }
 
-        /* Added Shimmer Animation for User Badge */
-        @keyframes shimmer { 100% { transform: translateX(100%); } }
-
         .page-root::after {
           content: ''; position: fixed; inset: 0;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
@@ -545,6 +547,10 @@ export default function VedoxaHome() {
         ::-webkit-scrollbar { width: 3px; background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.22); border-radius: 99px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(212,146,26,0.42); }
+
+        /* Added custom scrollbar class for inner elements like Sidebar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.25); border-radius: 10px; }
 
         input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px rgba(212,146,26,0.2), 0 0 16px rgba(212,146,26,0.06); }
       `}</style>
@@ -582,7 +588,8 @@ export default function VedoxaHome() {
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
               className={`fixed top-0 right-0 w-80 h-full border-l z-[5001] shadow-[−20px_0_80px_rgba(0,0,0,0.8)] flex flex-col ${isDark ? 'bg-[#0c0c1a] border-white/[0.07]' : 'bg-white border-slate-200'}`}
             >
-              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/[0.06] bg-black/30' : 'border-slate-100 bg-slate-50'}`}>
+              {/* Header (No scroll) */}
+              <div className={`shrink-0 p-6 border-b flex justify-between items-center ${isDark ? 'border-white/[0.06] bg-black/30' : 'border-slate-100 bg-slate-50'}`}>
                 <span className={`font-bold flex items-center gap-2 text-sm tracking-wide ${isDark ? 'text-white/90' : 'text-slate-800'}`}>
                   <Settings size={16} className="text-amber-500/70"/> Dashboard
                 </span>
@@ -591,69 +598,80 @@ export default function VedoxaHome() {
                 </button>
               </div>
 
-              <div className={`p-6 flex flex-col items-center gap-4 border-b ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`}>
-                <div className="relative group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
-                  <div className={`w-24 h-24 rounded-full border border-amber-500/30 overflow-hidden flex items-center justify-center shadow-[0_0_30px_rgba(212,146,26,0.1)] ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                    {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <UserCircle size={48} className="text-amber-500/40" />
-                    )}
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                
+                {/* Profile Section with Beautiful Badge and Frame */}
+                <div className={`p-6 flex flex-col items-center gap-4 border-b ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`}>
+                  <div className="relative group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
+                    
+                    {/* The Beautiful Frame Rings */}
+                    <div className="absolute -inset-1.5 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-600 rounded-full blur-[2px] opacity-70 animate-pulse"></div>
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 via-yellow-200 to-amber-600 rounded-full opacity-100"></div>
+
+                    <div className={`relative w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-[3px] shadow-[0_0_30px_rgba(212,146,26,0.3)] ${isDark ? 'bg-[#0c0c1a] border-[#0c0c1a]' : 'bg-white border-white'}`}>
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserCircle size={48} className="text-amber-500/40" />
+                      )}
+                    </div>
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 m-[3px]">
+                      <Edit3 size={18} className="text-white" />
+                    </div>
                   </div>
-                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Edit3 size={18} className="text-white" />
+
+                  <div className="text-center mt-2">
+                    {/* The Unique Badge */}
+                    <div className="flex items-center justify-center gap-1.5 mb-2 mx-auto w-max px-3 py-1 rounded-full bg-amber-500/[0.15] border border-amber-500/30 text-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.2)]">
+                      <Crown size={14} className="drop-shadow-md" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Premium Reader</span>
+                      <Sparkles size={12} className="text-amber-400" />
+                    </div>
+
+                    <h3 className={`font-black text-lg tracking-wide ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.name || "Vedoxa Reader"}</h3>
+                    <p className={`text-xs mt-0.5 font-medium ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>{user?.email}</p>
                   </div>
                 </div>
-                <div className="text-center flex flex-col items-center">
-                  {/* NEW UNIQUE ELITE READER BADGE */}
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 mb-2.5 rounded-full border shadow-sm relative overflow-hidden ${isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2.5s_infinite]" />
-                    <Star size={11} className="text-amber-500 fill-amber-500" />
-                    <span className="text-[10px] font-black tracking-widest uppercase gold-text relative z-10">Elite Reader</span>
-                    <ShieldCheck size={11} className="text-amber-500" />
+
+                <div className="p-6 flex flex-col gap-3">
+                  <Link href="/reward-points" className="bg-amber-500/[0.08] border border-amber-500/[0.18] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-amber-500/[0.14] transition-all">
+                    <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
+                      <Coins size={18}/> Reward Points
+                    </div>
+                    <span className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.reward_points || 0}</span>
+                  </Link>
+
+                  <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Language / भाषा</span>
+                    <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition">
+                      {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
+                    </button>
                   </div>
-                  
-                  <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.name || "Vedoxa Reader"}</h3>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-600' : 'text-slate-500'}`}>{user?.email}</p>
+
+                  {/* THEME TOGGLE ADDED HERE */}
+                  <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Theme / थीम</span>
+                    <button onClick={toggleTheme} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition flex items-center gap-2">
+                      {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                      {isDark ? "Light Mode" : "Dark Mode"}
+                    </button>
+                  </div>
+
+                  <Link href="/explore" className={`p-4 rounded-2xl flex justify-between items-center cursor-pointer transition border ${isDark ? 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07]' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Explore</span>
+                    <ChevronRight size={16} className={isDark ? "text-gray-600" : "text-slate-400"} />
+                  </Link>
+
+                  <Link href="/quiz" className={`p-4 rounded-2xl flex justify-between items-center cursor-pointer transition border ${isDark ? 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07]' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Quiz</span>
+                    <ChevronRight size={16} className={isDark ? "text-gray-600" : "text-slate-400"} />
+                  </Link>
                 </div>
               </div>
 
-              <div className="p-6 flex flex-col gap-3">
-                <Link href="/reward-points" className="bg-amber-500/[0.08] border border-amber-500/[0.18] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-amber-500/[0.14] transition-all">
-                  <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
-                    <Coins size={18}/> Reward Points
-                  </div>
-                  <span className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.reward_points || 0}</span>
-                </Link>
-
-                <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
-                  <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Language / भाषा</span>
-                  <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition">
-                    {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
-                  </button>
-                </div>
-
-                {/* THEME TOGGLE ADDED HERE */}
-                <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
-                  <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Theme / थीम</span>
-                  <button onClick={toggleTheme} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition flex items-center gap-2">
-                    {isDark ? <Sun size={14} /> : <Moon size={14} />}
-                    {isDark ? "Light Mode" : "Dark Mode"}
-                  </button>
-                </div>
-
-                <Link href="/explore" className={`p-4 rounded-2xl flex justify-between items-center cursor-pointer transition border ${isDark ? 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07]' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
-                  <span className={`font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Explore</span>
-                  <ChevronRight size={16} className={isDark ? "text-gray-600" : "text-slate-400"} />
-                </Link>
-
-                <Link href="/quiz" className={`p-4 rounded-2xl flex justify-between items-center cursor-pointer transition border ${isDark ? 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07]' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
-                  <span className={`font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Quiz</span>
-                  <ChevronRight size={16} className={isDark ? "text-gray-600" : "text-slate-400"} />
-                </Link>
-              </div>
-
-              <div className={`mt-auto p-6 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
+              {/* Footer / Logout (No scroll) */}
+              <div className={`shrink-0 p-6 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
                 {showLogoutConfirm ? (
                   <div className="bg-red-500/[0.08] border border-red-500/[0.18] p-4 rounded-2xl text-center">
                     <p className={`text-sm font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Are you sure you want to log out?</p>
@@ -1141,4 +1159,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-}
+                  }
