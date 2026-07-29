@@ -46,12 +46,14 @@ const dict = {
   HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "Pay Now", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
 };
 
+// NEW ADDITION: Unique and different Men/Women "emoji" style avatars with reading/smart vibes
 const AVATARS = [
-  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Vedoxa1&backgroundColor=eab308",
-  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Karma&backgroundColor=059669",
-  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Dharma&backgroundColor=dc2626",
-  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Moksha&backgroundColor=2563eb",
-  "https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Gyan&backgroundColor=7c3aed"
+  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderMale1&backgroundColor=eab308&accessories=prescription02&clothing=blazerAndShirt&facialHair=beardLight",
+  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderFemale1&backgroundColor=059669&accessories=round&clothing=collarAndSweater&top=longHairStraight",
+  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderMale2&backgroundColor=dc2626&accessories=reading&clothing=hoodie&top=shortHairShortFlat",
+  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderFemale2&backgroundColor=2563eb&accessories=prescription01&clothing=overall&top=longHairCurvy",
+  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderMale3&backgroundColor=7c3aed&accessories=wayfarers&clothing=shirtCrewNeck&top=shortHairFrizzle",
+  "https://api.dicebear.com/7.x/avataaars/svg?seed=ReaderFemale3&backgroundColor=ec4899&accessories=kurt&clothing=blazerAndSweater&top=longHairBob"
 ];
 
 export default function VedoxaHome() {
@@ -531,6 +533,9 @@ export default function VedoxaHome() {
         .hero-glow-2 { animation: breathe2 9s ease-in-out infinite; }
         .hero-glow-3 { animation: breathe2 11s ease-in-out 2s infinite; }
 
+        /* Added Shimmer Animation for User Badge */
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
+
         .page-root::after {
           content: ''; position: fixed; inset: 0;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
@@ -599,7 +604,15 @@ export default function VedoxaHome() {
                     <Edit3 size={18} className="text-white" />
                   </div>
                 </div>
-                <div className="text-center">
+                <div className="text-center flex flex-col items-center">
+                  {/* NEW UNIQUE ELITE READER BADGE */}
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 mb-2.5 rounded-full border shadow-sm relative overflow-hidden ${isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2.5s_infinite]" />
+                    <Star size={11} className="text-amber-500 fill-amber-500" />
+                    <span className="text-[10px] font-black tracking-widest uppercase gold-text relative z-10">Elite Reader</span>
+                    <ShieldCheck size={11} className="text-amber-500" />
+                  </div>
+                  
                   <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.name || "Vedoxa Reader"}</h3>
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-600' : 'text-slate-500'}`}>{user?.email}</p>
                 </div>
