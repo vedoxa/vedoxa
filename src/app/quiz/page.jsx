@@ -1,7 +1,9 @@
+// @ts-nocheck
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion"; // ADDED FOR UNIQUE ANIMATIONS
 import { 
   ChevronLeft, 
   Sparkles, 
@@ -11,8 +13,11 @@ import {
   Brain, 
   Heart,
   ArrowRight,
-  Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Star,
+  Target,
+  Zap,
+  Gift
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -50,10 +55,10 @@ const QUIZ_STEPS = [
     subtitle: "Aap kya karte hain?",
     icon: Briefcase,
     options: [
-      { label: "Student", value: "student", sub: "Padhai kar rahe hain" },
-      { label: "Professional", value: "professional", sub: "Job karte hain" },
-      { label: "Business", value: "business", sub: "Apna vyapar hai" },
-      { label: "Homemaker / Other", value: "other", sub: "Ghar sambhalte hain" },
+      { label: "Student", value: "Student", sub: "Padhai kar rahe hain" },
+      { label: "Professional", value: "Professional", sub: "Job karte hain" },
+      { label: "Business Owner", value: "Business", sub: "Apna vyapar hai" },
+      { label: "Homemaker / Other", value: "Creator/Other", sub: "Ghar sambhalte hain" },
     ]
   },
   {
@@ -76,60 +81,87 @@ const QUIZ_STEPS = [
     subtitle: "Abhi aap zindagi me kya chahte hain?",
     icon: Heart,
     options: [
-      { label: "Peace of Mind", value: "peace", sub: "Dimaagi shanti" },
-      { label: "Motivation", value: "motivation", sub: "Aage badhne ki prerna" },
-      { label: "Focus & Productivity", value: "focus", sub: "Kaam me dhyan" },
-      { label: "Relaxation", value: "relax", sub: "Bas thoda sukoon" },
+      { label: "Peace of Mind", value: "Peace", sub: "Dimaagi shanti" },
+      { label: "Motivation", value: "Motivation", sub: "Aage badhne ki prerna" },
+      { label: "Focus & Growth", value: "Focus", sub: "Kaam me dhyan" },
+      { label: "Relaxation", value: "Relaxation", sub: "Bas thoda sukoon" },
     ]
   }
 ];
 
-// --- BOOK DATABASE (Mock Data) ---
+// --- VEDOXA BOOK DATABASE (Sirf hamari books) ---
 const MOCK_BOOKS = [
   {
     title: "The Bhagavad Gita As It Is",
     author: "A.C. Bhaktivedanta Swami Prabhupada",
-    tags: ["spiritual", "peace", "relax", "student", "professional", "business", "other"],
+    tags: ["spiritual", "Peace", "Relaxation", "Student", "Professional", "Business", "Creator/Other"],
     image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop",
-    desc: "Find ultimate peace and answers to life's toughest questions. (Zindagi ke har sawal ka jawab)"
+    desc: "Zindagi ke har sawal ka jawab aur dimaagi shanti ka marg.",
+    theme: "from-orange-500 to-amber-600",
+    shadow: "shadow-orange-500/50",
+    benefits: [
+      "Zindagi ke mushkil faisle lene me clarity milegi.",
+      "Stress aur anxiety ko hamesha ke liye door kare.",
+      "Inner strength aur aatm-vishwas (confidence) badhaye."
+    ]
   },
   {
     title: "Atomic Habits",
     author: "James Clear",
-    tags: ["self_help", "focus", "motivation", "student", "professional"],
+    tags: ["self_help", "Focus", "Motivation", "Student", "Professional"],
     image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=800&auto=format&fit=crop",
-    desc: "Build good habits and break bad ones. (Apni aadatein badlein aur aage badhein)"
+    desc: "Apni aadatein badlein aur apne goals ko easily achieve karein.",
+    theme: "from-blue-500 to-cyan-600",
+    shadow: "shadow-blue-500/50",
+    benefits: [
+      "Buri aadaton ko chhodne ka sabse asaan scientific tarika.",
+      "Roz thoda-thoda improve karke bade results paayein.",
+      "Kaam me focus aur productivity 10x badhaye."
+    ]
   },
   {
     title: "Rich Dad Poor Dad",
     author: "Robert Kiyosaki",
-    tags: ["business", "focus", "professional"],
+    tags: ["business", "Focus", "Professional", "Business"],
     image: "https://images.unsplash.com/photo-1554774853-719586f82d77?q=80&w=800&auto=format&fit=crop",
-    desc: "Learn the secrets of financial literacy. (Paise ke baare me wo jo school nahi sikhata)"
+    desc: "Paise ke baare me wo sab jo aapko school me nahi sikhaya gaya.",
+    theme: "from-emerald-500 to-green-600",
+    shadow: "shadow-emerald-500/50",
+    benefits: [
+      "Paise ko apne liye kaam karwana sikhein (Financial Freedom).",
+      "Assets aur Liabilities ke beech ka asli farq samjhein.",
+      "Apni wealth build karne ka practical roadmap."
+    ]
   },
   {
     title: "Jeet Aapki",
     author: "Shiv Khera",
-    tags: ["self_help", "motivation", "student", "business", "other"],
+    tags: ["self_help", "Motivation", "Student", "Business", "Creator/Other"],
     image: "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=800&auto=format&fit=crop",
-    desc: "A positive attitude can change your life. (Kamyabi ki or ek kadam)"
+    desc: "Kamyabi ki or ek kadam, apne nazariye ko badal kar.",
+    theme: "from-purple-500 to-pink-600",
+    shadow: "shadow-purple-500/50",
+    benefits: [
+      "Negative thoughts ko positive energy me badalna sikhein.",
+      "Leadership skills aur self-motivation develop karein.",
+      "Har field me success paane ke proven asool (principles)."
+    ]
   }
 ];
 
 export default function QuizPage() {
-  const [currentStep, setCurrentStep] = useState(-1); // -1 = Intro, 0...N = Quiz, N+1 = Loading, N+2 = Result
+  const [currentStep, setCurrentStep] = useState(-1); 
   const [answers, setAnswers] = useState({});
   const [recommendedBook, setRecommendedBook] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Smooth scroll to top on step change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
   const handleOptionSelect = (stepId, value) => {
     setAnswers(prev => ({ ...prev, [stepId]: value }));
-    setTimeout(() => handleNext(), 400); // Small delay for animation feel
+    setTimeout(() => handleNext(), 300);
   };
 
   const handleInputChange = (stepId, value) => {
@@ -145,10 +177,10 @@ export default function QuizPage() {
   };
 
   const finishQuiz = async () => {
-    setCurrentStep(QUIZ_STEPS.length); // Trigger Loading State
+    setCurrentStep(QUIZ_STEPS.length); 
     
-    // 1. Logic to find the best book
-    let bestMatch = MOCK_BOOKS[0]; // Default
+    // LOGIC: strictly match our books
+    let bestMatch = MOCK_BOOKS[0]; 
     let maxScore = -1;
 
     MOCK_BOOKS.forEach(book => {
@@ -165,7 +197,6 @@ export default function QuizPage() {
 
     setRecommendedBook(bestMatch);
 
-    // 2. Save to Supabase
     try {
       setIsSubmitting(true);
       await supabase.from("user_book_preferences").insert([
@@ -182,43 +213,45 @@ export default function QuizPage() {
       console.error("Error saving to Supabase:", error);
     } finally {
       setIsSubmitting(false);
-      // Fake loading delay to make it feel like AI is thinking
       setTimeout(() => {
-        setCurrentStep(QUIZ_STEPS.length + 1); // Show Result
-      }, 2000);
+        setCurrentStep(QUIZ_STEPS.length + 1); 
+      }, 2500); // 2.5s suspension building animation
     }
   };
 
   // --- RENDERERS ---
 
   const renderIntro = () => (
-    <div className="flex flex-col items-center justify-center text-center animate-[slideUp_0.8s_ease-out_forwards] py-12">
+    <motion.div 
+      initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
+      className="flex flex-col items-center justify-center text-center py-12"
+    >
       <div className="relative mb-8 group">
-        <div className="absolute inset-0 bg-yellow-500/30 blur-[40px] rounded-full group-hover:bg-yellow-500/40 transition duration-700"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-pink-500 blur-[50px] rounded-full opacity-50 group-hover:opacity-80 transition duration-700 animate-pulse"></div>
         <div className="relative bg-gradient-to-br from-[#1a1a24] to-[#0d0d14] p-6 rounded-[2rem] border border-white/10 shadow-2xl">
-          <Sparkles size={48} className="text-yellow-400" />
+          <Sparkles size={48} className="text-amber-400" />
         </div>
       </div>
       
-      <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-4 tracking-tight">
-        Find Your Perfect Book
+      <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-500 mb-4 tracking-tight">
+        Discover Your Perfect Book
       </h1>
-      <h2 className="text-xl md:text-2xl font-medium text-yellow-500/90 mb-6">
-        Apni Perfect Book Khojein
+      <h2 className="text-xl md:text-2xl font-medium text-amber-500/90 mb-6">
+        Apne Liye Ek Sahi Kitaab Chunein
       </h2>
       <p className="text-gray-400 max-w-md mx-auto mb-10 text-sm md:text-base leading-relaxed">
-        We'll ask you a few simple questions about your life, mood, and interests to recommend a book that can truly help you right now.
+        Hum aapki zindagi, mood, aur zarooraton ke hisaab se humari premium library se aapke liye sabse perfect book select karenge.
       </p>
 
       <button 
         onClick={() => setCurrentStep(0)}
-        className="group relative overflow-hidden bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.2)]"
+        className="group relative overflow-hidden bg-gradient-to-r from-amber-500 to-amber-600 text-black px-10 py-4 rounded-full font-bold text-lg hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(245,158,11,0.4)]"
       >
         <span className="relative z-10 flex items-center gap-2">
-          Start The Quiz <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          Start The Magic <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </span>
       </button>
-    </div>
+    </motion.div>
   );
 
   const renderQuestion = () => {
@@ -227,180 +260,239 @@ export default function QuizPage() {
     const isAnswered = answers[step.id] && answers[step.id].trim() !== "";
 
     return (
-      <div key={currentStep} className="w-full max-w-2xl mx-auto animate-[fadeIn_0.5s_ease-out_forwards]">
-        {/* Progress Bar */}
-        <div className="mb-12 flex items-center justify-center gap-2">
-          {QUIZ_STEPS.map((_, idx) => (
-            <div 
-              key={idx} 
-              className={`h-1.5 rounded-full transition-all duration-500 ${
-                idx === currentStep ? "w-8 bg-yellow-500" : 
-                idx < currentStep ? "w-4 bg-yellow-500/50" : "w-4 bg-white/10"
-              }`}
-            />
-          ))}
-        </div>
-
-        <div className="bg-white/[0.03] border border-white/[0.08] p-8 md:p-12 rounded-[2.5rem] shadow-2xl backdrop-blur-sm">
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-16 h-16 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
-              <Icon size={28} />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{step.title}</h2>
-            <p className="text-gray-400 font-medium text-lg">{step.subtitle}</p>
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={currentStep}
+          initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="w-full max-w-2xl mx-auto"
+        >
+          {/* Progress Bar */}
+          <div className="mb-12 flex items-center justify-center gap-3">
+            {QUIZ_STEPS.map((_, idx) => (
+              <div 
+                key={idx} 
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  idx === currentStep ? "w-10 bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.6)]" : 
+                  idx < currentStep ? "w-4 bg-amber-500/50" : "w-4 bg-white/10"
+                }`}
+              />
+            ))}
           </div>
 
-          {step.type === "input" ? (
-            <div className="flex flex-col gap-6">
-              <input 
-                type="text"
-                placeholder="Enter your name / Apna naam likhein"
-                value={answers[step.id] || ""}
-                onChange={(e) => handleInputChange(step.id, e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && isAnswered && handleNext()}
-                className="w-full bg-white/5 border border-white/10 focus:border-yellow-500/50 rounded-2xl px-6 py-4 text-white text-lg outline-none transition-all text-center focus:bg-white/10"
-                autoFocus
-              />
-              <button
-                onClick={handleNext}
-                disabled={!isAnswered}
-                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-4 rounded-2xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          <div className="bg-white/[0.02] border border-white/[0.08] p-8 md:p-12 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl relative overflow-hidden">
+            
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full pointer-events-none"></div>
+
+            <div className="flex flex-col items-center text-center mb-10 relative z-10">
+              <motion.div 
+                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring" }}
+                className="w-20 h-20 bg-gradient-to-br from-amber-500/20 to-pink-500/20 text-amber-400 rounded-3xl flex items-center justify-center mb-6 border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)]"
               >
-                Next <ArrowRight size={20} />
-              </button>
+                <Icon size={36} />
+              </motion.div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">{step.title}</h2>
+              <p className="text-amber-500/80 font-medium text-lg">{step.subtitle}</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {step.options.map((opt, i) => {
-                const isSelected = answers[step.id] === opt.value;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleOptionSelect(step.id, opt.value)}
-                    className={`relative p-6 rounded-2xl text-left transition-all duration-300 border flex flex-col gap-1 overflow-hidden group
-                      ${isSelected 
-                        ? "bg-yellow-500/10 border-yellow-500 text-white shadow-[0_0_20px_rgba(234,179,8,0.2)]" 
-                        : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:border-white/20 hover:scale-[1.02]"
-                      }`}
-                  >
-                    <span className="font-semibold text-lg">{opt.label}</span>
-                    <span className={`text-sm ${isSelected ? "text-yellow-200" : "text-gray-500"}`}>{opt.sub}</span>
-                    
-                    {isSelected && (
-                      <CheckCircle2 className="absolute top-4 right-4 text-yellow-500" size={20} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+
+            {step.type === "input" ? (
+              <div className="flex flex-col gap-6 relative z-10">
+                <input 
+                  type="text"
+                  placeholder="Enter your name / Apna naam likhein"
+                  value={answers[step.id] || ""}
+                  onChange={(e) => handleInputChange(step.id, e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && isAnswered && handleNext()}
+                  className="w-full bg-black/40 border border-white/10 focus:border-amber-500/80 rounded-2xl px-6 py-5 text-white text-xl outline-none transition-all text-center focus:shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                  autoFocus
+                />
+                <button
+                  onClick={handleNext}
+                  disabled={!isAnswered}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold py-5 rounded-2xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg shadow-lg"
+                >
+                  Continue <ArrowRight size={20} />
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                {step.options.map((opt, i) => {
+                  const isSelected = answers[step.id] === opt.value;
+                  return (
+                    <motion.button
+                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                      key={i}
+                      onClick={() => handleOptionSelect(step.id, opt.value)}
+                      className={`relative p-6 rounded-2xl text-left transition-all duration-300 border flex flex-col gap-1.5 overflow-hidden group
+                        ${isSelected 
+                          ? "bg-amber-500/15 border-amber-500 text-white shadow-[0_0_30px_rgba(245,158,11,0.25)]" 
+                          : "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:border-amber-500/30"
+                        }`}
+                    >
+                      <span className="font-bold text-xl">{opt.label}</span>
+                      <span className={`text-sm ${isSelected ? "text-amber-300" : "text-gray-400"}`}>{opt.sub}</span>
+                      
+                      {isSelected && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-5 right-5">
+                          <CheckCircle2 className="text-amber-500" size={24} />
+                        </motion.div>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
     );
   };
 
   const renderLoading = () => (
-    <div className="flex flex-col items-center justify-center text-center py-20 animate-[fadeIn_0.5s_ease-out_forwards]">
-      <div className="relative w-24 h-24 mb-8">
-        <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
-        <div className="absolute inset-0 border-4 border-yellow-500 rounded-full border-t-transparent animate-spin"></div>
-        <Brain className="absolute inset-0 m-auto text-yellow-500 animate-pulse" size={32} />
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center text-center py-20"
+    >
+      <div className="relative w-32 h-32 mb-10">
+        <div className="absolute inset-0 border-4 border-white/5 rounded-full"></div>
+        <div className="absolute inset-0 border-4 border-amber-500 rounded-full border-t-transparent animate-spin shadow-[0_0_30px_rgba(245,158,11,0.5)]"></div>
+        <div className="absolute inset-0 flex items-center justify-center bg-amber-500/10 rounded-full">
+          <Sparkles className="text-amber-400 animate-ping" size={40} />
+        </div>
       </div>
-      <h2 className="text-3xl font-bold text-white mb-2">Analyzing your profile...</h2>
-      <p className="text-gray-400">Aapki profile ke hisaab se best book dhoondh rahe hain...</p>
-    </div>
+      <h2 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-amber-200 mb-3">
+        Analyzing your aura...
+      </h2>
+      <p className="text-amber-500/80 font-medium text-lg">Humari library se aapki zaroorat ke hisaab se best book nikal rahe hain...</p>
+    </motion.div>
   );
 
   const renderResult = () => (
-    <div className="max-w-3xl mx-auto w-full animate-[slideUp_0.8s_ease-out_forwards] pb-12">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, ease: "easeOut" }}
+      className="max-w-4xl mx-auto w-full pb-12"
+    >
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-4 py-2 rounded-full font-medium mb-6 border border-green-500/20">
-          <CheckCircle2 size={18} /> Match Found for {answers.name || "You"}
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+          className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-5 py-2.5 rounded-full font-bold mb-6 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+        >
+          <CheckCircle2 size={20} /> 100% Match Found for {answers.name || "You"}
+        </motion.div>
+        
+        <h2 className="text-4xl md:text-5xl font-black text-white mb-4 leading-tight">
+          Aapki Perfect Book Mil Gayi Hai! 🎉
+        </h2>
+        
+        {/* PERSONALIZED REASONING MESSAGE */}
+        <div className="max-w-2xl mx-auto bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 md:p-6 mb-8 text-amber-200">
+          <p className="text-lg">
+            "Kyunki aap ek <span className="font-bold text-white bg-amber-500/20 px-2 py-0.5 rounded">{answers.profession}</span> hain, aur is waqt apni life me <span className="font-bold text-white bg-amber-500/20 px-2 py-0.5 rounded">{answers.mood}</span> chahte hain, humari library se <span className="font-bold text-white underline decoration-amber-500">{recommendedBook?.title}</span> aapke liye ekdum sahi (perfect) saabit hogi."
+          </p>
         </div>
-        <h2 className="text-4xl font-black text-white mb-4">Your Perfect Book</h2>
-        <p className="text-gray-400">Based on your mood and interests, we highly recommend this for you.</p>
       </div>
 
-      <div className="bg-gradient-to-b from-white/[0.08] to-transparent border border-white/10 rounded-[3rem] p-8 md:p-12 backdrop-blur-md relative overflow-hidden flex flex-col md:flex-row gap-8 items-center">
-        {/* Glow behind book */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-64 h-64 bg-yellow-500/20 blur-[80px] rounded-full"></div>
-        
-        {/* Book Cover mock */}
-        <div className="w-48 md:w-64 aspect-[2/3] bg-gray-900 rounded-lg shadow-2xl relative z-10 overflow-hidden border border-white/10 shrink-0 transform hover:scale-105 transition-transform duration-500">
-           {recommendedBook?.image ? (
-             <img src={recommendedBook.image} alt="Cover" className="w-full h-full object-cover opacity-80 mix-blend-overlay" />
-           ) : null}
-           <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
-              <p className="text-white font-bold leading-tight">{recommendedBook?.title}</p>
-              <p className="text-yellow-500 text-xs mt-1">{recommendedBook?.author}</p>
-           </div>
-        </div>
-
-        {/* Book Details */}
-        <div className="flex-1 relative z-10 text-center md:text-left">
-          <h3 className="text-3xl font-bold text-white mb-2">{recommendedBook?.title}</h3>
-          <p className="text-yellow-500 font-medium mb-6">By {recommendedBook?.author}</p>
+      <div className={`bg-gradient-to-br ${recommendedBook?.theme} p-[1px] rounded-[3rem] shadow-2xl relative overflow-hidden`}>
+        <div className="bg-[#0a0a10]/95 backdrop-blur-2xl rounded-[3rem] p-8 md:p-12 relative flex flex-col md:flex-row gap-10 items-center">
           
-          <div className="bg-black/30 rounded-2xl p-6 border border-white/5 mb-8">
-            <p className="text-gray-300 text-lg leading-relaxed italic">
-              "{recommendedBook?.desc}"
-            </p>
-          </div>
+          {/* Dynamic Glow behind book */}
+          <div className={`absolute top-1/2 left-1/4 -translate-y-1/2 w-72 h-72 ${recommendedBook?.theme} opacity-20 blur-[100px] rounded-full`}></div>
+          
+          {/* Book Cover mock */}
+          <motion.div 
+            whileHover={{ scale: 1.05, rotateY: -10 }} transition={{ type: "spring" }}
+            className={`w-56 md:w-72 aspect-[2/3] bg-gray-900 rounded-xl shadow-2xl relative z-10 overflow-hidden border border-white/20 shrink-0 ${recommendedBook?.shadow}`}
+            style={{ transformPerspective: 1000 }}
+          >
+             {recommendedBook?.image ? (
+               <img src={recommendedBook.image} alt="Cover" className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-110" />
+             ) : null}
+             <div className="absolute inset-0 flex flex-col justify-end p-5 bg-gradient-to-t from-black via-black/40 to-transparent">
+                <p className="text-white font-extrabold text-xl leading-tight">{recommendedBook?.title}</p>
+                <p className="text-amber-400 font-medium text-sm mt-1">{recommendedBook?.author}</p>
+             </div>
+          </motion.div>
 
-          <Link href="/explore" className="inline-flex items-center justify-center gap-2 w-full md:w-auto bg-white text-black font-bold py-4 px-8 rounded-full hover:bg-gray-200 transition-colors shadow-xl">
-             Explore this Book <ArrowRight size={20} />
-          </Link>
+          {/* Book Details & Benefits */}
+          <div className="flex-1 relative z-10 w-full text-left">
+            
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="text-amber-500 fill-amber-500" size={18} />
+              <Star className="text-amber-500 fill-amber-500" size={18} />
+              <Star className="text-amber-500 fill-amber-500" size={18} />
+              <Star className="text-amber-500 fill-amber-500" size={18} />
+              <Star className="text-amber-500 fill-amber-500" size={18} />
+              <span className="text-amber-500 font-bold ml-2 text-sm">Top Recommended</span>
+            </div>
+
+            <h3 className="text-3xl md:text-4xl font-black text-white mb-2">{recommendedBook?.title}</h3>
+            <p className="text-gray-400 font-medium mb-6">By {recommendedBook?.author}</p>
+            
+            {/* Why buy this section */}
+            <div className="mb-8">
+              <h4 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
+                <Gift className="text-amber-500" /> Yeh Book Aapko Kyu Padhni Chahiye?
+              </h4>
+              <ul className="space-y-4">
+                {recommendedBook?.benefits.map((benefit, index) => (
+                  <motion.li 
+                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + (index * 0.1) }}
+                    key={index} className="flex items-start gap-3 bg-white/5 border border-white/10 p-3.5 rounded-2xl"
+                  >
+                    <div className="bg-amber-500/20 p-1.5 rounded-full shrink-0 mt-0.5">
+                      <Target size={16} className="text-amber-400" />
+                    </div>
+                    <span className="text-gray-200 font-medium text-sm md:text-base">{benefit}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
+
+            <Link href="/explore" className={`inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r ${recommendedBook?.theme} text-white font-black text-lg py-5 px-8 rounded-2xl hover:brightness-110 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.5)] transform hover:-translate-y-1`}>
+               Buy Now & Start Reading <Zap size={22} className="fill-white" />
+            </Link>
+          </div>
         </div>
       </div>
       
-      <div className="mt-8 text-center">
-        <button onClick={() => {setCurrentStep(-1); setAnswers({});}} className="text-gray-500 hover:text-white transition-colors text-sm">
+      <div className="mt-10 text-center">
+        <button onClick={() => {setCurrentStep(-1); setAnswers({});}} className="text-gray-500 hover:text-white transition-colors text-sm font-medium border border-gray-800 px-6 py-2 rounded-full hover:bg-white/5">
           Take Quiz Again (Dobara shuru karein)
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
-    <div className="min-h-screen bg-[#02040A] text-gray-200 flex flex-col relative overflow-hidden font-sans selection:bg-yellow-500/30">
-      {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-yellow-600/10 blur-[120px] rounded-full"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+    <div className="min-h-screen bg-[#05050A] text-gray-200 flex flex-col relative overflow-hidden font-sans selection:bg-amber-500/30">
+      {/* Dynamic Background Effects */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-amber-600/10 blur-[150px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full"></div>
+        {/* Subtle grid pattern overlay for modern look */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.04] mix-blend-overlay"></div>
       </div>
 
       {/* Navbar */}
-      <nav className="relative z-20 p-6 flex items-center justify-between max-w-6xl mx-auto w-full">
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white font-medium hover:bg-white/5 px-4 py-2 rounded-xl transition">
-          <ChevronLeft size={20} /> Home
+      <nav className="relative z-20 p-6 flex items-center justify-between max-w-6xl mx-auto w-full border-b border-white/5">
+        <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white font-bold hover:bg-white/10 px-5 py-2.5 rounded-full transition border border-transparent hover:border-white/10">
+          <ChevronLeft size={20} /> Back to Library
         </Link>
         {currentStep >= 0 && currentStep < QUIZ_STEPS.length && (
-          <span className="text-sm font-bold text-yellow-500 bg-yellow-500/10 px-4 py-1.5 rounded-full border border-yellow-500/20">
-            Step {currentStep + 1} of {QUIZ_STEPS.length}
-          </span>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-sm font-bold text-amber-500 bg-amber-500/10 px-5 py-2 rounded-full border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+            <Zap size={16} className="fill-amber-500" /> Step {currentStep + 1} of {QUIZ_STEPS.length}
+          </motion.div>
         )}
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 relative z-10 flex flex-col items-center justify-center p-6 w-full h-full">
-        {currentStep === -1 && renderIntro()}
-        {currentStep >= 0 && currentStep < QUIZ_STEPS.length && renderQuestion()}
-        {currentStep === QUIZ_STEPS.length && renderLoading()}
-        {currentStep === QUIZ_STEPS.length + 1 && renderResult()}
+      <main className="flex-1 relative z-10 flex flex-col items-center justify-center p-6 w-full h-full min-h-[80vh]">
+        <AnimatePresence mode="wait">
+          {currentStep === -1 && <motion.div key="intro" exit={{ opacity: 0, y: -20 }}>{renderIntro()}</motion.div>}
+          {currentStep >= 0 && currentStep < QUIZ_STEPS.length && <div key="quiz">{renderQuestion()}</div>}
+          {currentStep === QUIZ_STEPS.length && <motion.div key="loading" exit={{ opacity: 0, scale: 0.9 }}>{renderLoading()}</motion.div>}
+          {currentStep === QUIZ_STEPS.length + 1 && <motion.div key="result">{renderResult()}</motion.div>}
+        </AnimatePresence>
       </main>
-
-      {/* Global CSS for Animations */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.98); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}} />
     </div>
   );
 }
