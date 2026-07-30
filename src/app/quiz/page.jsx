@@ -211,12 +211,11 @@ export default function QuizPage() {
 
     setRecommendedBook(bestMatch);
 
-        // Save/Update in Database
+    // Save/Update in Database
     try {
       setIsSubmitting(true);
       
-      // Yahan humne 'error' ko pakadne ka logic add kiya hai
-      const { data, error } = await supabase.from("user_book_preferences").insert([
+      const { error } = await supabase.from("user_book_preferences").insert([
         {
           name: answers.name || "Anonymous",
           age_group: answers.age,
@@ -227,12 +226,9 @@ export default function QuizPage() {
         }
       ]);
 
-      // Agar Supabase ne data rok diya, toh ye screen par error dikhayega
       if (error) {
-        console.error("Supabase Database Error:", error);
-        alert("Database Error: " + error.message + "\nDetails: " + error.details);
-      } else {
-        console.log("Data successfully saved!", data);
+        console.error("Supabase Error:", error);
+        alert("Database Error: " + error.message + "\n(Hint: Check RLS policies or column names in Supabase)");
       }
 
     } catch (err) {
@@ -241,8 +237,9 @@ export default function QuizPage() {
       setIsSubmitting(false);
       setTimeout(() => {
         setCurrentStep(QUIZ_STEPS.length + 1); 
-      }, 2500);
+      }, 2500); // Suspense animation
     }
+  };
 
   // --- RENDERERS ---
 
