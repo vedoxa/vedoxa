@@ -211,10 +211,12 @@ export default function QuizPage() {
 
     setRecommendedBook(bestMatch);
 
-    // Save/Update in Database
+        // Save/Update in Database
     try {
       setIsSubmitting(true);
-      await supabase.from("user_book_preferences").insert([
+      
+      // Yahan humne 'error' ko pakadne ka logic add kiya hai
+      const { data, error } = await supabase.from("user_book_preferences").insert([
         {
           name: answers.name || "Anonymous",
           age_group: answers.age,
@@ -224,15 +226,23 @@ export default function QuizPage() {
           recommended_book: bestMatch?.title || "Unknown",
         }
       ]);
-    } catch (error) {
-      console.error("Error saving to Supabase:", error);
+
+      // Agar Supabase ne data rok diya, toh ye screen par error dikhayega
+      if (error) {
+        console.error("Supabase Database Error:", error);
+        alert("Database Error: " + error.message + "\nDetails: " + error.details);
+      } else {
+        console.log("Data successfully saved!", data);
+      }
+
+    } catch (err) {
+      console.error("Code Execution Error:", err);
     } finally {
       setIsSubmitting(false);
       setTimeout(() => {
         setCurrentStep(QUIZ_STEPS.length + 1); 
-      }, 2500); // Suspense animation
+      }, 2500);
     }
-  };
 
   // --- RENDERERS ---
 
