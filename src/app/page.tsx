@@ -7,7 +7,7 @@ import dynamic from "next/dynamic"; // NEW ADDITION
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon, Crown, Sparkles
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon, Crown, Sparkles, Eye
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -154,7 +154,7 @@ export default function VedoxaHome() {
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) handleUserLogin(session.user);
-      else { setUser(null); setProfile(null); setPurchasedBookIds([]); setIsSidebarOpen(false); }
+      else { setUser(null); setProfile(null); setPurchasedBookIds([]); setFavorites([]); setIsSidebarOpen(false); }
     });
 
     return () => {
@@ -216,6 +216,10 @@ export default function VedoxaHome() {
     }
     const { data: orders } = await supabase.from('orders').select('book_id').eq('customer_id', loggedUser.id);
     if (orders) setPurchasedBookIds(orders.map(o => o.book_id));
+
+    // Fetch user favorites from database on login (Using user_interactions exactly like BookDetailsModal)
+    const { data: favs } = await supabase.from('user_interactions').select('book_id').eq('user_id', loggedUser.id).eq('interaction_type', 'like');
+    if (favs) setFavorites(favs.map(f => f.book_id));
   };
 
   const fetchBooks = useCallback(async () => {
@@ -259,15 +263,40 @@ export default function VedoxaHome() {
     } catch (err) { addToast("Review Error: " + (err.message || "Failed to save review."), "error"); }
   };
 
-  const openBookDetails = (book) => {
+  const openBookDetails = async (book) => {
     setSelectedBook(book); fetchReviews(book.id); setShowBookDetails(true);
     if (typeof window !== "undefined") window.history.pushState({ modal: "book-details" }, "", window.location.pathname);
+
+    // Increment Real Views in Database checking sessionStorage logic (Same as BookDetailsModal)
+    const viewKey = `viewed_book_${book.id}`;
+    if (!sessionStorage.getItem(viewKey)) {
+      sessionStorage.setItem(viewKey, 'true');
+      try {
+        const newViews = (book.views || 0) + 1;
+        await supabase.from("books").update({ views: newViews }).eq("id", book.id);
+        setBooks((prev) => prev.map((b) => (b.id === book.id ? { ...b, views: newViews } : b)));
+      } catch (err) {
+        console.error("View update error", err);
+      }
+    }
   };
 
-  // Naya function suggested books ke liye jo dono kaam karega
-  const handleSuggestedBookChange = (book) => {
+  const handleSuggestedBookChange = async (book) => {
     setSelectedBook(book);
     fetchReviews(book.id);
+
+    // Increment Real Views in Database checking sessionStorage logic
+    const viewKey = `viewed_book_${book.id}`;
+    if (!sessionStorage.getItem(viewKey)) {
+      sessionStorage.setItem(viewKey, 'true');
+      try {
+        const newViews = (book.views || 0) + 1;
+        await supabase.from("books").update({ views: newViews }).eq("id", book.id);
+        setBooks((prev) => prev.map((b) => (b.id === book.id ? { ...b, views: newViews } : b)));
+      } catch (err) {
+        console.error("View update error", err);
+      }
+    }
   };
 
   const closeBookDetails = () => {
@@ -313,9 +342,42 @@ export default function VedoxaHome() {
     } catch (error) { addToast("Error saving avatar.", "error"); }
   };
 
-  const toggleFavorite = (e, bookId) => {
+  // Connected toggleFavorite to Realtime Database using user_interactions like BookDetailsModal
+  const toggleFavorite = async (e, bookId) => {
     e.stopPropagation();
-    setFavorites(prev => prev.includes(bookId) ? prev.filter(id => id !== bookId) : [...prev, bookId]);
+    if (!user) {
+      addToast("Please login to save favorites", "error");
+      setShowAuthModal(true);
+      return;
+    }
+
+    const isFav = favorites.includes(bookId);
+    const bookToUpdate = books.find((b) => b.id === bookId);
+    const currentLikes = bookToUpdate?.likes || 0;
+
+    // Optimistic UI update for instant feedback
+    setFavorites((prev) => isFav ? prev.filter((id) => id !== bookId) : [...prev, bookId]);
+    setBooks((prev) => prev.map((b) => b.id === bookId ? { ...b, likes: isFav ? Math.max(0, currentLikes - 1) : currentLikes + 1 } : b));
+
+    try {
+      if (isFav) {
+        await supabase.from("user_interactions").delete().match({ user_id: user.id, book_id: bookId, interaction_type: 'like' });
+        await supabase.from("books").update({ likes: Math.max(0, currentLikes - 1) }).eq("id", bookId);
+      } else {
+        await supabase.from("user_interactions").upsert({
+          user_id: user.id,
+          book_id: bookId,
+          interaction_type: 'like'
+        }, { onConflict: 'user_id, book_id' });
+        await supabase.from("books").update({ likes: currentLikes + 1 }).eq("id", bookId);
+      }
+    } catch (err) {
+      console.error("Favorite toggle error:", err);
+      // Revert UI if database update fails
+      setFavorites((prev) => isFav ? [...prev, bookId] : prev.filter((id) => id !== bookId));
+      setBooks((prev) => prev.map((b) => b.id === bookId ? { ...b, likes: currentLikes } : b));
+      addToast("Failed to update like status", "error");
+    }
   };
 
   let partnerDiscountAmount = 0;
@@ -553,50 +615,6 @@ export default function VedoxaHome() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.25); border-radius: 10px; }
 
         input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px rgba(212,146,26,0.2), 0 0 16px rgba(212,146,26,0.06); }
-
-        /* ---------------------------------------------------------------------- */
-        /* --- HIGH-END 3D BOOK STACK SCROLL ANIMATION (NICHE DAB JAYE) --------- */
-        /* ---------------------------------------------------------------------- */
-        
-        .book-list-container {
-          /* Perspective zaroori hai jisse 3D depth real lage */
-          perspective: 1500px;
-          transform-style: preserve-3d;
-        }
-
-        .luminary-card {
-          position: sticky !important;
-          top: 100px !important; /* Yaha aate hi book dabna shuru hogi */
-          z-index: 1;
-          transform-origin: top center;
-          will-change: transform, opacity, filter;
-        }
-
-        /* Naye Chrome/Edge browsers ke liye Smooth Scroll Animation */
-        @supports (animation-timeline: view()) {
-          .luminary-card {
-            animation: book-press-3d linear both !important;
-            animation-timeline: view() !important;
-            /* Animation tab start hogi jab card 10% screen cross kar lega top se */
-            animation-range: exit -10% exit 100% !important; 
-          }
-          
-          @keyframes book-press-3d {
-            0% {
-              transform: scale(1) translateY(0) rotateX(0deg) !important;
-              filter: brightness(1) blur(0px) !important;
-              opacity: 1 !important;
-            }
-            100% {
-              /* Piche dabne aur thoda blur hone ka powerful effect */
-              transform: scale(0.75) translateY(-80px) rotateX(30deg) !important;
-              filter: brightness(0.15) blur(3px) !important;
-              opacity: 0 !important;
-            }
-          }
-        }
-        /* ---------------------------------------------------------------------- */
-
       `}</style>
 
       {/* Floating Toasts */}
@@ -1056,7 +1074,7 @@ export default function VedoxaHome() {
             </div>
           </motion.div>
 
-          <div className="book-list-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {loading ? (
               [1, 2, 3].map((n) => (
                 <div key={n} className={`border rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
@@ -1136,6 +1154,19 @@ export default function VedoxaHome() {
                         </button>
                       )}
                     </div>
+                    
+                    {/* NEW VIEWS & LIKES UI BELOW BUY BUTTON */}
+                    <div className={`flex justify-between items-center mt-4 pt-3 border-t border-dashed ${isDark ? 'border-white/[0.1]' : 'border-slate-200'}`}>
+                      <div className={`flex items-center gap-1.5 text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                        <Eye size={14} className="text-blue-400/90" />
+                        <span>{book.views || 0} Views</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                        <Heart size={14} className="text-red-500/90 fill-red-500/20" />
+                        <span>{book.likes || 0} Likes</span>
+                      </div>
+                    </div>
+
                   </motion.div>
                 );
               })
@@ -1203,4 +1234,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-    }
+         }
