@@ -555,33 +555,42 @@ export default function VedoxaHome() {
         input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px rgba(212,146,26,0.2), 0 0 16px rgba(212,146,26,0.06); }
 
         /* ---------------------------------------------------------------------- */
-        /* --- 3D BOOK STACK SCROLL ANIMATION (NICHE DAB JAYE EFFECT) ----------- */
+        /* --- HIGH-END 3D BOOK STACK SCROLL ANIMATION (NICHE DAB JAYE) --------- */
         /* ---------------------------------------------------------------------- */
-        .luminary-card {
-          position: sticky !important;
-          top: 100px !important;
-          z-index: 1;
-          transform-origin: top center;
+        
+        .book-list-container {
+          /* Perspective zaroori hai jisse 3D depth real lage */
+          perspective: 1500px;
+          transform-style: preserve-3d;
         }
 
+        .luminary-card {
+          position: sticky !important;
+          top: 100px !important; /* Yaha aate hi book dabna shuru hogi */
+          z-index: 1;
+          transform-origin: top center;
+          will-change: transform, opacity, filter;
+        }
+
+        /* Naye Chrome/Edge browsers ke liye Smooth Scroll Animation */
         @supports (animation-timeline: view()) {
           .luminary-card {
             animation: book-press-3d linear both !important;
             animation-timeline: view() !important;
-            /* Animation triggers gracefully as the item's static position hits the top */
-            animation-range: exit 0% exit 100% !important;
+            /* Animation tab start hogi jab card 10% screen cross kar lega top se */
+            animation-range: exit -10% exit 100% !important; 
           }
           
           @keyframes book-press-3d {
             0% {
-              transform: perspective(1200px) scale(1) translateY(0) rotateX(0deg) !important;
-              filter: brightness(1) !important;
+              transform: scale(1) translateY(0) rotateX(0deg) !important;
+              filter: brightness(1) blur(0px) !important;
               opacity: 1 !important;
             }
             100% {
-              /* Push back, scale down, and rotate to simulate being pressed underneath */
-              transform: perspective(1200px) scale(0.82) translateY(-40px) rotateX(15deg) !important;
-              filter: brightness(0.25) !important;
+              /* Piche dabne aur thoda blur hone ka powerful effect */
+              transform: scale(0.75) translateY(-80px) rotateX(30deg) !important;
+              filter: brightness(0.15) blur(3px) !important;
               opacity: 0 !important;
             }
           }
@@ -1047,7 +1056,7 @@ export default function VedoxaHome() {
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="book-list-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {loading ? (
               [1, 2, 3].map((n) => (
                 <div key={n} className={`border rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
@@ -1194,4 +1203,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-}
+    }
