@@ -553,6 +553,41 @@ export default function VedoxaHome() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.25); border-radius: 10px; }
 
         input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px rgba(212,146,26,0.2), 0 0 16px rgba(212,146,26,0.06); }
+
+        /* ---------------------------------------------------------------------- */
+        /* --- 3D BOOK STACK SCROLL ANIMATION (NICHE DAB JAYE EFFECT) ----------- */
+        /* ---------------------------------------------------------------------- */
+        .luminary-card {
+          position: sticky !important;
+          top: 100px !important;
+          z-index: 1;
+          transform-origin: top center;
+        }
+
+        @supports (animation-timeline: view()) {
+          .luminary-card {
+            animation: book-press-3d linear both !important;
+            animation-timeline: view() !important;
+            /* Animation triggers gracefully as the item's static position hits the top */
+            animation-range: exit 0% exit 100% !important;
+          }
+          
+          @keyframes book-press-3d {
+            0% {
+              transform: perspective(1200px) scale(1) translateY(0) rotateX(0deg) !important;
+              filter: brightness(1) !important;
+              opacity: 1 !important;
+            }
+            100% {
+              /* Push back, scale down, and rotate to simulate being pressed underneath */
+              transform: perspective(1200px) scale(0.82) translateY(-40px) rotateX(15deg) !important;
+              filter: brightness(0.25) !important;
+              opacity: 0 !important;
+            }
+          }
+        }
+        /* ---------------------------------------------------------------------- */
+
       `}</style>
 
       {/* Floating Toasts */}
@@ -1159,4 +1194,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-                  }
+}
