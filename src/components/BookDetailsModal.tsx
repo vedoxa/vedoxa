@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, 
-  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag 
+  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag, Download 
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -190,6 +190,48 @@ export default function BookDetailsModal({
     totalStars += rStar;
   });
   const avgRating = totalReviewsCount > 0 ? (totalStars / totalReviewsCount).toFixed(1) : "0.0";
+
+  // ===== NEW PDF DOWNLOAD LOGIC =====
+  const handleDownloadPDF = async () => {
+    try {
+      // Find the PDF URL. 
+      // Assumption: The pdf is stored in a storage bucket like covers, using selectedBook.pdf_path or pdf_url.
+      const pdfUrl = selectedBook.pdf_url || (selectedBook.pdf_path ? `${supabaseUrl}/storage/v1/object/public/books-pdfs/${selectedBook.pdf_path}` : null);
+      
+      if (!pdfUrl) {
+        alert("PDF file not available for this book yet.");
+        return;
+      }
+
+      // Fetch the PDF file so we can rename it locally based on the Book title
+      const response = await fetch(pdfUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = blobUrl;
+      
+      // Clean up the book name for the safe file name format
+      const cleanName = selectedBook.title ? selectedBook.title.replace(/[^a-zA-Z0-9 ]/g, "_") : "Vedoxa_Book";
+      a.download = `${cleanName}.pdf`;
+      
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Fallback in case fetch is blocked by CORS
+      const fallbackUrl = selectedBook.pdf_url || (selectedBook.pdf_path ? `${supabaseUrl}/storage/v1/object/public/books-pdfs/${selectedBook.pdf_path}` : null);
+      if(fallbackUrl) {
+         window.open(fallbackUrl, "_blank");
+      } else {
+         alert("Failed to download PDF. Please try again.");
+      }
+    }
+  };
 
   return (
     <>
@@ -439,9 +481,9 @@ export default function BookDetailsModal({
                       )}
                   </motion.div>
 
-                  {/* PRICE ADJUSTED - Extra margin bottom created implicitly by parent pb-12 for clear separation on mobile */}
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-row items-center justify-between gap-4">
-                    <div className="flex flex-col">
+                  {/* PRICE AND ACTION BUTTONS */}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-col lg:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-col w-full lg:w-auto">
                       <span className="text-sm font-semibold text-gray-400 mb-1">Total Price</span>
                       <div className="flex items-center gap-3">
                         {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
@@ -452,23 +494,33 @@ export default function BookDetailsModal({
                     </div>
                     
                     {purchasedBookIds.includes(selectedBook.id) ? (
-                        <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-2 font-bold hover:bg-emerald-500/25 transition shadow-lg w-auto">
-                          <CheckCircle2 size={20} /> {t.readNow}
-                        </button>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+                          <button onClick={handleDownloadPDF} className="px-5 py-3 md:px-6 md:py-4 rounded-xl text-sm md:text-base bg-blue-500/15 text-blue-400 border border-blue-500/30 flex justify-center items-center gap-2 font-bold hover:bg-blue-500/25 transition shadow-lg w-full sm:w-auto">
+                            <Download size={18} /> Download PDF
+                          </button>
+                          <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-2 font-bold hover:bg-emerald-500/25 transition shadow-lg w-full sm:w-auto">
+                            <CheckCircle2 size={20} /> {t.readNow}
+                          </button>
+                        </div>
                       ) : (
-                        <div className="flex flex-col items-end gap-2.5">
+                        <div className="flex flex-col items-end gap-2.5 w-full lg:w-auto">
                           <button 
                             onClick={() => {
                               setSamplePage(0);
                               setShowSampleReader(true);
                             }} 
-                            className="text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-1.5 rounded-full border border-emerald-500/30 transition-all flex items-center gap-1.5 hover:scale-105 shadow-sm"
+                            className="text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-1.5 rounded-full border border-emerald-500/30 transition-all flex items-center gap-1.5 hover:scale-105 shadow-sm self-start sm:self-end"
                           >
                             <BookOpen size={14} /> Free Sample
                           </button>
-                          <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-auto">
-                            <Lock size={18}/> Buy Now
-                          </button>
+                          <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+                            <button onClick={() => setShowCheckout(true)} className="px-5 py-3 md:px-6 md:py-4 rounded-xl text-sm md:text-base bg-gray-500/15 text-gray-400 border border-gray-500/30 flex justify-center items-center gap-2 font-bold hover:bg-gray-500/25 transition shadow-lg w-full sm:w-auto cursor-pointer">
+                              <Lock size={16}/> Download PDF
+                            </button>
+                            <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-full sm:w-auto">
+                              <Lock size={18}/> Buy Now
+                            </button>
+                          </div>
                         </div>
                     )}
                   </motion.div>
