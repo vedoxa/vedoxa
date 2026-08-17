@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function BookDetailsModal({
   selectedBook,
-  onBookChange, // Naya prop jo dono kaam karega (book update + reviews load)
+  onBookChange, 
   partnerData,
   purchasedBookIds,
   t,
@@ -27,7 +27,9 @@ export default function BookDetailsModal({
   handleSubmitReview,
   setShowBookDetails,
   openWebReader,
-  setShowCheckout
+  setShowCheckout,
+  theme, // Added support for props passed from VedoxaHome
+  isDark // Added support for props passed from VedoxaHome
 }) {
   const originalPrice = selectedBook.final_price;
   const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
@@ -42,7 +44,6 @@ export default function BookDetailsModal({
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
 
   // Advanced States
-  // Initialize with existing review's rating or default to 5
   const [userRating, setUserRating] = useState(userExistingReview?.rating || 5); 
   const [helpfulVotes, setHelpfulVotes] = useState({}); 
   const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); 
@@ -52,6 +53,9 @@ export default function BookDetailsModal({
   const [showSampleReader, setShowSampleReader] = useState(false);
   const [samplePage, setSamplePage] = useState(0);
   const maxSamplePages = 3;
+
+  // PDF Download State
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Scroll reset ke liye Ref
   const scrollContainerRef = useRef(null);
@@ -63,7 +67,6 @@ export default function BookDetailsModal({
     }
   }, [selectedBook.id]);
 
-  // Sync userRating if userExistingReview changes
   useEffect(() => {
     setUserRating(userExistingReview?.rating || 5);
   }, [userExistingReview]);
@@ -185,51 +188,54 @@ export default function BookDetailsModal({
   let totalStars = 0;
   
   reviews.forEach(r => {
-    const rStar = r.rating || 5; // Fallback to 5 if db doesn't have rating yet
+    const rStar = r.rating || 5; 
     ratingStats[rStar] = (ratingStats[rStar] || 0) + 1;
     totalStars += rStar;
   });
   const avgRating = totalReviewsCount > 0 ? (totalStars / totalReviewsCount).toFixed(1) : "0.0";
 
-  // ===== NEW PDF DOWNLOAD LOGIC =====
+  // ===== NEW 100% WORKING PDF DOWNLOAD LOGIC =====
   const handleDownloadPDF = async () => {
+    if (isDownloading) return;
+    
     try {
-      // Find the PDF URL. 
-      // Assumption: The pdf is stored in a storage bucket like covers, using selectedBook.pdf_path or pdf_url.
-      const pdfUrl = selectedBook.pdf_url || (selectedBook.pdf_path ? `${supabaseUrl}/storage/v1/object/public/books-pdfs/${selectedBook.pdf_path}` : null);
-      
-      if (!pdfUrl) {
+      if (!selectedBook.pdf_path) {
         alert("PDF file not available for this book yet.");
         return;
       }
 
-      // Fetch the PDF file so we can rename it locally based on the Book title
-      const response = await fetch(pdfUrl);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      
+      setIsDownloading(true);
+
+      // Book Name format me convert karna taaki sahi naam se save ho
+      const cleanName = selectedBook.title ? selectedBook.title.replace(/[^a-zA-Z0-9 ]/g, "_") : "Vedoxa_Book";
+      const fileName = `${cleanName}.pdf`;
+
+      // Secure Bucket ('books-pdfs') se Signed URL generate karna
+      // { download: fileName } force karega browser ko PDF download karne ke liye (naye tab me kholne ki bajaye)
+      const { data, error } = await supabase.storage
+        .from('books-pdfs')
+        .createSignedUrl(selectedBook.pdf_path, 3600, {
+          download: fileName
+        });
+
+      if (error || !data?.signedUrl) {
+        throw new Error("Could not generate secure download link.");
+      }
+
+      // Invisible Anchor (A) tag create karke download trigger karna
       const a = document.createElement("a");
       a.style.display = "none";
-      a.href = blobUrl;
-      
-      // Clean up the book name for the safe file name format
-      const cleanName = selectedBook.title ? selectedBook.title.replace(/[^a-zA-Z0-9 ]/g, "_") : "Vedoxa_Book";
-      a.download = `${cleanName}.pdf`;
+      a.href = data.signedUrl;
       
       document.body.appendChild(a);
       a.click();
       
-      window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download failed:", error);
-      // Fallback in case fetch is blocked by CORS
-      const fallbackUrl = selectedBook.pdf_url || (selectedBook.pdf_path ? `${supabaseUrl}/storage/v1/object/public/books-pdfs/${selectedBook.pdf_path}` : null);
-      if(fallbackUrl) {
-         window.open(fallbackUrl, "_blank");
-      } else {
-         alert("Failed to download PDF. Please try again.");
-      }
+      alert("Failed to download PDF safely. Please try again.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -242,7 +248,6 @@ export default function BookDetailsModal({
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
           >
-            {/* Close Button */}
             <button 
               onClick={() => setShowSampleReader(false)} 
               className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-50"
@@ -250,9 +255,7 @@ export default function BookDetailsModal({
               <X size={24} />
             </button>
 
-            {/* Book Container with 3D Perspective */}
             <div className="relative w-full max-w-lg h-[80vh] md:h-[85vh] bg-[#fdfaf6] rounded-r-2xl rounded-l-md shadow-[0_0_50px_rgba(255,255,255,0.1)] overflow-hidden flex flex-col" style={{ perspective: '2000px' }}>
-                {/* Book Spine Simulation */}
                 <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/20 via-black/5 to-transparent z-20 pointer-events-none" />
                 
                 <AnimatePresence mode="wait">
@@ -264,7 +267,6 @@ export default function BookDetailsModal({
                     transition={{ duration: 0.5, ease: "easeInOut" }}
                     className="flex-1 p-8 md:p-12 pl-12 md:pl-16 overflow-y-auto text-gray-900 flex flex-col relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]"
                   >
-                    {/* Content based on page */}
                     {samplePage === 0 && (
                         <div className="flex-1 flex flex-col items-center justify-center text-center">
                             <h2 className="font-cinzel text-3xl md:text-4xl font-black mb-4 text-black">{selectedBook.title}</h2>
@@ -313,14 +315,12 @@ export default function BookDetailsModal({
                         </div>
                     )}
                     
-                    {/* Page Number */}
                     <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-gray-400 font-bold font-serif">
                         - {samplePage + 1} -
                     </div>
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Navigation Buttons for Book */}
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between z-30 pointer-events-none">
                     <button 
                         onClick={() => setSamplePage(prev => Math.max(0, prev - 1))}
@@ -371,13 +371,10 @@ export default function BookDetailsModal({
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed inset-0 z-[800] bg-[#0a0a0d]"
       >
-        {/* SCROLLING CONTAINER (Added ref here) */}
         <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           
-          {/* Main Wrapper set to relative so absolute buttons scroll with the page */}
           <div className="relative min-h-full flex flex-col">
 
-            {/* SCROLLING TOP BUTTONS - Now they will scroll up instead of staying fixed on screen */}
             <motion.button 
                 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
                 onClick={() => setShowBookDetails(false)} 
@@ -397,7 +394,6 @@ export default function BookDetailsModal({
 
             <div className="flex flex-col md:flex-row w-full relative flex-1">
                 
-                {/* Book Info Section - Removed excess top/bottom empty space and added separation from reviews */}
                 <div className="w-full md:w-1/2 p-5 pt-20 md:p-16 pb-12 md:pb-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
                   
                   {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
@@ -406,7 +402,6 @@ export default function BookDetailsModal({
                     </motion.div>
                   )}
 
-                  {/* Cover Image - Reduced mt-16 to mt-4 to prevent excessive empty space at top */}
                   <motion.div 
                     initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
                     className="w-full h-64 md:h-96 mb-6 mt-4 md:mt-0 relative cursor-pointer"
@@ -435,7 +430,6 @@ export default function BookDetailsModal({
                     </motion.div>
                   </motion.div>
 
-                  {/* MODERN SOCIAL STATS BAR */}
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-400 font-bold bg-white/5 w-fit mx-auto px-6 py-2.5 rounded-full border border-white/10 shadow-inner">
                       <div className="flex items-center gap-2 text-blue-400">
                         <Eye size={18} /> {stats.views} Views
@@ -462,7 +456,6 @@ export default function BookDetailsModal({
                     {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
                   </motion.p>
 
-                  {/* PAGES AND TAGS */}
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-10">
                       {selectedBook.pages && (
                         <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
@@ -495,8 +488,8 @@ export default function BookDetailsModal({
                     
                     {purchasedBookIds.includes(selectedBook.id) ? (
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
-                          <button onClick={handleDownloadPDF} className="px-5 py-3 md:px-6 md:py-4 rounded-xl text-sm md:text-base bg-blue-500/15 text-blue-400 border border-blue-500/30 flex justify-center items-center gap-2 font-bold hover:bg-blue-500/25 transition shadow-lg w-full sm:w-auto">
-                            <Download size={18} /> Download PDF
+                          <button onClick={handleDownloadPDF} disabled={isDownloading} className="px-5 py-3 md:px-6 md:py-4 rounded-xl text-sm md:text-base bg-blue-500/15 text-blue-400 border border-blue-500/30 flex justify-center items-center gap-2 font-bold hover:bg-blue-500/25 transition shadow-lg w-full sm:w-auto disabled:opacity-50">
+                            <Download size={18} /> {isDownloading ? "Downloading..." : "Download PDF"}
                           </button>
                           <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-2 font-bold hover:bg-emerald-500/25 transition shadow-lg w-full sm:w-auto">
                             <CheckCircle2 size={20} /> {t.readNow}
@@ -526,7 +519,7 @@ export default function BookDetailsModal({
                   </motion.div>
                 </div>
 
-                {/* Reviews Section - Play Store Style */}
+                {/* Reviews Section */}
                 <motion.div 
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
                   className="w-full md:w-1/2 p-5 pt-12 md:p-16 bg-[#0a0a0d] relative overflow-hidden shrink-0 flex flex-col"
@@ -538,7 +531,6 @@ export default function BookDetailsModal({
                       <MessageSquare className="text-yellow-500" /> Ratings and reviews
                     </h2>
 
-                    {/* Play Store Style Rating Overview */}
                     <div className="flex items-center gap-6">
                       <div className="flex flex-col items-center justify-center">
                         <h1 className="text-6xl font-black text-white leading-none">{avgRating}</h1>
@@ -572,7 +564,6 @@ export default function BookDetailsModal({
                         <CheckCircle2 size={18} className="text-emerald-400"/> {userExistingReview ? "Update your review" : "Rate this book"}
                       </h3>
                       
-                      {/* User Dynamic Star Rating Input */}
                       <div className="flex items-center gap-2 mb-4">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button key={star} onClick={() => setUserRating(star)} className="focus:outline-none transition-transform hover:scale-110">
@@ -590,7 +581,7 @@ export default function BookDetailsModal({
                       
                       <button 
                         onClick={() => {
-                          handleSubmitReview(userRating); // Passed userRating here so it saves exact stars!
+                          handleSubmitReview(userRating); 
                         }} 
                         className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 px-6 py-2.5 rounded-lg text-sm font-bold gap-2`}
                       >
@@ -660,7 +651,7 @@ export default function BookDetailsModal({
                 </motion.div>
             </div>
 
-            {/* SUGGESTED BOOKS SECTION - Appears at the very bottom, complex & clean look */}
+            {/* SUGGESTED BOOKS SECTION */}
             {suggestedBooks.length > 0 && (
               <div className="w-full bg-[#050508] border-t border-white/10 p-6 md:p-12 pb-16 relative z-10">
                 <h3 className="text-xl md:text-2xl font-black text-white mb-6 flex items-center gap-2">
@@ -668,7 +659,6 @@ export default function BookDetailsModal({
                   More Books You Might Like
                 </h3>
                 
-                {/* Horizontal scrollable container without visible scrollbar */}
                 <div className="flex overflow-x-auto gap-4 md:gap-6 snap-x pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {suggestedBooks.map((book) => (
                     <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer" onClick={() => onBookChange && onBookChange(book)}>
