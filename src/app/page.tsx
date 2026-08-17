@@ -234,7 +234,7 @@ export default function VedoxaHome() {
   const fetchReviews = async (bookId) => {
     setLoadingReviews(true);
     try {
-      const { data, error } = await supabase.from("reviews").select("id, review_text, created_at, user_id, profiles(name), fake_author_name").eq("book_id", bookId).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("reviews").select("id, review_text, rating, created_at, user_id, profiles(name), fake_author_name").eq("book_id", bookId).order("created_at", { ascending: false });
       if (!error && data) {
         setReviews(data);
         if (user) {
