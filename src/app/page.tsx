@@ -247,21 +247,35 @@ export default function VedoxaHome() {
     setLoadingReviews(false);
   };
 
-  const handleSubmitReview = async () => {
-    if (!newReviewText.trim()) return;
-    try {
-      if (userExistingReview) {
-        const { error } = await supabase.from("reviews").update({ review_text: newReviewText }).eq("id", userExistingReview.id);
-        if (error) throw error;
-        addToast("Review updated successfully!", "success");
-      } else {
-        const { error } = await supabase.from("reviews").insert([{ book_id: selectedBook.id, user_id: user.id, review_text: newReviewText }]);
-        if (error) throw error;
-        addToast("Review submitted successfully!", "success");
-      }
-      fetchReviews(selectedBook.id); 
-    } catch (err) { addToast("Review Error: " + (err.message || "Failed to save review."), "error"); }
-  };
+  const handleSubmitReview = async (ratingValue) => {
+  if (!newReviewText.trim()) return;
+  
+  try {
+    if (userExistingReview) {
+      const { error } = await supabase.from("reviews").update({ 
+        review_text: newReviewText, 
+        rating: ratingValue 
+      }).eq("id", userExistingReview.id); 
+      
+      if (error) throw error;
+      addToast("Review updated successfully!", "success");
+    } else {
+      const { error } = await supabase.from("reviews").insert([{ 
+        book_id: selectedBook.id, 
+        user_id: user.id, 
+        review_text: newReviewText, 
+        rating: ratingValue 
+      }]); 
+      
+      if (error) throw error;
+      addToast("Review submitted successfully!", "success");
+    }
+    
+    fetchReviews(selectedBook.id); 
+  } catch (err) { 
+    addToast("Review Error: " + (err.message || "Failed to save review."), "error"); 
+  }
+};
 
   const openBookDetails = async (book) => {
     setSelectedBook(book); fetchReviews(book.id); setShowBookDetails(true);
