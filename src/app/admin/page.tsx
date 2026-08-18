@@ -53,9 +53,12 @@ export default function PremiumAdminDashboard() {
   const [editingBookId, setEditingBookId] = useState(null);
   const [bookSearch, setBookSearch] = useState("");
   
-  // FAKE REVIEWS
+  // FAKE REVIEWS (Updated for Rating & Edit/Delete)
   const [fakeReviewName, setFakeReviewName] = useState("");
   const [fakeReviewText, setFakeReviewText] = useState("");
+  const [fakeReviewRating, setFakeReviewRating] = useState(5);
+  const [bookReviews, setBookReviews] = useState([]);
+  const [editingReviewId, setEditingReviewId] = useState(null);
 
   // DISCOUNT MANAGEMENT
   const [discounts, setDiscounts] = useState([]);
@@ -168,6 +171,15 @@ export default function PremiumAdminDashboard() {
       if (affMsgsData.data) setAffiliateMessages(affMsgsData.data);
     } catch (error) {
       console.log("Data load error:", error);
+    }
+  };
+
+  const fetchBookReviews = async (bookId) => {
+    try {
+      const { data, error } = await supabase.from('reviews').select('id, review_text, rating, fake_author_name, profiles(name)').eq('book_id', bookId).order('created_at', { ascending: false });
+      if (!error && data) setBookReviews(data);
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
     }
   };
 
@@ -286,18 +298,44 @@ export default function PremiumAdminDashboard() {
       return;
     }
     try {
-      const { error } = await supabase.from('reviews').insert([{
-        book_id: editingBookId,
-        fake_author_name: fakeReviewName,
-        review_text: fakeReviewText,
-        // Optional: you can force 5 stars here if you have a rating column
-      }]);
-      if (error) throw error;
+      if (editingReviewId) {
+        const { error } = await supabase.from('reviews').update({
+          fake_author_name: fakeReviewName,
+          review_text: fakeReviewText,
+          rating: fakeReviewRating
+        }).eq('id', editingReviewId);
+        if (error) throw error;
+        addNotification("Fake Review Updated Successfully! 🌟", "success");
+      } else {
+        const { error } = await supabase.from('reviews').insert([{
+          book_id: editingBookId,
+          fake_author_name: fakeReviewName,
+          review_text: fakeReviewText,
+          rating: fakeReviewRating
+        }]);
+        if (error) throw error;
+        addNotification("Fake Review Added Successfully! 🌟", "success");
+      }
       setFakeReviewName("");
       setFakeReviewText("");
-      addNotification("Fake Review Added Successfully! 🌟", "success");
+      setFakeReviewRating(5);
+      setEditingReviewId(null);
+      fetchBookReviews(editingBookId);
     } catch (err) {
       addNotification("Review Error: " + err.message, "error");
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if(window.confirm("Delete this review?")) {
+        try {
+            const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+            if(error) throw error;
+            setBookReviews(bookReviews.filter(r => r.id !== reviewId));
+            addNotification("Review deleted successfully!", "success");
+        } catch(err) {
+            addNotification("Delete failed: " + err.message, "error");
+        }
     }
   };
 
@@ -315,6 +353,7 @@ export default function PremiumAdminDashboard() {
     setBookDislikes(book.dislikes || 0);
     setEditingBookId(book.id);
     setShowAddBookModal(true);
+    fetchBookReviews(book.id);
   };
 
   const resetBookForm = () => {
@@ -334,6 +373,9 @@ export default function PremiumAdminDashboard() {
     setEditingBookId(null);
     setFakeReviewName("");
     setFakeReviewText("");
+    setFakeReviewRating(5);
+    setEditingReviewId(null);
+    setBookReviews([]);
     setShowAddBookModal(false);
   };
 
@@ -377,6 +419,35 @@ export default function PremiumAdminDashboard() {
 
       if (dbError) throw dbError;
 
+      // Ensure actual books are updated so website reflects discount
+      for (const bookId of selectedBooks) {
+         const book = books.find(b => b.id === bookId);
+         if (book) {
+             const newFinalPrice = book.base_price - (book.base_price * discountPercentage / 100);
+             await supabase.from('books').update({
+                 discount: discountPercentage,
+                 final_price: newFinalPrice
+             }).eq('id', bookId);
+         }
+      }
+
+      // If editing, revert books that were removed from the selection
+      if (editingDiscountId) {
+          const originalDiscount = discounts.find(d => d.id === editingDiscountId);
+          if (originalDiscount && originalDiscount.appliedBooks) {
+              const removedBooks = originalDiscount.appliedBooks.filter(id => !selectedBooks.includes(id));
+              for (const bookId of removedBooks) {
+                  const book = books.find(b => b.id === bookId);
+                  if (book) {
+                      await supabase.from('books').update({
+                          discount: 0,
+                          final_price: book.base_price
+                      }).eq('id', bookId);
+                  }
+              }
+          }
+      }
+
       resetDiscountForm();
       addNotification(editingDiscountId ? "Discount updated successfully! 💰" : "Discount created successfully! 💰", "success");
       loadAllData();
@@ -398,10 +469,26 @@ export default function PremiumAdminDashboard() {
   const handleDeleteDiscount = async (id) => {
     if (window.confirm("Delete this discount?")) {
       try {
+        const discountToDelete = discounts.find(d => d.id === id);
         const { error } = await supabase.from('discounts').delete().eq('id', id);
         if (error) throw error;
+        
+        // Revert books prices back to original
+        if (discountToDelete && discountToDelete.appliedBooks) {
+            for (const bookId of discountToDelete.appliedBooks) {
+                const book = books.find(b => b.id === bookId);
+                if (book) {
+                    await supabase.from('books').update({
+                        discount: 0,
+                        final_price: book.base_price
+                    }).eq('id', bookId);
+                }
+            }
+        }
+
         setDiscounts(discounts.filter(d => d.id !== id));
         addNotification("Discount deleted! 🗑️", "success");
+        loadAllData();
       } catch (error) {
         addNotification("Delete failed: " + error.message, "error");
       }
@@ -1245,13 +1332,56 @@ export default function PremiumAdminDashboard() {
 
                     {/* NEW SECTION: FAKE REVIEW INJECTOR */}
                     {editingBookId && (
-                      <div className="bg-yellow-500/10 p-5 rounded-2xl border border-yellow-500/30">
-                        <label className="block text-xs font-bold text-yellow-500 mb-3 uppercase tracking-wide flex items-center gap-2"><Star size={16}/> Inject Fake Review</label>
+                      <div className="bg-yellow-500/10 p-5 rounded-2xl border border-yellow-500/30 mt-4">
+                        <label className="block text-xs font-bold text-yellow-500 mb-3 uppercase tracking-wide flex items-center gap-2"><Star size={16}/> {editingReviewId ? "Edit Review" : "Inject Fake Review"}</label>
                         <div className="flex flex-col gap-3">
-                          <input value={fakeReviewName} onChange={(e) => setFakeReviewName(e.target.value)} type="text" placeholder="Customer Name (e.g. Rahul Sharma)" className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none" />
-                          <textarea value={fakeReviewText} onChange={(e) => setFakeReviewText(e.target.value)} placeholder="Write 5-star review text here..." className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none h-16 resize-none" />
-                          <button onClick={handleAddFakeReview} type="button" className="bg-yellow-500 text-black font-bold py-2 rounded-xl hover:bg-yellow-400 transition">Add Fake Review Now</button>
+                          <div className="flex gap-3">
+                            <input value={fakeReviewName} onChange={(e) => setFakeReviewName(e.target.value)} type="text" placeholder="Customer Name (e.g. Rahul Sharma)" className="flex-1 bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none" />
+                            <select value={fakeReviewRating} onChange={(e) => setFakeReviewRating(Number(e.target.value))} className="bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none w-32 cursor-pointer">
+                              <option value={5}>5 Stars</option>
+                              <option value={4}>4 Stars</option>
+                              <option value={3}>3 Stars</option>
+                              <option value={2}>2 Stars</option>
+                              <option value={1}>1 Star</option>
+                            </select>
+                          </div>
+                          <textarea value={fakeReviewText} onChange={(e) => setFakeReviewText(e.target.value)} placeholder="Write review text here..." className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none h-16 resize-none" />
+                          <div className="flex gap-2">
+                             <button onClick={handleAddFakeReview} type="button" className="flex-1 bg-yellow-500 text-black font-bold py-2 rounded-xl hover:bg-yellow-400 transition">{editingReviewId ? "Update Review" : "Add Fake Review Now"}</button>
+                             {editingReviewId && <button onClick={() => {setEditingReviewId(null); setFakeReviewName(""); setFakeReviewText(""); setFakeReviewRating(5);}} type="button" className="bg-slate-700 text-white font-bold py-2 px-4 rounded-xl hover:bg-slate-600 transition">Cancel</button>}
+                          </div>
                         </div>
+
+                        {/* List of existing reviews */}
+                        {bookReviews.length > 0 && (
+                          <div className="mt-6 space-y-3">
+                            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Manage Existing Reviews</label>
+                            <div className="max-h-48 overflow-y-auto pr-2 space-y-2 hide-scrollbar">
+                              {bookReviews.map(review => (
+                                <div key={review.id} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/50 flex justify-between items-start gap-4">
+                                   <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                         <p className="text-sm font-bold text-white">{review.fake_author_name || review.profiles?.name || "User"}</p>
+                                         <span className="flex text-yellow-500">
+                                            {[...Array(review.rating || 5)].map((_, i) => <Star key={i} size={10} className="fill-current"/>)}
+                                         </span>
+                                      </div>
+                                      <p className="text-xs text-slate-300 mt-1 line-clamp-2">{review.review_text}</p>
+                                   </div>
+                                   <div className="flex gap-2 shrink-0">
+                                      <button type="button" onClick={() => {
+                                          setEditingReviewId(review.id);
+                                          setFakeReviewName(review.fake_author_name || review.profiles?.name || "");
+                                          setFakeReviewText(review.review_text || "");
+                                          setFakeReviewRating(review.rating || 5);
+                                      }} className="text-blue-400 hover:text-blue-300 bg-blue-500/10 p-1.5 rounded transition"><Edit3 size={14}/></button>
+                                      <button type="button" onClick={() => handleDeleteReview(review.id)} className="text-red-400 hover:text-red-300 bg-red-500/10 p-1.5 rounded transition"><Trash2 size={14}/></button>
+                                   </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
