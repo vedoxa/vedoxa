@@ -6,10 +6,14 @@ import HTMLFlipBook from 'react-pageflip';
 // Fast background rendering worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// Elite 3D Book Page with Premium Borders & High Quality
-const BookPage = forwardRef(({ pageNumber, width }, ref) => {
-  const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
+// How many pages before/after the current one get fully rendered.
+// Everything outside this window shows a lightweight placeholder instead of
+// a real PDF canvas, which is the main thing that was causing the stutter
+// (rendering every single page's canvas at once is very heavy on mobile).
+const RENDER_WINDOW = 2;
 
+// Elite 3D Book Page with Premium Borders & High Quality
+const BookPage = forwardRef(({ pageNumber, width, height, shouldRender }, ref) => {
   return (
     <div 
       ref={ref} 
@@ -17,22 +21,28 @@ const BookPage = forwardRef(({ pageNumber, width }, ref) => {
       style={{ 
         // Advanced Hardware Acceleration for Smooth Flipping
         transform: 'translateZ(0)',
-        willChange: 'transform',
         backfaceVisibility: 'hidden',
       }}
     >
       {/* 3D Spine Shadow Effect (Left Side) */}
       <div className="absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-black/10 to-transparent z-10 pointer-events-none" />
       
-      <Page 
-        pageNumber={pageNumber} 
-        width={width - 2} 
-        renderTextLayer={false} 
-        renderAnnotationLayer={false}
-        className="pointer-events-none select-none"
-        // Lower pixel ratio on mobile to keep the flip animation smooth (avoids stutter)
-        devicePixelRatio={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, isMobileDevice ? 1.5 : 2) : 2} 
-      />
+      {shouldRender ? (
+        <Page 
+          pageNumber={pageNumber} 
+          width={width - 2} 
+          renderTextLayer={false} 
+          renderAnnotationLayer={false}
+          className="pointer-events-none select-none"
+          // Full quality — not reduced on mobile
+          devicePixelRatio={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 2} 
+        />
+      ) : (
+        // Lightweight placeholder for off-screen pages, same size, so there's
+        // no layout jump. It gets swapped for the real page just before it's
+        // needed, so you won't see a blank flash while flipping.
+        <div style={{ width: width - 2, height: height || '100%' }} className="bg-white" />
+      )}
     </div>
   );
 });
@@ -122,28 +132,34 @@ export default function FlipbookReader({ pdfUrl }) {
           <div className="flex-1 w-full h-full overflow-auto custom-scrollbar">
             {/* Centering Wrapper */}
             <div className="min-w-full min-h-full flex items-center justify-center p-4 md:p-8">
-              {/* Cheaper box-shadow instead of a live filter drop-shadow, so it doesn't get recalculated every animation frame */}
-              <div className="shadow-2xl">
+              <div className="drop-shadow-2xl">
                 <HTMLFlipBook 
                   width={dimensions.width} 
                   height={dimensions.height} 
                   size="fixed"
                   usePortrait={true}
                   showCover={true}
-                  drawShadow={false} 
+                  maxShadowOpacity={0.15}
+                  drawShadow={true}
                   flippingTime={500} // Set to 500 for a perfectly soft, realistic & fast flip
                   swipeDistance={30}
                   startPage={initialPage} 
                   onFlip={handlePageFlip} 
                   className="flipbook-wrapper mx-auto"
                 >
-                  {Array.from(new Array(numPages), (el, index) => (
-                    <BookPage 
-                      key={`page_${index + 1}`} 
-                      pageNumber={index + 1} 
-                      width={dimensions.width} 
-                    />
-                  ))}
+                  {Array.from(new Array(numPages), (el, index) => {
+                    const pageNumber = index + 1;
+                    const shouldRender = Math.abs(index - currentPage) <= RENDER_WINDOW;
+                    return (
+                      <BookPage 
+                        key={`page_${pageNumber}`} 
+                        pageNumber={pageNumber} 
+                        width={dimensions.width} 
+                        height={dimensions.height}
+                        shouldRender={shouldRender}
+                      />
+                    );
+                  })}
                 </HTMLFlipBook>
               </div>
             </div>
@@ -152,7 +168,7 @@ export default function FlipbookReader({ pdfUrl }) {
 
         {/* Premium Floating Page Number Overlay */}
         {numPages && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/80 text-amber-400 px-5 py-2 rounded-full text-[10px] md:text-xs font-black tracking-widest border border-amber-500/20 z-50 shadow-[0_4px_24px_rgba(212,146,26,0.18)] flex items-center gap-2 pointer-events-none transition-all">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl text-amber-400 px-5 py-2 rounded-full text-[10px] md:text-xs font-black tracking-widest border border-amber-500/20 z-50 shadow-[0_4px_24px_rgba(212,146,26,0.18)] flex items-center gap-2 pointer-events-none transition-all">
             <span className="opacity-60 font-semibold">PAGE</span> 
             <span className="text-amber-500 text-xs md:text-sm">{currentPage + 1}</span> 
             <span className="opacity-40">/</span> 
