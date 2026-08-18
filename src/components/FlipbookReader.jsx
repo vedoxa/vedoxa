@@ -6,12 +6,20 @@ import HTMLFlipBook from 'react-pageflip';
 // Fast background rendering worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// Elite 3D Book Page with Premium Borders
+// Elite 3D Book Page with Premium Borders and GPU Acceleration for Smooth Flipping
 const BookPage = forwardRef(({ pageNumber, width }, ref) => {
   return (
     <div 
       ref={ref} 
       className="bg-white overflow-hidden flex items-start justify-center shadow-[inset_0_0_15px_rgba(0,0,0,0.06)] border border-amber-600/30 box-border relative"
+      // Added Hardware Acceleration (GPU) styles to stop lagging/stuttering
+      style={{ 
+        WebkitTransform: 'translate3d(0, 0, 0)', 
+        transform: 'translate3d(0, 0, 0)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden'
+      }}
     >
       {/* 3D Spine Shadow Effect (Left Side) */}
       <div className="absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-black/10 to-transparent z-10 pointer-events-none" />
@@ -22,7 +30,8 @@ const BookPage = forwardRef(({ pageNumber, width }, ref) => {
         renderTextLayer={false} 
         renderAnnotationLayer={false}
         className="pointer-events-none select-none"
-        devicePixelRatio={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1} 
+        // Performance Fix: Use strictly 1x pixel ratio on mobile to completely stop heavy stuttering
+        devicePixelRatio={typeof window !== 'undefined' ? (window.innerWidth < 768 ? 1 : Math.min(window.devicePixelRatio, 1.5)) : 1} 
       />
     </div>
   );
@@ -128,7 +137,7 @@ export default function FlipbookReader({ pdfUrl }) {
                 showCover={true}
                 maxShadowOpacity={0.15}
                 drawShadow={true}
-                flippingTime={650}
+                flippingTime={400} // Reduced from 650 to 400 for faster & snappier flips
                 swipeDistance={30}
                 startPage={initialPage} // Restores saved page automatically
                 onFlip={handlePageFlip} // Tracks page changes
