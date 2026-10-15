@@ -248,34 +248,34 @@ export default function VedoxaHome() {
   };
 
   const handleSubmitReview = async (ratingValue) => {
-  if (!newReviewText.trim()) return;
-  
-  try {
-    if (userExistingReview) {
-      const { error } = await supabase.from("reviews").update({ 
-        review_text: newReviewText, 
-        rating: ratingValue 
-      }).eq("id", userExistingReview.id); 
-      
-      if (error) throw error;
-      addToast("Review updated successfully!", "success");
-    } else {
-      const { error } = await supabase.from("reviews").insert([{ 
-        book_id: selectedBook.id, 
-        user_id: user.id, 
-        review_text: newReviewText, 
-        rating: ratingValue 
-      }]); 
-      
-      if (error) throw error;
-      addToast("Review submitted successfully!", "success");
-    }
+    if (!newReviewText.trim()) return;
     
-    fetchReviews(selectedBook.id); 
-  } catch (err) { 
-    addToast("Review Error: " + (err.message || "Failed to save review."), "error"); 
-  }
-};
+    try {
+      if (userExistingReview) {
+        const { error } = await supabase.from("reviews").update({ 
+          review_text: newReviewText, 
+          rating: ratingValue 
+        }).eq("id", userExistingReview.id); 
+        
+        if (error) throw error;
+        addToast("Review updated successfully!", "success");
+      } else {
+        const { error } = await supabase.from("reviews").insert([{ 
+          book_id: selectedBook.id, 
+          user_id: user.id, 
+          review_text: newReviewText, 
+          rating: ratingValue 
+        }]); 
+        
+        if (error) throw error;
+        addToast("Review submitted successfully!", "success");
+      }
+      
+      fetchReviews(selectedBook.id); 
+    } catch (err) { 
+      addToast("Review Error: " + (err.message || "Failed to save review."), "error"); 
+    }
+  };
 
   const openBookDetails = async (book) => {
     setSelectedBook(book); fetchReviews(book.id); setShowBookDetails(true);
@@ -544,11 +544,12 @@ export default function VedoxaHome() {
         html, body {
           touch-action: pan-y;
           -webkit-text-size-adjust: 100%;
-          overscroll-behavior-y: auto; /* Re-enabled for Apple Bounce */
+          overscroll-behavior-y: auto;
           scroll-behavior: smooth;
           -webkit-overflow-scrolling: touch;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
         }
 
         .font-cinzel { font-family: 'Cinzel', serif; letter-spacing: 0.03em; }
@@ -567,8 +568,9 @@ export default function VedoxaHome() {
           color: #150800;
           font-weight: 800;
           letter-spacing: 0.025em;
-          transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
           box-shadow: 0 1px 0 rgba(255,220,120,0.55) inset, 0 -1px 0 rgba(0,0,0,0.35) inset, 0 4px 24px rgba(180,100,10,0.22), 0 1px 4px rgba(0,0,0,0.4);
+          will-change: transform;
         }
         .btn-gold:hover:not(:disabled) {
           transform: translateY(-2px) scale(1.025);
@@ -582,8 +584,8 @@ export default function VedoxaHome() {
         #nprogress .bar { background: #d4921a !important; height: 2px !important; }
         #nprogress .peg { box-shadow: 0 0 14px #d4921a, 0 0 6px #d4921a !important; }
 
-        @keyframes scrollLeft { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-scroll { animation: scrollLeft 28s linear infinite; display: inline-block; white-space: nowrap; }
+        @keyframes scrollLeft { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
+        .animate-scroll { animation: scrollLeft 28s linear infinite; display: inline-block; white-space: nowrap; will-change: transform; }
 
         .discount-badge {
           background: rgba(255,255,255,0.97) !important;
@@ -592,27 +594,32 @@ export default function VedoxaHome() {
           font-weight: 900; letter-spacing: 0.03em;
         }
 
-        /* SOFT UI UPDATE: Smoother easing matching Apple's standard transition curve */
-        .fast-anim { transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1); }
+        /* GPU ACCELERATED CARD TRANSITIONS FOR STABLE 60FPS UI */
+        .fast-anim { 
+          transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease, background-color 0.35s ease;
+          will-change: transform;
+          backface-visibility: hidden;
+          transform: translateZ(0);
+        }
 
         .luminary-card { position: relative; isolation: isolate; }
         .luminary-card::before {
           content: ''; position: absolute; inset: 0; border-radius: 1.5rem;
           background: radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.07) 0%, transparent 55%);
-          pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.5s ease;
+          pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.45s ease;
         }
         .luminary-card:hover::before { opacity: 1; }
         .luminary-card:hover {
-          box-shadow: 0 0 0 1px rgba(212,146,26,0.2), 0 28px 72px rgba(0,0,0,0.75), 0 0 50px rgba(212,146,26,0.06);
+          box-shadow: 0 0 0 1px rgba(212,146,26,0.25), 0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,146,26,0.08);
         }
         .luminary-card > * { position: relative; z-index: 1; }
 
-        @keyframes breathe { 0%, 100% { opacity: 0.65; transform: translateX(-50%) scale(1); } 50% { opacity: 0.95; transform: translateX(-50%) scale(1.06); } }
-        .hero-glow { animation: breathe 7s ease-in-out infinite; }
+        @keyframes breathe { 0%, 100% { opacity: 0.65; transform: translate3d(-50%, 0, 0) scale(1); } 50% { opacity: 0.95; transform: translate3d(-50%, 0, 0) scale(1.06); } }
+        .hero-glow { animation: breathe 7s ease-in-out infinite; will-change: transform, opacity; }
 
-        @keyframes breathe2 { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.55; transform: scale(1.08); } }
-        .hero-glow-2 { animation: breathe2 9s ease-in-out infinite; }
-        .hero-glow-3 { animation: breathe2 11s ease-in-out 2s infinite; }
+        @keyframes breathe2 { 0%, 100% { opacity: 0.3; transform: translate3d(0, 0, 0) scale(1); } 50% { opacity: 0.55; transform: translate3d(0, 0, 0) scale(1.08); } }
+        .hero-glow-2 { animation: breathe2 9s ease-in-out infinite; will-change: transform, opacity; }
+        .hero-glow-3 { animation: breathe2 11s ease-in-out 2s infinite; will-change: transform, opacity; }
 
         .page-root::after {
           content: ''; position: fixed; inset: 0;
@@ -624,7 +631,6 @@ export default function VedoxaHome() {
         ::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.22); border-radius: 99px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(212,146,26,0.42); }
 
-        /* Added custom scrollbar class for inner elements like Sidebar */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.25); border-radius: 10px; }
 
@@ -632,17 +638,17 @@ export default function VedoxaHome() {
       `}</style>
 
       {/* Floating Toasts */}
-      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3">
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
               initial={{ opacity: 0, x: 50, scale: 0.92 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.88, x: 20 }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
-              className={`px-5 py-3 rounded-2xl text-sm font-bold backdrop-blur-xl border shadow-2xl ${
-                toast.type === "success" ? "bg-emerald-950/80 border-emerald-500/25 text-emerald-400"
-                  : toast.type === "error" ? "bg-red-950/80 border-red-500/25 text-red-400"
-                  : "bg-amber-950/80 border-amber-500/25 text-amber-400"
+              className={`pointer-events-auto px-5 py-3 rounded-2xl text-sm font-bold backdrop-blur-xl border shadow-2xl ${
+                toast.type === "success" ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-400"
+                  : toast.type === "error" ? "bg-red-950/90 border-red-500/30 text-red-400"
+                  : "bg-amber-950/90 border-amber-500/30 text-amber-400"
               }`}
             >
               {toast.message}
@@ -687,7 +693,7 @@ export default function VedoxaHome() {
 
                     <div className={`relative w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-[3px] shadow-[0_0_30px_rgba(212,146,26,0.3)] ${isDark ? 'bg-[#0c0c1a] border-[#0c0c1a]' : 'bg-white border-white'}`}>
                       {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                        <img src={profile.avatar_url} alt="avatar" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       ) : (
                         <UserCircle size={48} className="text-amber-500/40" />
                       )}
@@ -786,7 +792,7 @@ export default function VedoxaHome() {
               <div className="grid grid-cols-3 gap-4">
                 {AVATARS.map((url, idx) => (
                   <button key={idx} onClick={() => handleSaveAvatar(url)} className={`aspect-square rounded-full border hover:border-amber-500/60 hover:scale-110 hover:shadow-[0_0_20px_rgba(212,146,26,0.3)] transition-all duration-200 overflow-hidden ${isDark ? 'border-white/[0.08] bg-white/[0.04]' : 'border-slate-200 bg-slate-50'}`}>
-                    <img src={url} alt={`avatar-${idx}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={`avatar-${idx}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -974,7 +980,7 @@ export default function VedoxaHome() {
       </AnimatePresence>
 
       {/* ─── Main Layout ─────────────────────────────────────────── */}
-      <div className={`min-h-screen flex flex-col overflow-x-hidden selection:bg-amber-500/20 page-root ${isDark ? 'bg-[#07070d] text-gray-200' : 'bg-[#f8fafc] text-slate-800'}`}>
+      <div className={`min-h-screen flex flex-col overflow-x-hidden selection:bg-amber-500/20 page-root transition-colors duration-300 ${isDark ? 'bg-[#07070d] text-gray-200' : 'bg-[#f8fafc] text-slate-800'}`}>
 
         {partnerData && (
           <div className="w-full bg-blue-500/[0.12] border-b border-blue-500/25 py-2 px-4 text-center flex items-center justify-center gap-2">
@@ -986,10 +992,10 @@ export default function VedoxaHome() {
         )}
 
         {/* Responsive Navbar */}
-        <nav className={`sticky top-0 z-[500] px-4 py-4 md:px-8 backdrop-blur-2xl border-b flex justify-between items-center transition-colors duration-300 ${isDark ? 'bg-[#07070d]/92 border-white/[0.06]' : 'bg-white/90 border-slate-200 shadow-sm'}`}>
+        <nav className={`sticky top-0 z-[500] px-4 py-4 md:px-8 backdrop-blur-2xl border-b flex justify-between items-center transition-colors duration-300 ${isDark ? 'bg-[#07070d]/90 border-white/[0.06]' : 'bg-white/90 border-slate-200 shadow-sm'}`}>
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/15 to-transparent" />
 
-          <Link href="/brand" className="flex items-center gap-3 group">
+          <Link href="/brand" className="flex items-center gap-3 group shrink-0">
             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,146,26,0.5)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 ${isDark ? 'bg-[#0c0c1a]' : 'bg-white'}`}>
               <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
             </div>
@@ -999,14 +1005,14 @@ export default function VedoxaHome() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <div className={`relative flex items-center border rounded-full px-3 py-1.5 transition-all duration-300 ${isSearchOpen ? 'w-48 md:w-64' : 'w-10'} ${isDark ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-slate-100 border-slate-200'}`}>
-              <Search size={17} className="text-gray-500 cursor-pointer shrink-0 hover:text-gray-300 transition" onClick={() => setIsSearchOpen(!isSearchOpen)} />
+            <div className={`relative flex items-center border rounded-full px-3 py-1.5 transition-all duration-300 ease-out ${isSearchOpen ? 'w-44 sm:w-56 md:w-64' : 'w-10'} ${isDark ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-slate-100 border-slate-200'}`}>
+              <Search size={17} className="text-gray-500 cursor-pointer shrink-0 hover:text-amber-500 transition" onClick={() => setIsSearchOpen(!isSearchOpen)} />
               {isSearchOpen && (
                 <>
                   <input autoFocus type="text" placeholder="Search books..." className={`bg-transparent border-none outline-none text-xs ml-2 w-full ${isDark ? 'text-white placeholder-gray-600' : 'text-slate-900 placeholder-slate-400'}`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   {/* DROP DOWN SEARCH SUGGESTIONS */}
                   {searchQuery && (
-                    <div className={`absolute top-full mt-3 right-0 w-56 md:w-72 max-h-72 overflow-y-auto rounded-2xl border shadow-2xl z-[600] flex flex-col ${isDark ? 'bg-[#0c0c1a] border-white/[0.1]' : 'bg-white border-slate-200'}`}>
+                    <div className={`absolute top-full mt-3 right-0 w-60 md:w-72 max-h-72 overflow-y-auto custom-scrollbar rounded-2xl border shadow-2xl z-[600] flex flex-col ${isDark ? 'bg-[#0c0c1a] border-white/[0.1]' : 'bg-white border-slate-200'}`}>
                       {filteredBooks.length > 0 ? (
                         filteredBooks.slice(0, 5).map(book => (
                           <div key={book.id} onClick={() => { openBookDetails(book); setIsSearchOpen(false); setSearchQuery(""); }} className={`px-4 py-3 text-sm cursor-pointer border-b last:border-b-0 transition-colors flex items-center gap-3 ${isDark ? 'border-white/[0.05] text-white hover:bg-white/[0.05]' : 'border-slate-100 text-slate-800 hover:bg-slate-50'}`}>
@@ -1027,35 +1033,58 @@ export default function VedoxaHome() {
             </div>
 
             {user ? (
-              <button onClick={() => setIsSidebarOpen(true)} className={`flex items-center gap-2 border px-2.5 py-1.5 rounded-full transition ${isDark ? 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.14]' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 hover:border-slate-300'}`}>
+              <button onClick={() => setIsSidebarOpen(true)} className={`flex items-center gap-2 border px-2.5 py-1.5 rounded-full transition shrink-0 ${isDark ? 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.14]' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 hover:border-slate-300'}`}>
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="w-5 h-5 rounded-full object-cover border border-amber-500/40" />
+                  <img src={profile.avatar_url} alt="Profile" loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover border border-amber-500/40" />
                 ) : (
                   <UserCircle size={17} className="text-amber-500/80" />
                 )}
                 <Menu size={17} className={isDark ? "text-gray-400" : "text-slate-500"} />
               </button>
             ) : (
-              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-5 py-2 rounded-full text-xs font-bold">
+              <button onClick={() => setShowAuthModal(true)} className="btn-gold px-5 py-2 rounded-full text-xs font-bold shrink-0">
                 Login
               </button>
             )}
           </div>
         </nav>
 
-        {/* ─── Hero Section ─────────────────────────────────────── */}
-        <section className="relative px-4 pt-12 pb-10 md:pt-20 md:pb-14 text-center flex flex-col items-center justify-center overflow-hidden">
+        {/* ─── Hero Section with High-Speed Background Video ─────────────── */}
+        <section className="relative px-4 pt-14 pb-12 md:pt-24 md:pb-16 text-center flex flex-col items-center justify-center overflow-hidden min-h-[300px] md:min-h-[380px]">
           
-          <div 
-            className={`absolute inset-0 bg-cover bg-center pointer-events-none transition-all duration-700 ease-in-out z-[1] ${isDark ? 'opacity-20 brightness-125' : 'opacity-20'}`}
-            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop')" }}
-          />
+          {/* ULTRA-FAST BACKGROUND VIDEO WITH INSTANT POSTER FALLBACK */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              poster="https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=1400&auto=format&fit=crop"
+              className={`w-full h-full object-cover scale-105 transition-opacity duration-700 ${
+                isDark ? "opacity-35 brightness-110 contrast-110" : "opacity-25 contrast-105"
+              }`}
+            >
+              {/* Fast CDN Streams: Golden Spiritual Particles & Mystical Ambience */}
+              <source src="https://assets.mixkit.co/videos/preview/mixkit-flying-through-a-dark-tunnel-with-golden-lights-42544-large.mp4" type="video/mp4" />
+              <source src="https://cdn.pixabay.com/video/2021/08/10/84624-586228732_large.mp4" type="video/mp4" />
+            </video>
 
-          <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.07] blur-[140px] rounded-full pointer-events-none z-[1] hero-glow" />
-          <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.04] blur-[90px] rounded-full pointer-events-none z-[1] hero-glow-2" />
-          <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.025] blur-[70px] rounded-full pointer-events-none z-[1] hero-glow-3" />
+            {/* Smooth Gradient Vignette so Text Always Pops Clearly */}
+            <div
+              className={`absolute inset-0 ${
+                isDark
+                  ? "bg-gradient-to-b from-[#07070d]/85 via-[#07070d]/35 to-[#07070d]"
+                  : "bg-gradient-to-b from-[#f8fafc]/85 via-[#f8fafc]/30 to-[#f8fafc]"
+              }`}
+            />
+          </div>
 
-          <motion.h1 initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto">
+          <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.08] blur-[130px] rounded-full pointer-events-none z-[1] hero-glow" />
+          <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.05] blur-[90px] rounded-full pointer-events-none z-[1] hero-glow-2" />
+          <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.03] blur-[70px] rounded-full pointer-events-none z-[1] hero-glow-3" />
+
+          <motion.h1 initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto drop-shadow-sm">
             {lang === "EN" ? (
               <>
                 {t.heroTitle.split(" ")[0]} <span className="gold-text">{t.heroTitle.split(" ")[1]}</span> {t.heroTitle.split(" ")[2]}
@@ -1065,7 +1094,7 @@ export default function VedoxaHome() {
             )}
           </motion.h1>
 
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.12, ease: [0.16, 1, 0.3, 1] }} className={`relative z-10 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed ${isDark ? 'text-gray-500' : 'text-slate-600'}`}>
+          <motion.p initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`relative z-10 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed font-medium ${isDark ? 'text-gray-300/90' : 'text-slate-700'}`}>
             {t.heroSub}
           </motion.p>
         </section>
@@ -1091,7 +1120,7 @@ export default function VedoxaHome() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {loading ? (
               [1, 2, 3].map((n) => (
-                <div key={n} className={`border rounded-3xl p-6 h-[380px] flex flex-col gap-4 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
+                <div key={n} className={`border rounded-3xl p-6 h-[420px] flex flex-col gap-4 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
                   <div className={`w-full h-44 rounded-2xl ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
                   <div className={`w-3/4 h-5 rounded-lg mt-2 ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
                   <div className={`w-1/2 h-4 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
@@ -1107,9 +1136,9 @@ export default function VedoxaHome() {
 
                 return (
                   <motion.div
-                    layout initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.55, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.5, delay: Math.min(i * 0.06, 0.3), ease: [0.16, 1, 0.3, 1] }}
                     key={book.id} onClick={() => openBookDetails(book)}
-                    className={`luminary-card border rounded-3xl p-6 relative flex flex-col group cursor-pointer fast-anim hover:-translate-y-3 ${isDark ? 'bg-white/[0.025] border-white/[0.065] hover:bg-white/[0.055] hover:border-amber-500/[0.22] shadow-[0_4px_24px_rgba(0,0,0,0.4)]' : 'bg-white border-slate-200 shadow-md hover:shadow-2xl hover:border-amber-500/40'}`}
+                    className={`luminary-card border rounded-3xl p-6 relative flex flex-col h-full group cursor-pointer fast-anim hover:-translate-y-2.5 ${isDark ? 'bg-white/[0.025] border-white/[0.065] hover:bg-white/[0.055] hover:border-amber-500/[0.22] shadow-[0_4px_24px_rgba(0,0,0,0.4)]' : 'bg-white border-slate-200 shadow-md hover:shadow-2xl hover:border-amber-500/40'}`}
                   >
                     {book.discount > 0 && !isPurchased && !partnerData && (
                       <div className="absolute top-4 right-4 discount-badge px-3 py-1 rounded-lg text-xs z-10">
@@ -1122,10 +1151,16 @@ export default function VedoxaHome() {
                       </div>
                     )}
 
-                    <div className="w-full h-44 mb-6">
+                    <div className="w-full h-44 mb-6 shrink-0">
                       {book.cover_path ? (
                         <div className="w-full h-full relative overflow-hidden rounded-xl">
-                          <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} alt={book.title} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                          <img 
+                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} 
+                            alt={book.title} 
+                            loading="lazy" 
+                            decoding="async"
+                            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" 
+                          />
                         </div>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-amber-500/[0.08] to-amber-700/[0.04] flex items-center justify-center rounded-xl border border-amber-500/[0.15]">
@@ -1134,13 +1169,13 @@ export default function VedoxaHome() {
                       )}
                     </div>
 
-                    <h3 className={`font-cinzel text-xl font-bold mb-1.5 leading-snug ${isDark ? 'text-white/95' : 'text-slate-900'}`}>
+                    <h3 className={`font-cinzel text-xl font-bold mb-1.5 leading-snug line-clamp-2 min-h-[3.25rem] ${isDark ? 'text-white/95' : 'text-slate-900'}`}>
                       {book.title}
                     </h3>
                     
                     <div className="flex justify-between items-center mb-6">
-                      <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>by {book.author}</p>
-                      <button onClick={(e) => toggleFavorite(e, book.id)} className="focus:outline-none hover:scale-110 transition-transform" title="Add to Favorites">
+                      <p className={`text-sm truncate pr-2 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>by {book.author}</p>
+                      <button onClick={(e) => toggleFavorite(e, book.id)} className="focus:outline-none hover:scale-110 transition-transform shrink-0 p-1" title="Add to Favorites">
                         <Heart size={18} className={`transition-colors duration-300 ${favorites.includes(book.id) ? 'text-red-500 fill-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]' : (isDark ? 'text-gray-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500')}`} />
                       </button>
                     </div>
@@ -1248,4 +1283,4 @@ export default function VedoxaHome() {
       </div>
     </>
   );
-         }
+}
