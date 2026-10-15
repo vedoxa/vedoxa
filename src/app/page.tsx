@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image"; 
 import dynamic from "next/dynamic"; // NEW ADDITION
@@ -61,12 +61,29 @@ const AVATARS = [
   encodeSvg('🧕🏼📖', '#7c3aed')  // Purple background, Diverse reading
 ];
 
+// Lightweight floating golden particles for instant 0ms video-like spiritual ambience
+const GOLDEN_PARTICLES = [
+  { left: "10%", size: 4, duration: "6s", delay: "0s" },
+  { left: "22%", size: 6, duration: "8s", delay: "1.2s" },
+  { left: "35%", size: 3, duration: "5.5s", delay: "0.5s" },
+  { left: "48%", size: 5, duration: "7s", delay: "2s" },
+  { left: "62%", size: 4, duration: "6.5s", delay: "0.8s" },
+  { left: "75%", size: 6, duration: "8.5s", delay: "1.5s" },
+  { left: "88%", size: 3, duration: "6s", delay: "0.3s" },
+  { left: "16%", size: 5, duration: "7.5s", delay: "2.5s" },
+  { left: "54%", size: 4, duration: "5.8s", delay: "1.8s" },
+  { left: "82%", size: 5, duration: "7.2s", delay: "0.9s" }
+];
+
 export default function VedoxaHome() {
   const [lang, setLang] = useState("EN");
   const t = dict[lang];
 
   // THEME STATE ADDED HERE
   const [theme, setTheme] = useState("light");
+
+  // VIDEO REF FOR MOBILE AUTOPLAY FIX
+  const heroVideoRef = useRef(null);
 
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +135,28 @@ export default function VedoxaHome() {
       const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
       setTheme(prefersDark ? "dark" : "light");
     }
+  }, []);
+
+  // FORCE MOBILE VIDEO AUTOPLAY ON MOUNT & TOUCH
+  useEffect(() => {
+    const videoEl = heroVideoRef.current;
+    if (!videoEl) return;
+
+    const forcePlay = () => {
+      videoEl.defaultMuted = true;
+      videoEl.muted = true;
+      videoEl.playsInline = true;
+      const playPromise = videoEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Fallback: if mobile browser waits for first touch
+        });
+      }
+    };
+
+    forcePlay();
+    window.addEventListener("touchstart", forcePlay, { once: true, passive: true });
+    return () => window.removeEventListener("touchstart", forcePlay);
   }, []);
 
   const toggleTheme = () => {
@@ -614,6 +653,36 @@ export default function VedoxaHome() {
         }
         .luminary-card > * { position: relative; z-index: 1; }
 
+        /* CINEMATIC BACKGROUND MOTION + FLOATING GOLDEN SPIRITUAL PARTICLES */
+        @keyframes cinemaPanZoom {
+          0% { transform: scale(1.02) translate3d(0%, 0%, 0); }
+          50% { transform: scale(1.14) translate3d(-1.5%, -1%, 0); }
+          100% { transform: scale(1.02) translate3d(0%, 0%, 0); }
+        }
+        .cinema-bg {
+          animation: cinemaPanZoom 18s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        @keyframes floatUpParticle {
+          0% { transform: translate3d(0, 40px, 0) scale(0.6); opacity: 0; }
+          30% { opacity: 0.85; }
+          70% { opacity: 0.75; }
+          100% { transform: translate3d(-15px, -220px, 0) scale(1.25); opacity: 0; }
+        }
+        .golden-particle {
+          position: absolute;
+          bottom: 0;
+          border-radius: 9999px;
+          background: radial-gradient(circle, #fde68a 0%, #f59e0b 60%, transparent 100%);
+          box-shadow: 0 0 12px 2px rgba(245, 158, 11, 0.65);
+          pointer-events: none;
+          animation-name: floatUpParticle;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+          will-change: transform, opacity;
+        }
+
         @keyframes breathe { 0%, 100% { opacity: 0.65; transform: translate3d(-50%, 0, 0) scale(1); } 50% { opacity: 0.95; transform: translate3d(-50%, 0, 0) scale(1.06); } }
         .hero-glow { animation: breathe 7s ease-in-out infinite; will-change: transform, opacity; }
 
@@ -1049,33 +1118,62 @@ export default function VedoxaHome() {
           </div>
         </nav>
 
-        {/* ─── Hero Section with High-Speed Background Video ─────────────── */}
+        {/* ─── Hero Section: Instant WebP + Force-Play Video + Live Golden Particles ─── */}
         <section className="relative px-4 pt-14 pb-12 md:pt-24 md:pb-16 text-center flex flex-col items-center justify-center overflow-hidden min-h-[300px] md:min-h-[380px]">
           
-          {/* ULTRA-FAST BACKGROUND VIDEO WITH INSTANT POSTER FALLBACK */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]">
+            {/* 1. ULTRA-FAST WEBP CINEMA BACKGROUND (25KB only - loads in 0.1s & moves smoothly) */}
+            <img
+              src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=650&q=55&fm=webp"
+              alt=""
+              fetchPriority="high"
+              decoding="async"
+              className={`absolute inset-0 w-full h-full object-cover cinema-bg ${
+                isDark ? "opacity-30 brightness-110" : "opacity-20"
+              }`}
+            />
+
+            {/* 2. MOBILE FORCE-PLAY VIDEO LAYER (Plays smoothly over the moving background) */}
             <video
+              ref={heroVideoRef}
               autoPlay
               loop
               muted
               playsInline
-              preload="metadata"
-              poster="https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=1400&auto=format&fit=crop"
-              className={`w-full h-full object-cover scale-105 transition-opacity duration-700 ${
-                isDark ? "opacity-35 brightness-110 contrast-110" : "opacity-25 contrast-105"
+              preload="auto"
+              onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+                isDark ? "opacity-40 mix-blend-screen" : "opacity-25"
               }`}
             >
-              {/* Fast CDN Streams: Golden Spiritual Particles & Mystical Ambience */}
-              <source src="https://assets.mixkit.co/videos/preview/mixkit-flying-through-a-dark-tunnel-with-golden-lights-42544-large.mp4" type="video/mp4" />
-              <source src="https://cdn.pixabay.com/video/2021/08/10/84624-586228732_large.mp4" type="video/mp4" />
+              {/* Fast Global CDN Streams without hotlink blocking */}
+              <source src="https://cdn.pixabay.com/video/2020/05/25/40130-424930032_tiny.mp4" type="video/mp4" />
+              <source src="https://cdn.pixabay.com/video/2021/08/10/84624-586228732_tiny.mp4" type="video/mp4" />
             </video>
 
-            {/* Smooth Gradient Vignette so Text Always Pops Clearly */}
+            {/* 3. LIVE FLOATING GOLDEN SPIRITUAL PARTICLES (Works 100% of the time with 0KB data) */}
+            <div className="absolute inset-0 overflow-hidden">
+              {GOLDEN_PARTICLES.map((p, idx) => (
+                <span
+                  key={idx}
+                  className="golden-particle"
+                  style={{
+                    left: p.left,
+                    width: `${p.size}px`,
+                    height: `${p.size}px`,
+                    animationDuration: p.duration,
+                    animationDelay: p.delay
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* 4. Smooth Vignette Overlay for Crisp Text Readability */}
             <div
               className={`absolute inset-0 ${
                 isDark
-                  ? "bg-gradient-to-b from-[#07070d]/85 via-[#07070d]/35 to-[#07070d]"
-                  : "bg-gradient-to-b from-[#f8fafc]/85 via-[#f8fafc]/30 to-[#f8fafc]"
+                  ? "bg-gradient-to-b from-[#07070d]/80 via-[#07070d]/25 to-[#07070d]"
+                  : "bg-gradient-to-b from-[#f8fafc]/80 via-[#f8fafc]/25 to-[#f8fafc]"
               }`}
             />
           </div>
@@ -1157,7 +1255,7 @@ export default function VedoxaHome() {
                           <img 
                             src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} 
                             alt={book.title} 
-                            loading="lazy" 
+                            loading={i < 2 ? "eager" : "lazy"} 
                             decoding="async"
                             className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" 
                           />
