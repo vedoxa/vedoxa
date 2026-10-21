@@ -7,7 +7,8 @@ import dynamic from "next/dynamic"; // NEW ADDITION
 import {
   ShieldCheck, Globe, BookOpen, Lock, X, Zap, Search,
   ChevronRight, RefreshCw, CheckCircle2,
-  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon, Crown, Sparkles, Eye
+  LogOut, UserCircle, Coins, MessageSquare, Star, Share2, Menu, Edit3, Settings, Handshake, Heart, Sun, Moon, Crown, Sparkles, Eye,
+  LayoutDashboard, Compass, Brain, BookMarked, Camera, ArrowUpRight, Check, ChevronDown, Tag
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,24 +42,41 @@ function loadRazorpayScript() {
   });
 }
 
+// NEW ADDITION: Google One Tap script loader (shows the Google accounts already signed in on the user's browser)
+function loadGoogleScript() {
+  return new Promise((resolve) => {
+    if (window.google?.accounts?.id) return resolve(true);
+    const existing = document.getElementById("gsi-client");
+    if (existing) { existing.addEventListener("load", () => resolve(true)); return; }
+    const script = document.createElement("script");
+    script.id = "gsi-client";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 const dict = {
   EN: { brand: "VEDOXA", login: "Login / Sign Up", heroTitle: "Awaken Your Consciousness", heroSub: "100% original, verified digital books on spirituality & psychology.", secure: "Safe & Secure", instant: "Instant PDF Auto-Download", premiumLib: "Premium Library", buyNow: "Buy Now", readNow: "Read Now", checkout: "Complete Purchase", haveCoupon: "Have a Coupon Code?", apply: "Apply", pay: "Pay Now", rewardPoints: "Reward Points", redeemPoints: "Redeem Points", rewardEarn: "You will earn", pdfReader: "Web Reader", close: "Close", reviews: "Customer Reviews", writeReview: "Write a Review", submitReview: "Submit", updateReview: "Update", noReviews: "No reviews yet. Be the first to review after purchasing!" },
   HI: { brand: "वेडोक्सा", login: "लॉगिन / साइन अप", heroTitle: "अपनी चेतना को जागृत करें", heroSub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।", secure: "सुरक्षित और भरोसेमंद", instant: "त्वरित पीडीएफ डाउनलोड", premiumLib: "प्रीमियम पुस्तकालय", buyNow: "अभी खरीदें", readNow: "अभी पढ़ें", checkout: "खरीदारी पूरी करें", haveCoupon: "क्या आपके पास कूपन है?", apply: "लागू करें", pay: "Pay Now", rewardPoints: "इनाम अंक", redeemPoints: "अंक भुनाएं", rewardEarn: "आपको मिलेंगे", pdfReader: "वेब रीडर", close: "बंद करें", reviews: "ग्राहक समीक्षा", writeReview: "समीक्षा लिखें", submitReview: "जमा करें", updateReview: "अपडेट करें", noReviews: "अभी तक कोई समीक्षा नहीं। खरीदने के बाद पहली समीक्षा लिखें!" }
 };
 
 // Generate Data URI SVGs instead of external links for Avatars.
-// Beautiful distinct avatars with man/woman reading emojis.
-const encodeSvg = (emoji, bg) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${bg}"/><text x="50" y="50" font-size="50" text-anchor="middle" dominant-baseline="central">${emoji}</text></svg>`;
+// UPGRADED: gradient background + soft light + small book badge for a more premium look.
+const encodeSvg = (person, badge, from, to) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient><radialGradient id="s" cx="30%" cy="22%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="100" height="100" fill="url(#g)"/><rect width="100" height="100" fill="url(#s)"/><text x="50" y="50" font-size="54" text-anchor="middle" dominant-baseline="central">${person}</text><circle cx="77" cy="77" r="14" fill="#fff" fill-opacity=".96"/><text x="77" y="78" font-size="17" text-anchor="middle" dominant-baseline="central">${badge}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 };
 
 const AVATARS = [
-  encodeSvg('👩🏻‍🏫📖', '#eab308'), // Yellow background, Woman reading
-  encodeSvg('👨🏽‍🎓📘', '#059669'), // Green background, Man graduating/reading
-  encodeSvg('👩🏾‍💻📚', '#dc2626'), // Red background, Woman studying
-  encodeSvg('👨🏻‍🏫📗', '#2563eb'), // Blue background, Man reading
-  encodeSvg('🧕🏼📖', '#7c3aed')  // Purple background, Diverse reading
+  encodeSvg('👩🏻‍🏫', '📖', '#fbbf24', '#d97706'), // Amber, Woman reading
+  encodeSvg('👨🏽‍🎓', '📘', '#34d399', '#047857'), // Green, Man graduating/reading
+  encodeSvg('👩🏾‍💻', '📚', '#f87171', '#b91c1c'), // Red, Woman studying
+  encodeSvg('👨🏻‍🏫', '📗', '#60a5fa', '#1d4ed8'), // Blue, Man reading
+  encodeSvg('🧕🏼', '📖', '#a78bfa', '#6d28d9'),  // Purple, Diverse reading
+  encodeSvg('🧘🏽‍♂️', '🪷', '#f472b6', '#9d174d')  // Pink, Meditation / lotus
 ];
 
 // Lightweight floating golden particles for instant 0ms video-like spiritual ambience
@@ -124,6 +142,10 @@ export default function VedoxaHome() {
   // LIVE DATE STATE
   const [liveDate, setLiveDate] = useState("");
 
+  // NEW ADDITION: last used email (login suggestion chip) + collapsible coupon box in checkout
+  const [savedEmail, setSavedEmail] = useState("");
+  const [showCoupon, setShowCoupon] = useState(false);
+
   NProgress.configure({ showSpinner: false, speed: 400 });
 
   // THEME INITIALIZATION LOGIC
@@ -135,6 +157,11 @@ export default function VedoxaHome() {
       const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
       setTheme(prefersDark ? "dark" : "light");
     }
+  }, []);
+
+  // NEW ADDITION: read the last used email so the login box can suggest it instantly
+  useEffect(() => {
+    try { setSavedEmail(localStorage.getItem("vedoxa_last_email") || ""); } catch (e) {}
   }, []);
 
   // FORCE MOBILE VIDEO AUTOPLAY ON MOUNT & TOUCH
@@ -167,6 +194,12 @@ export default function VedoxaHome() {
 
   const isDark = theme === "dark";
 
+  // NEW ADDITION: shared style helpers for the Dashboard panel
+  const sideCard = isDark ? 'bg-white/[0.035] border-white/[0.08]' : 'bg-slate-50 border-slate-200';
+  const segBtn = (on) => `px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${on ? 'bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] shadow-md' : (isDark ? 'text-gray-400 hover:text-white' : 'text-slate-500 hover:text-slate-800')}`;
+
+  // FIX: this effect used to depend on [showBookDetails, lang], so it re-fetched books, re-subscribed auth
+  // and showed the loading skeleton every time a modal opened or the language changed. Now split into 3 effects, all logic kept.
   useEffect(() => {
     const preventZoom = (e) => { e.preventDefault(); };
     document.addEventListener('gesturestart', preventZoom);
@@ -174,21 +207,6 @@ export default function VedoxaHome() {
     
     fetchBooks();
     initPartnerSystem(); 
-
-    // SET LIVE DATE
-    const updateDate = () => {
-      const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-      setLiveDate(new Date().toLocaleDateString(lang === "EN" ? "en-US" : "hi-IN", options));
-    };
-    updateDate();
-
-    const handlePopState = (e) => {
-      if (showBookDetails) {
-        setShowBookDetails(false);
-        window.history.pushState(null, "", window.location.pathname);
-      }
-    };
-    window.addEventListener("popstate", handlePopState);
 
     supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) handleUserLogin(session.user); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -199,10 +217,29 @@ export default function VedoxaHome() {
     return () => {
       document.removeEventListener('gesturestart', preventZoom);
       document.removeEventListener('gesturechange', preventZoom);
-      window.removeEventListener("popstate", handlePopState);
       subscription.unsubscribe();
     };
-  }, [showBookDetails, lang]);
+  }, []);
+
+  useEffect(() => {
+    // SET LIVE DATE
+    const updateDate = () => {
+      const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+      setLiveDate(new Date().toLocaleDateString(lang === "EN" ? "en-US" : "hi-IN", options));
+    };
+    updateDate();
+  }, [lang]);
+
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (showBookDetails) {
+        setShowBookDetails(false);
+        window.history.pushState(null, "", window.location.pathname);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [showBookDetails]);
 
   useEffect(() => {
     if (showBookDetails || showCheckout || showAuthModal || showReader || isSidebarOpen) {
@@ -241,6 +278,8 @@ export default function VedoxaHome() {
 
   const handleUserLogin = async (loggedUser) => {
     setUser(loggedUser);
+    // NEW ADDITION: remember this email so the login box can suggest it next time
+    try { if (loggedUser.email) { localStorage.setItem("vedoxa_last_email", loggedUser.email); setSavedEmail(loggedUser.email); } } catch (e) {}
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', loggedUser.id).single();
     if (prof) {
       if (!prof.avatar_url) {
@@ -363,6 +402,42 @@ export default function VedoxaHome() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
+  // NEW ADDITION: Google One Tap. When the Login/Sign Up box opens, Google shows the account(s) already signed in on
+  // this browser; one tap logs in (or creates the account automatically). Needs NEXT_PUBLIC_GOOGLE_CLIENT_ID, silently skipped if missing.
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!showAuthModal || user || !clientId) return;
+    let cancelled = false;
+
+    const startOneTap = async () => {
+      try {
+        const rawNonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+        const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawNonce));
+        const hashedNonce = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+        const ok = await loadGoogleScript();
+        if (!ok || cancelled || !window.google?.accounts?.id) return;
+
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          nonce: hashedNonce,
+          use_fedcm_for_prompt: true,
+          callback: async (resp) => {
+            NProgress.start();
+            const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: resp.credential, nonce: rawNonce });
+            if (error) addToast(error.message, "error");
+            else { addToast("Successfully logged in with Google!", "success"); setShowAuthModal(false); }
+            NProgress.done();
+          }
+        });
+        window.google.accounts.id.prompt();
+      } catch (err) { console.error("One Tap error:", err); }
+    };
+
+    startOneTap();
+    return () => { cancelled = true; try { window.google?.accounts?.id?.cancel(); } catch (e) {} };
+  }, [showAuthModal, user]);
+
   const handleAuth = async (e) => {
     e.preventDefault(); NProgress.start();
     let res = authForm.mode === "signup" 
@@ -446,6 +521,8 @@ export default function VedoxaHome() {
 
   if (useRewards && profile?.reward_points > 0) clientFinalPrice = Math.max(0, clientFinalPrice - profile.reward_points);
   const earnedPoints = selectedBook ? Math.floor(baseForClient * 0.019) : 0;
+  // NEW ADDITION: total saving shown in the checkout box (display only)
+  const totalSaved = selectedBook ? Math.max(0, (selectedBook.final_price || 0) - clientFinalPrice) : 0;
 
   const creditAffiliate = async (amountPaid) => {
     if (!partnerData || amountPaid <= 0) return;
@@ -704,6 +781,15 @@ export default function VedoxaHome() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,146,26,0.25); border-radius: 10px; }
 
         input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px rgba(212,146,26,0.2), 0 0 16px rgba(212,146,26,0.06); }
+
+        /* NEW ADDITION: profile avatar rings + checkout button shine */
+        @keyframes spinSlow { to { transform: rotate(360deg); } }
+        .avatar-ring { background: conic-gradient(from 0deg, #fde68a, #b8720e, #fff3c4, #d4921a, #f59e0b, #fde68a); animation: spinSlow 7s linear infinite; will-change: transform; }
+        .avatar-ring-static { background: conic-gradient(from 200deg, #fde68a, #b8720e, #fff3c4, #d4921a, #fde68a); }
+        @keyframes shineSweep { 0% { transform: translateX(-120%) skewX(-20deg); } 60%, 100% { transform: translateX(260%) skewX(-20deg); } }
+        .btn-shine { position: relative; overflow: hidden; }
+        .btn-shine::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); animation: shineSweep 3.2s ease-in-out infinite; pointer-events: none; }
+        @media (prefers-reduced-motion: reduce) { .avatar-ring, .btn-shine::after { animation: none; } }
       `}</style>
 
       {/* Floating Toasts */}
@@ -737,92 +823,128 @@ export default function VedoxaHome() {
             />
             <motion.div
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-              className={`fixed top-0 right-0 w-80 h-full border-l z-[5001] shadow-[−20px_0_80px_rgba(0,0,0,0.8)] flex flex-col ${isDark ? 'bg-[#0c0c1a] border-white/[0.07]' : 'bg-white border-slate-200'}`}
+              className={`fixed top-0 right-0 w-[22rem] max-w-[92vw] h-full border-l z-[5001] shadow-[-20px_0_80px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden ${isDark ? 'bg-[#0a0a16] border-white/[0.07] text-white' : 'bg-white border-slate-200 text-slate-900'}`}
             >
+              {/* Aurora glow behind the profile */}
+              <div
+                className="absolute inset-x-0 top-0 h-72 pointer-events-none"
+                style={{ background: isDark
+                  ? 'radial-gradient(120% 90% at 50% 0%, rgba(212,146,26,0.30) 0%, rgba(124,58,237,0.12) 45%, transparent 75%)'
+                  : 'radial-gradient(120% 90% at 50% 0%, rgba(245,184,75,0.50) 0%, rgba(167,139,250,0.18) 45%, transparent 75%)' }}
+              />
+
               {/* Header (No scroll) */}
-              <div className={`shrink-0 p-6 border-b flex justify-between items-center ${isDark ? 'border-white/[0.06] bg-black/30' : 'border-slate-100 bg-slate-50'}`}>
-                <span className={`font-bold flex items-center gap-2 text-sm tracking-wide ${isDark ? 'text-white/90' : 'text-slate-800'}`}>
-                  <Settings size={16} className="text-amber-500/70"/> Dashboard
+              <div className="relative shrink-0 px-5 pt-5 flex justify-between items-center">
+                <span className="flex items-center gap-2.5 text-sm font-bold tracking-wide">
+                  <span className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center">
+                    <LayoutDashboard size={15}/>
+                  </span>
+                  Dashboard
                 </span>
-                <button onClick={() => setIsSidebarOpen(false)} className={`p-1.5 rounded-xl transition ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.08]' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200'}`}>
+                <button onClick={() => setIsSidebarOpen(false)} className={`p-2 rounded-xl transition ${isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.08]' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/70'}`}>
                   <X size={18}/>
                 </button>
               </div>
 
               {/* Scrollable Content Area */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                
-                {/* Profile Section with Beautiful Badge and Frame */}
-                <div className={`p-6 flex flex-col items-center gap-4 border-b ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`}>
-                  <div className="relative group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
-                    
-                    {/* The Beautiful Frame Rings */}
-                    <div className="absolute -inset-1.5 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-600 rounded-full blur-[2px] opacity-70 animate-pulse"></div>
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 via-yellow-200 to-amber-600 rounded-full opacity-100"></div>
+              <div className="relative flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-5 pb-5">
 
-                    <div className={`relative w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-[3px] shadow-[0_0_30px_rgba(212,146,26,0.3)] ${isDark ? 'bg-[#0c0c1a] border-[#0c0c1a]' : 'bg-white border-white'}`}>
+                {/* Profile Section: spinning gold ring + crown + camera chip */}
+                <div className="flex flex-col items-center text-center pt-9">
+                  <div className="relative w-28 h-28 group cursor-pointer" onClick={() => setShowAvatarPicker(true)}>
+                    <div className="avatar-ring absolute -inset-1.5 rounded-full opacity-95" />
+                    <div className={`absolute inset-0 rounded-full ${isDark ? 'bg-[#0a0a16]' : 'bg-white'}`} />
+                    <div className="absolute inset-[4px] rounded-full overflow-hidden flex items-center justify-center shadow-[0_0_30px_rgba(212,146,26,0.35)]">
                       {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="avatar" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                        <img src={profile.avatar_url} alt="avatar" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       ) : (
-                        <UserCircle size={48} className="text-amber-500/40" />
+                        <UserCircle size={52} className="text-amber-500/50" />
                       )}
                     </div>
-                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 m-[3px]">
-                      <Edit3 size={18} className="text-white" />
-                    </div>
+                    <span className="absolute -top-4 left-1/2 -translate-x-1/2 -rotate-6 w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center shadow-[0_4px_14px_rgba(212,146,26,0.55)]">
+                      <Crown size={16} />
+                    </span>
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-9 h-9 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center border-[3px] shadow-lg transition-transform duration-200 group-hover:scale-110 ${isDark ? 'border-[#0a0a16]' : 'border-white'}`}>
+                      <Camera size={15} />
+                    </span>
                   </div>
 
-                  <div className="text-center mt-2">
-                    {/* The Unique Badge */}
-                    <div className="flex items-center justify-center gap-1.5 mb-2 mx-auto w-max px-3 py-1 rounded-full bg-amber-500/[0.15] border border-amber-500/30 text-amber-500 shadow-[0_0_15px_rgba(212,146,26,0.2)]">
-                      <Crown size={14} className="drop-shadow-md" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Premium Reader</span>
-                      <Sparkles size={12} className="text-amber-400" />
-                    </div>
+                  <h3 className="font-cinzel gold-text font-black text-2xl mt-5 leading-tight max-w-full truncate">{profile?.name || "Vedoxa Reader"}</h3>
+                  <p className={`text-xs mt-1 font-medium max-w-full truncate ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>{user?.email}</p>
 
-                    <h3 className={`font-black text-lg tracking-wide ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.name || "Vedoxa Reader"}</h3>
-                    <p className={`text-xs mt-0.5 font-medium ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>{user?.email}</p>
+                  <div className="flex items-center gap-1.5 mt-3 px-3.5 py-1.5 rounded-full bg-amber-500/[0.12] border border-amber-500/30 text-amber-500 shadow-[0_0_18px_rgba(212,146,26,0.18)]">
+                    <Sparkles size={12} className="text-amber-400" />
+                    <span className="text-[11px] font-extrabold tracking-wide">Premium Reader</span>
                   </div>
                 </div>
 
-                <div className="p-6 flex flex-col gap-3">
-                  <Link href="/reward-points" className="bg-amber-500/[0.08] border border-amber-500/[0.18] p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-amber-500/[0.14] transition-all">
-                    <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
-                      <Coins size={18}/> Reward Points
+                {/* Live stats (from existing state) */}
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className={`rounded-2xl border p-3.5 ${sideCard}`}>
+                    <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400/25 to-emerald-600/10 text-emerald-500 flex items-center justify-center mb-2.5"><BookMarked size={17}/></span>
+                    <div className="text-2xl font-black leading-none">{purchasedBookIds.length}</div>
+                    <div className={`text-[11px] font-semibold mt-1.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>Books Owned</div>
+                  </div>
+                  <div className={`rounded-2xl border p-3.5 ${sideCard}`}>
+                    <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-400/25 to-rose-600/10 text-rose-500 flex items-center justify-center mb-2.5"><Heart size={17} className="fill-rose-500/30"/></span>
+                    <div className="text-2xl font-black leading-none">{favorites.length}</div>
+                    <div className={`text-[11px] font-semibold mt-1.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>Favorites</div>
+                  </div>
+                </div>
+
+                {/* Reward points */}
+                <Link href="/reward-points" className="group relative mt-3 flex items-center gap-3.5 rounded-2xl p-4 overflow-hidden border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.22] via-amber-500/[0.08] to-transparent hover:border-amber-500/60 transition-all">
+                  <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center shrink-0 shadow-[0_6px_20px_rgba(212,146,26,0.45)]"><Coins size={22}/></span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-xs font-bold text-amber-500">Reward Points</span>
+                    <span className="block text-3xl font-black leading-tight">{profile?.reward_points || 0}</span>
+                  </span>
+                  <ArrowUpRight size={18} className="text-amber-500 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </Link>
+
+                {/* Preferences: segmented switches */}
+                <div className={`mt-3 rounded-2xl border p-3.5 flex flex-col gap-3.5 ${sideCard}`}>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="flex items-center gap-2 text-sm font-semibold"><Globe size={15} className="text-amber-500"/> Language / भाषा</span>
+                    <div className={`flex p-0.5 rounded-full border ${isDark ? 'bg-black/30 border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                      <button onClick={() => setLang("EN")} className={segBtn(lang === "EN")}>EN</button>
+                      <button onClick={() => setLang("HI")} className={segBtn(lang === "HI")}>हिन्दी</button>
                     </div>
-                    <span className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{profile?.reward_points || 0}</span>
+                  </div>
+                  {/* THEME TOGGLE */}
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="flex items-center gap-2 text-sm font-semibold">{isDark ? <Moon size={15} className="text-amber-500"/> : <Sun size={15} className="text-amber-500"/>} Theme / थीम</span>
+                    <div className={`flex p-0.5 rounded-full border ${isDark ? 'bg-black/30 border-white/[0.08]' : 'bg-white border-slate-200'}`}>
+                      <button onClick={() => { if (isDark) toggleTheme(); }} className={segBtn(!isDark)}><Sun size={13}/> Light</button>
+                      <button onClick={() => { if (!isDark) toggleTheme(); }} className={segBtn(isDark)}><Moon size={13}/> Dark</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick links */}
+                <div className="mt-3 flex flex-col gap-3">
+                  <Link href="/explore" className={`group flex items-center gap-3 rounded-2xl border p-3 transition ${sideCard} hover:border-amber-500/40`}>
+                    <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400/25 to-indigo-500/10 text-sky-400 flex items-center justify-center shrink-0"><Compass size={19}/></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-bold">Explore</span>
+                      <span className={`block text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>Discover more books</span>
+                    </span>
+                    <ChevronRight size={16} className={`transition-transform duration-200 group-hover:translate-x-0.5 ${isDark ? "text-gray-500" : "text-slate-400"}`} />
                   </Link>
 
-                  <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
-                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Language / भाषा</span>
-                    <button onClick={() => setLang(lang === "EN" ? "HI" : "EN")} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition">
-                      {lang === "EN" ? "Switch to हिन्दी" : "Switch to English"}
-                    </button>
-                  </div>
-
-                  {/* THEME TOGGLE ADDED HERE */}
-                  <div className={`p-4 rounded-2xl flex justify-between items-center border ${isDark ? 'bg-white/[0.03] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
-                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Theme / थीम</span>
-                    <button onClick={toggleTheme} className="border border-amber-500/25 text-amber-500 px-3 py-1 rounded-full text-xs font-bold hover:bg-amber-500/[0.1] transition flex items-center gap-2">
-                      {isDark ? <Sun size={14} /> : <Moon size={14} />}
-                      {isDark ? "Light Mode" : "Dark Mode"}
-                    </button>
-                  </div>
-
-                  <Link href="/explore" className={`p-4 rounded-2xl flex justify-between items-center cursor-pointer transition border ${isDark ? 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07]' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
-                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Explore</span>
-                    <ChevronRight size={16} className={isDark ? "text-gray-600" : "text-slate-400"} />
-                  </Link>
-
-                  <Link href="/quiz" className={`p-4 rounded-2xl flex justify-between items-center cursor-pointer transition border ${isDark ? 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07]' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
-                    <span className={`font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Quiz</span>
-                    <ChevronRight size={16} className={isDark ? "text-gray-600" : "text-slate-400"} />
+                  <Link href="/quiz" className={`group flex items-center gap-3 rounded-2xl border p-3 transition ${sideCard} hover:border-amber-500/40`}>
+                    <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400/25 to-fuchsia-500/10 text-violet-400 flex items-center justify-center shrink-0"><Brain size={19}/></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-bold">Quiz</span>
+                      <span className={`block text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>Play the quiz</span>
+                    </span>
+                    <ChevronRight size={16} className={`transition-transform duration-200 group-hover:translate-x-0.5 ${isDark ? "text-gray-500" : "text-slate-400"}`} />
                   </Link>
                 </div>
               </div>
 
               {/* Footer / Logout (No scroll) */}
-              <div className={`shrink-0 p-6 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
+              <div className={`relative shrink-0 p-5 border-t ${isDark ? 'border-white/[0.06] bg-black/20' : 'border-slate-200 bg-slate-50/80'}`}>
                 {showLogoutConfirm ? (
                   <div className="bg-red-500/[0.08] border border-red-500/[0.18] p-4 rounded-2xl text-center">
                     <p className={`text-sm font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Are you sure you want to log out?</p>
@@ -832,7 +954,7 @@ export default function VedoxaHome() {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setShowLogoutConfirm(true)} className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition text-sm border ${isDark ? 'bg-white/[0.03] border-white/[0.07] text-red-400/80 hover:bg-white/[0.07] hover:text-red-400' : 'bg-white border-slate-200 text-red-500 hover:bg-slate-50'}`}>
+                  <button onClick={() => setShowLogoutConfirm(true)} className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition text-sm border ${isDark ? 'bg-white/[0.03] border-white/[0.07] text-red-400/80 hover:bg-red-500/10 hover:text-red-400' : 'bg-white border-slate-200 text-red-500 hover:bg-red-50'}`}>
                     <LogOut size={16}/> Logout securely
                   </button>
                 )}
@@ -854,16 +976,24 @@ export default function VedoxaHome() {
               transition={{ type: "spring", stiffness: 380, damping: 28 }}
               className={`border rounded-3xl p-6 w-full max-w-sm relative shadow-2xl ${isDark ? 'bg-[#0c0c1a] border-white/[0.08]' : 'bg-white border-slate-200'}`}
             >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent rounded-full" />
               <button onClick={() => setShowAvatarPicker(false)} className={`absolute top-4 right-4 transition p-1.5 rounded-xl ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.08]' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}>
                 <X size={18}/>
               </button>
-              <h3 className={`text-lg font-bold mb-6 text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>Choose your Avatar</h3>
+              <h3 className={`text-lg font-bold text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>Choose your Avatar</h3>
+              <p className={`text-xs text-center mt-1 mb-6 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>Pick the one that feels like you</p>
               <div className="grid grid-cols-3 gap-4">
-                {AVATARS.map((url, idx) => (
-                  <button key={idx} onClick={() => handleSaveAvatar(url)} className={`aspect-square rounded-full border hover:border-amber-500/60 hover:scale-110 hover:shadow-[0_0_20px_rgba(212,146,26,0.3)] transition-all duration-200 overflow-hidden ${isDark ? 'border-white/[0.08] bg-white/[0.04]' : 'border-slate-200 bg-slate-50'}`}>
-                    <img src={url} alt={`avatar-${idx}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+                {AVATARS.map((url, idx) => {
+                  const isCurrent = profile?.avatar_url === url;
+                  return (
+                    <button key={idx} onClick={() => handleSaveAvatar(url)} className={`relative aspect-square rounded-full border-2 hover:border-amber-500/70 hover:scale-110 hover:shadow-[0_0_22px_rgba(212,146,26,0.35)] transition-all duration-200 ${isCurrent ? 'border-amber-500 shadow-[0_0_22px_rgba(212,146,26,0.4)]' : (isDark ? 'border-white/[0.1]' : 'border-slate-200')}`}>
+                      <img src={url} alt={`avatar-${idx}`} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-full" />
+                      {isCurrent && (
+                        <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center border-2 border-[#0c0c1a]"><Check size={13} strokeWidth={3} /></span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           </motion.div>
@@ -915,9 +1045,25 @@ export default function VedoxaHome() {
                 {authForm.mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h2>
 
+              {/* NEW ADDITION: last used email suggestion, one tap to fill */}
+              {savedEmail && !authForm.email && (
+                <button
+                  type="button"
+                  onClick={() => { setAuthForm({ ...authForm, email: savedEmail }); setTimeout(() => document.getElementById("vedoxa-auth-password")?.focus(), 60); }}
+                  className={`mb-3 flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border text-left transition ${isDark ? 'bg-amber-500/[0.06] border-amber-500/25 hover:bg-amber-500/[0.12]' : 'bg-amber-50 border-amber-300/60 hover:bg-amber-100'}`}
+                >
+                  <span className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center text-sm font-black shrink-0">{savedEmail.charAt(0).toUpperCase()}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-[10px] font-semibold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>Continue as</span>
+                    <span className={`block text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{savedEmail}</span>
+                  </span>
+                  <ChevronRight size={16} className="text-amber-500 shrink-0" />
+                </button>
+              )}
+
               <form onSubmit={handleAuth} className="flex flex-col gap-3">
-                <input required type="email" placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className={`w-full px-4 py-3 rounded-xl outline-none focus:border-amber-500/50 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.09] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
-                <input required type="password" placeholder="Password" value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className={`w-full px-4 py-3 rounded-xl outline-none focus:border-amber-500/50 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.09] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
+                <input required autoFocus type="email" name="email" autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className={`w-full px-4 py-3 rounded-xl outline-none focus:border-amber-500/50 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.09] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
+                <input required id="vedoxa-auth-password" type="password" name="password" autoComplete={authForm.mode === 'login' ? 'current-password' : 'new-password'} placeholder="Password" value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className={`w-full px-4 py-3 rounded-xl outline-none focus:border-amber-500/50 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.09] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
                 <button type="submit" className="btn-gold py-3 rounded-xl font-bold text-sm mt-2">
                   {authForm.mode === 'login' ? 'Login' : 'Sign Up'}
                 </button>
@@ -939,81 +1085,127 @@ export default function VedoxaHome() {
         )}
       </AnimatePresence>
 
-      {/* Checkout Modal */}
+      {/* Checkout Modal: book summary on top, sticky Pay button, coupon collapsed for a faster purchase */}
       <AnimatePresence>
         {showCheckout && selectedBook && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className={`fixed inset-0 z-[3000] backdrop-blur-lg flex items-center justify-center p-4 ${isDark ? 'bg-black/88' : 'bg-slate-900/60'}`}
+            onClick={() => setShowCheckout(false)}
+            className={`fixed inset-0 z-[3000] backdrop-blur-lg flex items-end sm:items-center justify-center sm:p-4 ${isDark ? 'bg-black/88' : 'bg-slate-900/60'}`}
           >
             <motion.div
-              initial={{ scale: 0.92, y: 32, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.92, y: 32, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 360, damping: 28 }}
-              className={`border rounded-3xl p-6 md:p-8 w-full max-w-md relative shadow-2xl ${isDark ? 'bg-[#0d0d1c] border-amber-500/[0.13]' : 'bg-white border-amber-500/30'}`}
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 360, damping: 32 }}
+              className={`border w-full sm:max-w-md max-h-[94vh] flex flex-col relative shadow-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden ${isDark ? 'bg-[#0d0d1c] border-amber-500/[0.18] text-white' : 'bg-white border-amber-500/30 text-slate-900'}`}
             >
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent rounded-full" />
-              <button onClick={() => setShowCheckout(false)} className={`absolute top-4 right-4 p-2 rounded-xl transition ${isDark ? 'bg-white/[0.05] text-gray-500 hover:text-white hover:bg-white/[0.1]' : 'bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}>
-                <X size={17} />
-              </button>
-              <h2 className={`text-xl md:text-2xl font-extrabold mb-1 tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{t.checkout}</h2>
-              <p className={`text-xs md:text-sm mb-6 ${isDark ? 'text-gray-500' : 'text-slate-600'}`}>
-                {t.brand}: <span className="text-amber-500 font-bold">{selectedBook.title}</span>
-              </p>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent rounded-full" />
 
-              <form onSubmit={handlePayment} className="flex flex-col gap-3">
-                <input placeholder="Full Name (Optional)" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className={`w-full px-4 py-3 rounded-xl outline-none focus:border-amber-500/40 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
-
-                <div className="flex gap-2">
-                  <select value={checkoutData.countryCode} onChange={(e) => setCheckoutData({...checkoutData, countryCode: e.target.value})} className={`w-24 px-2 py-3 rounded-xl outline-none focus:border-amber-500/40 transition cursor-pointer appearance-none text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}>
-                    <option value="+91" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇮🇳 +91</option>
-                    <option value="+1" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇺🇸 +1</option>
-                    <option value="+44" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇬🇧 +44</option>
-                    <option value="+61" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇦🇺 +61</option>
-                    <option value="+971" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇦🇪 +971</option>
-                  </select>
-                  <input required type="tel" placeholder="Phone Number" value={checkoutData.phone} onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value.replace(/\D/g, '')})} maxLength={checkoutData.countryCode === '+91' ? 10 : 15} className={`flex-1 px-4 py-3 rounded-xl outline-none focus:border-amber-500/40 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
-                </div>
-
-                <div className="flex gap-2">
-                  <input placeholder={t.haveCoupon} value={checkoutData.coupon} onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})} className="flex-1 px-4 py-3 rounded-xl bg-amber-500/[0.04] border border-dashed border-amber-500/25 text-amber-500 placeholder-amber-900 outline-none focus:border-amber-500/50 text-sm" />
-                  <button type="button" onClick={verifyCoupon} className="px-5 rounded-xl bg-amber-500/[0.1] text-amber-500 font-bold hover:bg-amber-500/[0.2] transition text-sm border border-amber-500/20">
-                    {t.apply}
-                  </button>
-                </div>
-
-                {profile?.reward_points > 0 && (
-                  <label className="flex items-center gap-3 bg-emerald-500/[0.05] p-3 rounded-xl border border-emerald-500/[0.18] cursor-pointer hover:bg-emerald-500/[0.08] transition">
-                    <input type="checkbox" checked={useRewards} onChange={(e) => setUseRewards(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
-                    <span className="text-emerald-400 text-sm font-medium">{t.redeemPoints} ({profile.reward_points} pts)</span>
-                  </label>
-                )}
-
-                <div className={`p-4 rounded-2xl mt-1 border ${isDark ? 'bg-white/[0.035] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex justify-between text-gray-500 text-sm mb-2"><span>Price:</span> <span>₹{selectedBook.final_price}</span></div>
-                  {partnerData && <div className="flex justify-between text-blue-400 font-bold text-sm mb-2"><span>Partner Discount ({partnerData.discount_pct}%):</span><span>- ₹{partnerDiscountAmount}</span></div>}
-                  {appliedCoupon && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Coupon Discount:</span> <span>- ₹{couponDiscountAmount}</span></div>}
-                  {useRewards && profile?.reward_points > 0 && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Points Applied:</span> <span>- ₹{profile.reward_points}</span></div>}
-                  <div className={`flex justify-between text-lg font-extrabold border-t pt-2 mt-2 ${isDark ? 'text-white border-white/[0.08]' : 'text-slate-900 border-slate-200'}`}>
-                    <span>Total to Pay:</span> <span>₹{clientFinalPrice}</span>
-                  </div>
-                  <div className="text-right text-xs text-amber-500 mt-1 font-medium">{t.rewardEarn}: {earnedPoints} pts</div>
-                </div>
-
-                <button type="submit" disabled={isProcessing} className="btn-gold w-full py-4 rounded-xl flex justify-center items-center gap-2 text-sm font-extrabold mt-1">
-                  {isProcessing ? <RefreshCw className="animate-spin" size={17} /> : <Lock size={17} />}
-                  {isProcessing ? "Processing..." : `${t.pay} ₹${clientFinalPrice}`}
+              {/* Header + book summary */}
+              <div className={`shrink-0 px-5 pt-5 pb-4 border-b ${isDark ? 'border-white/[0.07]' : 'border-slate-100'}`}>
+                <button onClick={() => setShowCheckout(false)} className={`absolute top-4 right-4 p-2 rounded-xl transition ${isDark ? 'bg-white/[0.05] text-gray-500 hover:text-white hover:bg-white/[0.1]' : 'bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}>
+                  <X size={17} />
                 </button>
-
-                <div className="flex justify-center items-center gap-3 mt-2 opacity-50">
-                  <div className="flex items-center gap-1 font-bold tracking-wide text-[10px] md:text-xs">
-                    <svg viewBox="0 0 100 24" className="h-3 md:h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill={isDark ? "#fff" : "#0f172a"}/>
-                      <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
-                      <text x="24" y="17" fill={isDark ? "#fff" : "#0f172a"} fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
-                    </svg>
+                <h2 className="text-lg md:text-xl font-extrabold tracking-tight mb-3.5">{t.checkout}</h2>
+                <div className={`flex items-center gap-3.5 rounded-2xl p-3 border ${isDark ? 'bg-white/[0.035] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="w-14 h-[4.5rem] shrink-0 rounded-lg overflow-hidden flex items-center justify-center bg-amber-500/[0.08] border border-amber-500/20">
+                    {selectedBook.cover_path ? (
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`}
+                        alt={selectedBook.title} decoding="async" className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <BookOpen size={22} className="text-amber-500/70" />
+                    )}
                   </div>
-                  <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${isDark ? 'text-gray-400 border-white/[0.15]' : 'text-slate-500 border-slate-300'}`}>
-                    <ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-cinzel text-sm md:text-base font-bold leading-snug line-clamp-2">{selectedBook.title}</h3>
+                    <p className={`text-xs truncate mt-0.5 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>by {selectedBook.author}</p>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-500"><Zap size={12}/> Instant access after payment</div>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handlePayment} className="flex flex-col min-h-0 flex-1">
+                {/* Scrollable fields */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 flex flex-col gap-3">
+
+                  {!user && (
+                    <button type="button" onClick={() => { setShowCheckout(false); setShowAuthModal(true); }} className="flex items-center justify-between gap-2 w-full px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.08] text-amber-500 text-sm font-bold hover:bg-amber-500/[0.14] transition">
+                      <span className="flex items-center gap-2"><UserCircle size={17}/> Login to continue your purchase</span>
+                      <ChevronRight size={16} />
+                    </button>
+                  )}
+
+                  <input name="name" autoComplete="name" placeholder="Full Name (Optional)" value={checkoutData.name} onChange={(e) => setCheckoutData({...checkoutData, name: e.target.value})} className={`w-full px-4 py-3 rounded-xl outline-none focus:border-amber-500/40 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
+
+                  <div className="flex gap-2">
+                    <select value={checkoutData.countryCode} onChange={(e) => setCheckoutData({...checkoutData, countryCode: e.target.value})} className={`w-24 px-2 py-3 rounded-xl outline-none focus:border-amber-500/40 transition cursor-pointer appearance-none text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}>
+                      <option value="+91" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇮🇳 +91</option>
+                      <option value="+1" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇺🇸 +1</option>
+                      <option value="+44" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇬🇧 +44</option>
+                      <option value="+61" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇦🇺 +61</option>
+                      <option value="+971" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>🇦🇪 +971</option>
+                    </select>
+                    <input required autoFocus={!checkoutData.phone} type="tel" name="phone" autoComplete="tel-national" inputMode="numeric" placeholder="Phone Number" value={checkoutData.phone} onChange={(e) => setCheckoutData({...checkoutData, phone: e.target.value.replace(/\D/g, '')})} maxLength={checkoutData.countryCode === '+91' ? 10 : 15} className={`flex-1 px-4 py-3 rounded-xl outline-none focus:border-amber-500/40 transition text-sm border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-gray-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`} />
+                  </div>
+
+                  {/* Coupon: collapsed by default, Enter applies the coupon (does not submit the payment) */}
+                  {(showCoupon || appliedCoupon) ? (
+                    <div className="flex gap-2">
+                      <input placeholder={t.haveCoupon} value={checkoutData.coupon} onChange={(e) => setCheckoutData({...checkoutData, coupon: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); verifyCoupon(); } }} className="flex-1 px-4 py-3 rounded-xl bg-amber-500/[0.04] border border-dashed border-amber-500/25 text-amber-500 placeholder-amber-900 outline-none focus:border-amber-500/50 text-sm" />
+                      <button type="button" onClick={verifyCoupon} className="px-5 rounded-xl bg-amber-500/[0.1] text-amber-500 font-bold hover:bg-amber-500/[0.2] transition text-sm border border-amber-500/20">
+                        {t.apply}
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setShowCoupon(true)} className="flex items-center gap-2 text-xs font-bold text-amber-500 hover:text-amber-400 transition w-max">
+                      <Tag size={14}/> {t.haveCoupon} <ChevronDown size={14}/>
+                    </button>
+                  )}
+
+                  {profile?.reward_points > 0 && (
+                    <label className="flex items-center gap-3 bg-emerald-500/[0.05] p-3 rounded-xl border border-emerald-500/[0.18] cursor-pointer hover:bg-emerald-500/[0.08] transition">
+                      <input type="checkbox" checked={useRewards} onChange={(e) => setUseRewards(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
+                      <span className="text-emerald-400 text-sm font-medium">{t.redeemPoints} ({profile.reward_points} pts)</span>
+                    </label>
+                  )}
+
+                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-white/[0.035] border-white/[0.07]' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between text-gray-500 text-sm mb-2"><span>Price:</span> <span>₹{selectedBook.final_price}</span></div>
+                    {partnerData && <div className="flex justify-between text-blue-400 font-bold text-sm mb-2"><span>Partner Discount ({partnerData.discount_pct}%):</span><span>- ₹{partnerDiscountAmount}</span></div>}
+                    {appliedCoupon && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Coupon Discount:</span> <span>- ₹{couponDiscountAmount}</span></div>}
+                    {useRewards && profile?.reward_points > 0 && <div className="flex justify-between text-emerald-400 text-sm mb-2"><span>Points Applied:</span> <span>- ₹{profile.reward_points}</span></div>}
+                    <div className={`flex justify-between text-lg font-extrabold border-t pt-2 mt-2 ${isDark ? 'text-white border-white/[0.08]' : 'text-slate-900 border-slate-200'}`}>
+                      <span>Total to Pay:</span> <span>₹{clientFinalPrice}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1.5">
+                      {totalSaved > 0 ? (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/[0.12] text-emerald-500 border border-emerald-500/25">You save ₹{totalSaved}</span>
+                      ) : <span />}
+                      <span className="text-xs text-amber-500 font-medium">{t.rewardEarn}: {earnedPoints} pts</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sticky footer: Pay button always visible */}
+                <div className={`shrink-0 px-5 pt-3 pb-5 border-t ${isDark ? 'border-white/[0.07] bg-[#0d0d1c]' : 'border-slate-100 bg-white'}`}>
+                  <button type="submit" disabled={isProcessing} className="btn-gold btn-shine w-full py-4 rounded-2xl flex justify-center items-center gap-2 text-base font-extrabold">
+                    {isProcessing ? <RefreshCw className="animate-spin" size={18} /> : <Lock size={18} />}
+                    {isProcessing ? "Processing..." : (clientFinalPrice === 0 ? "Unlock Book for Free" : `${t.pay} ₹${clientFinalPrice}`)}
+                  </button>
+
+                  <div className="flex justify-center items-center gap-3 mt-3 opacity-60">
+                    <div className="flex items-center gap-1 font-bold tracking-wide text-[10px] md:text-xs">
+                      <svg viewBox="0 0 100 24" className="h-3 md:h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill={isDark ? "#fff" : "#0f172a"}/>
+                        <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
+                        <text x="24" y="17" fill={isDark ? "#fff" : "#0f172a"} fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
+                      </svg>
+                    </div>
+                    <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${isDark ? 'text-gray-400 border-white/[0.15]' : 'text-slate-500 border-slate-300'}`}>
+                      <ShieldCheck size={10} className="text-green-500"/> 256-BIT SSL
+                    </div>
                   </div>
                 </div>
               </form>
@@ -1102,13 +1294,20 @@ export default function VedoxaHome() {
             </div>
 
             {user ? (
-              <button onClick={() => setIsSidebarOpen(true)} className={`flex items-center gap-2 border px-2.5 py-1.5 rounded-full transition shrink-0 ${isDark ? 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.14]' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 hover:border-slate-300'}`}>
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover border border-amber-500/40" />
-                ) : (
-                  <UserCircle size={17} className="text-amber-500/80" />
-                )}
-                <Menu size={17} className={isDark ? "text-gray-400" : "text-slate-500"} />
+              <button onClick={() => setIsSidebarOpen(true)} className={`group relative flex items-center gap-2.5 border pl-1 pr-3 py-1 rounded-full transition shrink-0 ${isDark ? 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-amber-500/30' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 hover:border-amber-500/40'}`}>
+                {/* Avatar with gold ring + online dot */}
+                <span className="relative shrink-0">
+                  <span className="avatar-ring-static absolute -inset-[2px] rounded-full" />
+                  <span className={`relative flex w-8 h-8 rounded-full overflow-hidden items-center justify-center border-2 ${isDark ? 'border-[#0c0c1a] bg-[#0c0c1a]' : 'border-white bg-white'}`}>
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    ) : (
+                      <UserCircle size={20} className="text-amber-500/80" />
+                    )}
+                  </span>
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 ${isDark ? 'border-[#07070d]' : 'border-white'}`} />
+                </span>
+                <Menu size={17} className={`transition-colors group-hover:text-amber-500 ${isDark ? "text-gray-400" : "text-slate-500"}`} />
               </button>
             ) : (
               <button onClick={() => setShowAuthModal(true)} className="btn-gold px-5 py-2 rounded-full text-xs font-bold shrink-0">
@@ -1118,87 +1317,10 @@ export default function VedoxaHome() {
           </div>
         </nav>
 
-        {/* ─── Hero Section: Instant WebP + Force-Play Video + Live Golden Particles ─── */}
-        <section className="relative px-4 pt-14 pb-12 md:pt-24 md:pb-16 text-center flex flex-col items-center justify-center overflow-hidden min-h-[300px] md:min-h-[380px]">
-          
-          <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]">
-            {/* 1. ULTRA-FAST WEBP CINEMA BACKGROUND (25KB only - loads in 0.1s & moves smoothly) */}
-            <img
-              src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=650&q=55&fm=webp"
-              alt=""
-              fetchPriority="high"
-              decoding="async"
-              className={`absolute inset-0 w-full h-full object-cover cinema-bg ${
-                isDark ? "opacity-30 brightness-110" : "opacity-20"
-              }`}
-            />
-
-            {/* 2. MOBILE FORCE-PLAY VIDEO LAYER (Plays smoothly over the moving background) */}
-            <video
-              ref={heroVideoRef}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                isDark ? "opacity-40 mix-blend-screen" : "opacity-25"
-              }`}
-            >
-              {/* Fast Global CDN Streams without hotlink blocking */}
-              <source src="https://cdn.pixabay.com/video/2020/05/25/40130-424930032_tiny.mp4" type="video/mp4" />
-              <source src="https://cdn.pixabay.com/video/2021/08/10/84624-586228732_tiny.mp4" type="video/mp4" />
-            </video>
-
-            {/* 3. LIVE FLOATING GOLDEN SPIRITUAL PARTICLES (Works 100% of the time with 0KB data) */}
-            <div className="absolute inset-0 overflow-hidden">
-              {GOLDEN_PARTICLES.map((p, idx) => (
-                <span
-                  key={idx}
-                  className="golden-particle"
-                  style={{
-                    left: p.left,
-                    width: `${p.size}px`,
-                    height: `${p.size}px`,
-                    animationDuration: p.duration,
-                    animationDelay: p.delay
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* 4. Smooth Vignette Overlay for Crisp Text Readability */}
-            <div
-              className={`absolute inset-0 ${
-                isDark
-                  ? "bg-gradient-to-b from-[#07070d]/80 via-[#07070d]/25 to-[#07070d]"
-                  : "bg-gradient-to-b from-[#f8fafc]/80 via-[#f8fafc]/25 to-[#f8fafc]"
-              }`}
-            />
-          </div>
-
-          <div className="absolute top-0 left-1/2 w-[160vw] md:w-[1000px] h-[380px] md:h-[700px] bg-amber-600/[0.08] blur-[130px] rounded-full pointer-events-none z-[1] hero-glow" />
-          <div className="absolute top-16 left-1/3 w-[350px] h-[280px] bg-amber-400/[0.05] blur-[90px] rounded-full pointer-events-none z-[1] hero-glow-2" />
-          <div className="absolute top-8 right-[20%] w-[280px] h-[220px] bg-yellow-400/[0.03] blur-[70px] rounded-full pointer-events-none z-[1] hero-glow-3" />
-
-          <motion.h1 initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 font-cinzel text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-5 max-w-4xl mx-auto drop-shadow-sm">
-            {lang === "EN" ? (
-              <>
-                {t.heroTitle.split(" ")[0]} <span className="gold-text">{t.heroTitle.split(" ")[1]}</span> {t.heroTitle.split(" ")[2]}
-              </>
-            ) : (
-              <><span className="gold-text">अपनी चेतना</span> को जागृत करें</>
-            )}
-          </motion.h1>
-
-          <motion.p initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`relative z-10 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed font-medium ${isDark ? 'text-gray-300/90' : 'text-slate-700'}`}>
-            {t.heroSub}
-          </motion.p>
-        </section>
+        {/* Hero section moved to its own page (/hero). The hero styles, particles and video logic above are kept untouched. */}
 
         {/* ─── Dynamic Book Library Grid ────────────────────────── */}
-        <section className="px-4 py-8 md:py-14 w-full max-w-7xl mx-auto relative z-10">
+        <section className="px-4 pt-12 pb-8 md:pt-16 md:pb-14 w-full max-w-7xl mx-auto relative z-10">
           
           <motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center mb-10 md:mb-16">
             <h2 className="font-cinzel text-2xl md:text-4xl font-bold text-center">
