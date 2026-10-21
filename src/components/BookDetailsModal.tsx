@@ -2,9 +2,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare, 
-  UserCircle, Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag, Download 
+import {
+  X, Handshake, BookOpen, CheckCircle2, Lock, MessageSquare,
+  Star, Eye, ThumbsUp, ThumbsDown, ArrowLeft, Share2, Edit3, FileText, Tag, Download,
+  Zap, Sparkles, ChevronDown
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -12,9 +13,96 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/* ---------- Small helpers (module level = no re-mount, no lag) ---------- */
+
+const MODAL_CSS = `
+@keyframes bdm-float { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-8px,0); } }
+@keyframes bdm-glow { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.07); } }
+@keyframes bdm-shine { 0% { transform: translateX(-150%) skewX(-20deg); } 55%,100% { transform: translateX(350%) skewX(-20deg); } }
+.bdm-float { animation: bdm-float 5s ease-in-out infinite; will-change: transform; }
+.bdm-glow { animation: bdm-glow 2.2s ease-in-out infinite; will-change: transform, opacity; }
+.bdm-shine { animation: bdm-shine 3.4s ease-in-out infinite; will-change: transform; }
+.bdm-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
+.bdm-noscroll::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bdm-float, .bdm-glow, .bdm-shine { animation: none !important; }
+}
+`;
+
+const AVATAR_GRADIENTS = [
+  "from-violet-400 to-fuchsia-500",
+  "from-amber-300 to-orange-500",
+  "from-sky-400 to-indigo-500",
+  "from-emerald-300 to-teal-500",
+  "from-rose-300 to-pink-500",
+];
+
+const getGradient = (name = "") => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 997;
+  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
+};
+
+const MOODS = {
+  1: { emoji: "😞", label: "Poor" },
+  2: { emoji: "😕", label: "Fair" },
+  3: { emoji: "🙂", label: "Good" },
+  4: { emoji: "😄", label: "Great" },
+  5: { emoji: "🤩", label: "Loved it" },
+};
+
+const QUICK_TAGS = ["Well written", "Easy to understand", "Worth the price", "Must read"];
+
+const formatDate = (d) => {
+  if (!d) return "";
+  const x = new Date(d);
+  return isNaN(x.getTime())
+    ? ""
+    : x.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+};
+
+function Stars({ value, size = 14 }) {
+  return (
+    <div className="flex gap-0.5" aria-label={`${value} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          size={size}
+          className={i <= value ? "text-amber-400 fill-amber-400" : "text-white/20"}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Glowing buy button - glow uses only transform/opacity so it stays smooth on phones
+function GlowBuyButton({ onClick, children, className = "", compact = false }) {
+  return (
+    <div className={`relative ${className}`}>
+      <span
+        aria-hidden="true"
+        className="bdm-glow pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-500 opacity-70 blur-xl"
+      />
+      <button
+        onClick={onClick}
+        className={`relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-500 px-6 font-black text-white ring-1 ring-white/30 shadow-lg transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${
+          compact ? "py-3.5 text-base" : "py-4 text-lg"
+        }`}
+      >
+        <span
+          aria-hidden="true"
+          className="bdm-shine pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-white/30 blur-md"
+        />
+        <Zap size={compact ? 18 : 20} className="relative fill-white" />
+        <span className="relative">{children}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function BookDetailsModal({
   selectedBook,
-  onBookChange, 
+  onBookChange,
   partnerData,
   purchasedBookIds,
   t,
@@ -28,26 +116,38 @@ export default function BookDetailsModal({
   setShowBookDetails,
   openWebReader,
   setShowCheckout,
-  theme, // Added support for props passed from VedoxaHome
-  isDark // Added support for props passed from VedoxaHome
+  theme, // props passed from VedoxaHome
+  isDark // props passed from VedoxaHome
 }) {
-  const originalPrice = selectedBook.final_price;
+  // Safe values (no crash if parent sends undefined)
+  const safeReviews = Array.isArray(reviews) ? reviews : [];
+  const isPurchased = Array.isArray(purchasedBookIds) && purchasedBookIds.includes(selectedBook.id);
+
+  const originalPrice = Number(selectedBook.final_price) || 0;
   const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
   const displayPrice = originalPrice - pDiscount;
+  const showDiscount = !!partnerData && !isPurchased;
 
   // Social Stats State
   const [stats, setStats] = useState({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
-  const [userInteraction, setUserInteraction] = useState(null); 
+  const [userInteraction, setUserInteraction] = useState(null);
   const [isUpdatingStat, setIsUpdatingStat] = useState(false);
-  
+
   // State for limiting visible reviews
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
 
   // Advanced States
-  const [userRating, setUserRating] = useState(userExistingReview?.rating || 5); 
-  const [helpfulVotes, setHelpfulVotes] = useState({}); 
-  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false); 
-  const [suggestedBooks, setSuggestedBooks] = useState([]); 
+  const [userRating, setUserRating] = useState(userExistingReview?.rating || 5);
+  const [helpfulVotes, setHelpfulVotes] = useState({});
+  const [isPhotoFullScreen, setIsPhotoFullScreen] = useState(false);
+  const [suggestedBooks, setSuggestedBooks] = useState([]);
+
+  // New UI-only states
+  const [ratingFilter, setRatingFilter] = useState("all");
+  const [expandedReviews, setExpandedReviews] = useState({});
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [coverError, setCoverError] = useState(false);
+  const [showStickyBuy, setShowStickyBuy] = useState(false);
 
   // Free Sample States
   const [showSampleReader, setShowSampleReader] = useState(false);
@@ -57,14 +157,31 @@ export default function BookDetailsModal({
   // PDF Download State
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Scroll reset ke liye Ref
+  // Refs
   const scrollContainerRef = useRef(null);
+  const reviewsRef = useRef(null);
+  const ctaRef = useRef(null);
 
-  // Jab bhi selectedBook change ho, scroll ko wapas top par bhej do
+  // Lock background scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // Jab bhi selectedBook change ho, scroll top par + UI states reset
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = 0;
     }
+    setVisibleReviewsCount(4);
+    setRatingFilter("all");
+    setExpandedReviews({});
+    setDescExpanded(false);
+    setCoverError(false);
+    setSamplePage(0);
   }, [selectedBook.id]);
 
   useEffect(() => {
@@ -72,39 +189,87 @@ export default function BookDetailsModal({
   }, [userExistingReview]);
 
   useEffect(() => {
+    let cancelled = false;
+    const isCancelled = () => cancelled;
+
     incrementView();
-    if (user) fetchUserInteraction();
-    fetchSuggestedBooks();
-  }, [selectedBook.id, user]);
+    if (user) {
+      fetchUserInteraction(isCancelled);
+    } else {
+      setUserInteraction(null);
+    }
+    fetchSuggestedBooks(isCancelled);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBook.id, user?.id]);
+
+  // Show sticky mobile buy bar only when the main buy card is out of view
+  useEffect(() => {
+    if (isPurchased) {
+      setShowStickyBuy(false);
+      return;
+    }
+    if (typeof IntersectionObserver === "undefined" || !ctaRef.current) {
+      setShowStickyBuy(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBuy(!entry.isIntersecting),
+      { root: scrollContainerRef.current, threshold: 0 }
+    );
+    observer.observe(ctaRef.current);
+    return () => observer.disconnect();
+  }, [isPurchased, selectedBook.id]);
 
   const incrementView = async () => {
+    let alreadyViewed = false;
     const viewKey = `viewed_book_${selectedBook.id}`;
-    if (!sessionStorage.getItem(viewKey)) {
-      sessionStorage.setItem(viewKey, 'true');
+    try {
+      alreadyViewed = !!sessionStorage.getItem(viewKey);
+      if (!alreadyViewed) sessionStorage.setItem(viewKey, "true");
+    } catch (e) {
+      alreadyViewed = true; // storage blocked -> don't spam the DB
+    }
+
+    if (!alreadyViewed) {
       const newViews = (selectedBook.views || 0) + 1;
-      setStats(prev => ({ ...prev, views: newViews }));
-      await supabase.from('books').update({ views: newViews }).eq('id', selectedBook.id);
+      setStats({ views: newViews, likes: selectedBook.likes || 0 });
+      try {
+        await supabase.from("books").update({ views: newViews }).eq("id", selectedBook.id);
+      } catch (e) {
+        console.error("View update failed", e);
+      }
     } else {
       setStats({ views: selectedBook.views || 0, likes: selectedBook.likes || 0 });
     }
   };
 
-  const fetchUserInteraction = async () => {
-    const { data } = await supabase.from('user_interactions')
-      .select('interaction_type')
-      .eq('book_id', selectedBook.id)
-      .eq('user_id', user.id).single();
-    
-    if (data) setUserInteraction(data.interaction_type);
-  };
-
-  const fetchSuggestedBooks = async () => {
+  const fetchUserInteraction = async (isCancelled) => {
     try {
       const { data } = await supabase
-        .from('books')
-        .select('*')
-        .neq('id', selectedBook.id)
+        .from("user_interactions")
+        .select("interaction_type")
+        .eq("book_id", selectedBook.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (isCancelled && isCancelled()) return;
+      setUserInteraction(data ? data.interaction_type : null);
+    } catch (error) {
+      console.error("Failed to fetch interaction", error);
+    }
+  };
+
+  const fetchSuggestedBooks = async (isCancelled) => {
+    try {
+      const { data } = await supabase
+        .from("books")
+        .select("*")
+        .neq("id", selectedBook.id)
         .limit(10);
+      if (isCancelled && isCancelled()) return;
       if (data) setSuggestedBooks(data);
     } catch (error) {
       console.error("Failed to fetch suggestions", error);
@@ -121,53 +286,57 @@ export default function BookDetailsModal({
 
     try {
       if (userInteraction === type) {
-        await supabase.from('user_interactions').delete().eq('book_id', selectedBook.id).eq('user_id', user.id);
-        
-        if (type === 'like') {
+        await supabase.from("user_interactions").delete().eq("book_id", selectedBook.id).eq("user_id", user.id);
+
+        if (type === "like") {
           const newLikes = Math.max(0, stats.likes - 1);
-          setStats(prev => ({ ...prev, likes: newLikes }));
-          await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+          setStats((prev) => ({ ...prev, likes: newLikes }));
+          await supabase.from("books").update({ likes: newLikes }).eq("id", selectedBook.id);
         } else {
-          const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
-          await supabase.from('books').update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq('id', selectedBook.id);
+          const { data: bookData } = await supabase.from("books").select("dislikes").eq("id", selectedBook.id).single();
+          await supabase.from("books").update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq("id", selectedBook.id);
         }
         setUserInteraction(null);
       } else {
-        await supabase.from('user_interactions').upsert({
-          user_id: user.id,
-          book_id: selectedBook.id,
-          interaction_type: type
-        }, { onConflict: 'user_id, book_id' });
+        await supabase.from("user_interactions").upsert(
+          {
+            user_id: user.id,
+            book_id: selectedBook.id,
+            interaction_type: type,
+          },
+          { onConflict: "user_id,book_id" }
+        );
 
-        if (type === 'like') {
+        if (type === "like") {
           const newLikes = stats.likes + 1;
-          setStats(prev => ({ ...prev, likes: newLikes }));
-          await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
-          
-          if (userInteraction === 'dislike') {
-            const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
-            await supabase.from('books').update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq('id', selectedBook.id);
+          setStats((prev) => ({ ...prev, likes: newLikes }));
+          await supabase.from("books").update({ likes: newLikes }).eq("id", selectedBook.id);
+
+          if (userInteraction === "dislike") {
+            const { data: bookData } = await supabase.from("books").select("dislikes").eq("id", selectedBook.id).single();
+            await supabase.from("books").update({ dislikes: Math.max(0, (bookData?.dislikes || 0) - 1) }).eq("id", selectedBook.id);
           }
-        } else if (type === 'dislike') {
-          if (userInteraction === 'like') {
+        } else if (type === "dislike") {
+          if (userInteraction === "like") {
             const newLikes = Math.max(0, stats.likes - 1);
-            setStats(prev => ({ ...prev, likes: newLikes }));
-            await supabase.from('books').update({ likes: newLikes }).eq('id', selectedBook.id);
+            setStats((prev) => ({ ...prev, likes: newLikes }));
+            await supabase.from("books").update({ likes: newLikes }).eq("id", selectedBook.id);
           }
-          const { data: bookData } = await supabase.from('books').select('dislikes').eq('id', selectedBook.id).single();
-          await supabase.from('books').update({ dislikes: (bookData?.dislikes || 0) + 1 }).eq('id', selectedBook.id);
+          const { data: bookData } = await supabase.from("books").select("dislikes").eq("id", selectedBook.id).single();
+          await supabase.from("books").update({ dislikes: (bookData?.dislikes || 0) + 1 }).eq("id", selectedBook.id);
         }
         setUserInteraction(type);
       }
     } catch (error) {
       console.error("Interaction failed", error);
+    } finally {
+      setIsUpdatingStat(false);
     }
-    setIsUpdatingStat(false);
   };
 
   const handleShareBook = async () => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?book=${selectedBook.id}`;
-    
+
     const shareData = {
       title: `${selectedBook.title} - Vedoxa`,
       text: `Check out this amazing book: ${selectedBook.title} by ${selectedBook.author}`,
@@ -177,27 +346,58 @@ export default function BookDetailsModal({
     if (navigator.share) {
       try { await navigator.share(shareData); } catch (err) {}
     } else {
-      navigator.clipboard.writeText(shareUrl);
-      alert("Book link copied to clipboard! 📋");
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Book link copied to clipboard! 📋");
+      } catch (err) {
+        alert(shareUrl);
+      }
     }
   };
 
-  // Play Store Style Rating Calculations
-  const totalReviewsCount = reviews.length;
+  // ===== Rating calculations =====
+  const totalReviewsCount = safeReviews.length;
   const ratingStats = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   let totalStars = 0;
-  
-  reviews.forEach(r => {
-    const rStar = r.rating || 5; 
+
+  safeReviews.forEach((r) => {
+    const rStar = r.rating || 5;
     ratingStats[rStar] = (ratingStats[rStar] || 0) + 1;
     totalStars += rStar;
   });
-  const avgRating = totalReviewsCount > 0 ? (totalStars / totalReviewsCount).toFixed(1) : "0.0";
+  const avgNum = totalReviewsCount > 0 ? totalStars / totalReviewsCount : 0;
+  const avgRating = avgNum.toFixed(1);
 
-  // ===== NEW 100% WORKING PDF DOWNLOAD LOGIC =====
+  const sentiment =
+    avgNum >= 4.5 ? "Readers absolutely love this book"
+    : avgNum >= 4 ? "Highly rated by readers"
+    : avgNum >= 3 ? "Readers find this book good"
+    : "Readers have mixed feelings";
+
+  const filteredReviews =
+    ratingFilter === "all" ? safeReviews : safeReviews.filter((r) => (r.rating || 5) === ratingFilter);
+
+  const applyFilter = (f) => {
+    setRatingFilter(f);
+    setVisibleReviewsCount(4);
+  };
+
+  const scrollToReviews = () => {
+    if (reviewsRef.current) reviewsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const mood = MOODS[userRating] || MOODS[5];
+
+  const addQuickTag = (tag) => {
+    const base = (newReviewText || "").trim();
+    if (base.toLowerCase().includes(tag.toLowerCase())) return;
+    setNewReviewText(base ? `${base}. ${tag}` : tag);
+  };
+
+  // ===== PDF DOWNLOAD LOGIC =====
   const handleDownloadPDF = async () => {
     if (isDownloading) return;
-    
+
     try {
       if (!selectedBook.pdf_path) {
         alert("PDF file not available for this book yet.");
@@ -206,30 +406,27 @@ export default function BookDetailsModal({
 
       setIsDownloading(true);
 
-      // Book Name format me convert karna taaki sahi naam se save ho
-      const cleanName = selectedBook.title ? selectedBook.title.replace(/[^a-zA-Z0-9 ]/g, "_") : "Vedoxa_Book";
+      // Sirf invalid filename characters hatao (Hindi/Unicode titles safe rahenge)
+      const cleanName = (selectedBook.title || "").replace(/[\\/:*?"<>|]/g, "_").trim() || "Vedoxa_Book";
       const fileName = `${cleanName}.pdf`;
 
-      // Secure Bucket ('books-pdfs') se Signed URL generate karna
-      // { download: fileName } force karega browser ko PDF download karne ke liye (naye tab me kholne ki bajaye)
       const { data, error } = await supabase.storage
-        .from('books-pdfs')
+        .from("books-pdfs")
         .createSignedUrl(selectedBook.pdf_path, 3600, {
-          download: fileName
+          download: fileName,
         });
 
       if (error || !data?.signedUrl) {
         throw new Error("Could not generate secure download link.");
       }
 
-      // Invisible Anchor (A) tag create karke download trigger karna
       const a = document.createElement("a");
       a.style.display = "none";
       a.href = data.signedUrl;
-      
+
       document.body.appendChild(a);
       a.click();
-      
+
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download failed:", error);
@@ -239,104 +436,129 @@ export default function BookDetailsModal({
     }
   };
 
+  const coverUrl = selectedBook.cover_path
+    ? `${supabaseUrl}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`
+    : null;
+
+  const tagList = selectedBook.tags
+    ? (Array.isArray(selectedBook.tags) ? selectedBook.tags : String(selectedBook.tags).split(","))
+        .map((tg) => String(tg).trim())
+        .filter(Boolean)
+    : [];
+
+  const description =
+    selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content.";
+  const descIsLong = description.length > 180;
+
   return (
     <>
+      <style>{MODAL_CSS}</style>
+
       {/* Free Sample Book Reader Modal */}
       <AnimatePresence>
         {showSampleReader && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
+            className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 md:p-8"
+            onClick={() => setShowSampleReader(false)}
           >
-            <button 
-              onClick={() => setShowSampleReader(false)} 
-              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-50"
+            <button
+              onClick={() => setShowSampleReader(false)}
+              aria-label="Close sample"
+              className="absolute right-4 top-4 z-50 rounded-full bg-white/10 p-3 text-white transition-all hover:bg-white/20"
+              style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
             >
-              <X size={24} />
+              <X size={22} />
             </button>
 
-            <div className="relative w-full max-w-lg h-[80vh] md:h-[85vh] bg-[#fdfaf6] rounded-r-2xl rounded-l-md shadow-[0_0_50px_rgba(255,255,255,0.1)] overflow-hidden flex flex-col" style={{ perspective: '2000px' }}>
-                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/20 via-black/5 to-transparent z-20 pointer-events-none" />
-                
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={samplePage}
-                    initial={{ rotateY: 90, opacity: 0, originX: 0 }}
-                    animate={{ rotateY: 0, opacity: 1, originX: 0 }}
-                    exit={{ rotateY: -90, opacity: 0, originX: 0 }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
-                    className="flex-1 p-8 md:p-12 pl-12 md:pl-16 overflow-y-auto text-gray-900 flex flex-col relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]"
-                  >
-                    {samplePage === 0 && (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center">
-                            <h2 className="font-cinzel text-3xl md:text-4xl font-black mb-4 text-black">{selectedBook.title}</h2>
-                            <p className="text-lg md:text-xl text-gray-700 italic border-b border-gray-400 pb-2">by {selectedBook.author}</p>
-                            <div className="mt-16 inline-block px-4 py-1 border border-gray-400 rounded-full text-xs text-gray-500 font-bold uppercase tracking-widest">Free Sample</div>
-                        </div>
-                    )}
-                    {samplePage === 1 && (
-                        <div className="flex-1">
-                            <h3 className="font-bold text-2xl mb-6 text-black border-b pb-2 border-gray-300">Chapter 1</h3>
-                            <p className="text-gray-800 leading-relaxed mb-4 text-justify font-serif text-lg first-letter:text-5xl first-letter:font-bold first-letter:mr-1 first-letter:float-left">
-                                {selectedBook.description || "The journey begins here. You are currently reading a special preview of this exclusive content..."}
-                            </p>
-                            <p className="text-gray-800 leading-relaxed text-justify font-serif text-lg mb-4">
-                                In this opening section, the author sets the stage for an incredible journey. The themes explored here will resonate throughout the entire work, drawing you deeper into the narrative.
-                            </p>
-                        </div>
-                    )}
-                    {samplePage === 2 && (
-                        <div className="flex-1">
-                            <p className="text-gray-800 leading-relaxed mb-4 text-justify font-serif text-lg">
-                                As you delve deeper, the story begins to unfold, revealing complex ideas and intriguing concepts. Every page brings a new discovery, challenging your thoughts and captivating your imagination.
-                            </p>
-                            <div className="w-full h-px bg-gray-300 my-8"></div>
-                            <p className="text-gray-500 italic text-center font-serif">
-                                ...The text continues in the full version.
-                            </p>
-                        </div>
-                    )}
-                    {samplePage === 3 && (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center">
-                            <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                                <Lock size={36} className="text-gray-500" />
-                            </div>
-                            <h3 className="font-black text-2xl mb-4 text-black">End of Free Sample</h3>
-                            <p className="text-gray-600 mb-8 max-w-xs">You've reached the end of this preview. Purchase the book now to unlock the full experience instantly.</p>
-                            <button 
-                                onClick={() => {
-                                    setShowSampleReader(false);
-                                    setShowCheckout(true);
-                                }}
-                                className="px-8 py-4 w-full rounded-xl text-lg bg-gradient-to-r from-violet-600 to-purple-800 hover:from-violet-500 hover:to-purple-700 text-white font-black shadow-[0_10px_20px_rgba(139,92,246,0.3)] transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                            >
-                                <Lock size={20} /> Buy Now to Continue
-                            </button>
-                        </div>
-                    )}
-                    
-                    <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-gray-400 font-bold font-serif">
-                        - {samplePage + 1} -
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative flex h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-l-lg rounded-r-3xl bg-[#fbf7ef] shadow-[0_20px_80px_rgba(139,92,246,0.25)] md:h-[85vh]"
+              style={{ perspective: "2000px" }}
+            >
+              <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-20 w-8 bg-gradient-to-r from-black/20 via-black/5 to-transparent" />
 
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between z-30 pointer-events-none">
-                    <button 
-                        onClick={() => setSamplePage(prev => Math.max(0, prev - 1))}
-                        disabled={samplePage === 0}
-                        className={`pointer-events-auto p-3 rounded-full bg-white border border-gray-200 shadow-lg text-gray-800 transition-all ${samplePage === 0 ? 'opacity-0' : 'hover:bg-gray-50 hover:scale-110'}`}
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <button 
-                        onClick={() => setSamplePage(prev => Math.min(maxSamplePages, prev + 1))}
-                        disabled={samplePage === maxSamplePages}
-                        className={`pointer-events-auto p-3 rounded-full bg-white border border-gray-200 shadow-lg text-gray-800 transition-all ${samplePage === maxSamplePages ? 'opacity-0' : 'hover:bg-gray-50 hover:scale-110'}`}
-                    >
-                        <ArrowLeft size={20} className="rotate-180" />
-                    </button>
-                </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={samplePage}
+                  initial={{ rotateY: 90, opacity: 0, originX: 0 }}
+                  animate={{ rotateY: 0, opacity: 1, originX: 0 }}
+                  exit={{ rotateY: -90, opacity: 0, originX: 0 }}
+                  transition={{ duration: 0.45, ease: "easeInOut" }}
+                  className="relative flex flex-1 flex-col overflow-y-auto bg-gradient-to-br from-[#fbf7ef] to-[#f3ecdc] p-8 pb-20 pl-12 text-gray-900 md:p-12 md:pb-20 md:pl-16"
+                >
+                  {samplePage === 0 && (
+                    <div className="flex flex-1 flex-col items-center justify-center text-center">
+                      <h2 className="font-cinzel mb-4 text-3xl font-black text-black md:text-4xl">{selectedBook.title}</h2>
+                      <p className="border-b border-gray-400 pb-2 text-lg italic text-gray-700 md:text-xl">by {selectedBook.author}</p>
+                      <div className="mt-14 inline-block rounded-full border border-gray-400 px-4 py-1 text-xs font-bold text-gray-500">Free sample</div>
+                    </div>
+                  )}
+                  {samplePage === 1 && (
+                    <div className="flex-1">
+                      <h3 className="mb-6 border-b border-gray-300 pb-2 text-2xl font-bold text-black">Chapter 1</h3>
+                      <p className="mb-4 text-justify font-serif text-lg leading-relaxed text-gray-800 first-letter:float-left first-letter:mr-1 first-letter:text-5xl first-letter:font-bold">
+                        {selectedBook.description || "The journey begins here. You are currently reading a special preview of this exclusive content..."}
+                      </p>
+                      <p className="mb-4 text-justify font-serif text-lg leading-relaxed text-gray-800">
+                        In this opening section, the author sets the stage for an incredible journey. The themes explored here will resonate throughout the entire work, drawing you deeper into the narrative.
+                      </p>
+                    </div>
+                  )}
+                  {samplePage === 2 && (
+                    <div className="flex-1">
+                      <p className="mb-4 text-justify font-serif text-lg leading-relaxed text-gray-800">
+                        As you delve deeper, the story begins to unfold, revealing complex ideas and intriguing concepts. Every page brings a new discovery, challenging your thoughts and captivating your imagination.
+                      </p>
+                      <div className="my-8 h-px w-full bg-gray-300"></div>
+                      <p className="text-center font-serif italic text-gray-500">
+                        ...The text continues in the full version.
+                      </p>
+                    </div>
+                  )}
+                  {samplePage === 3 && (
+                    <div className="flex flex-1 flex-col items-center justify-center text-center">
+                      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-200 shadow-inner">
+                        <Lock size={36} className="text-gray-500" />
+                      </div>
+                      <h3 className="mb-4 text-2xl font-black text-black">End of free sample</h3>
+                      <p className="mb-8 max-w-xs text-gray-600">You've reached the end of this preview. Purchase the book now to unlock the full experience instantly.</p>
+                      <GlowBuyButton
+                        className="w-full max-w-xs"
+                        onClick={() => {
+                          setShowSampleReader(false);
+                          setShowCheckout(true);
+                        }}
+                      >
+                        Buy Now
+                      </GlowBuyButton>
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-5 left-0 right-0 text-center font-serif text-xs font-bold text-gray-400">
+                    - {samplePage + 1} -
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              <div className="pointer-events-none absolute bottom-3 left-4 right-4 z-30 flex justify-between">
+                <button
+                  onClick={() => setSamplePage((prev) => Math.max(0, prev - 1))}
+                  disabled={samplePage === 0}
+                  aria-label="Previous page"
+                  className={`pointer-events-auto rounded-full border border-gray-200 bg-white p-3 text-gray-800 shadow-lg transition-all ${samplePage === 0 ? "opacity-0" : "hover:scale-110 hover:bg-gray-50"}`}
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <button
+                  onClick={() => setSamplePage((prev) => Math.min(maxSamplePages, prev + 1))}
+                  disabled={samplePage === maxSamplePages}
+                  aria-label="Next page"
+                  className={`pointer-events-auto rounded-full border border-gray-200 bg-white p-3 text-gray-800 shadow-lg transition-all ${samplePage === maxSamplePages ? "opacity-0" : "hover:scale-110 hover:bg-gray-50"}`}
+                >
+                  <ArrowLeft size={20} className="rotate-180" />
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -344,343 +566,540 @@ export default function BookDetailsModal({
 
       {/* Full Screen Photo Modal */}
       <AnimatePresence>
-        {isPhotoFullScreen && selectedBook.cover_path && (
-          <motion.div 
+        {isPhotoFullScreen && coverUrl && (
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+            className="fixed inset-0 z-[9999] flex cursor-pointer items-center justify-center bg-black/90 p-4"
             onClick={() => setIsPhotoFullScreen(false)}
           >
-            <button className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">
-              <X size={24} />
+            <button
+              aria-label="Close photo"
+              className="absolute right-4 rounded-full bg-white/10 p-3 text-white transition-all hover:bg-white/20"
+              style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+            >
+              <X size={22} />
             </button>
-            <img 
-              src={`${supabaseUrl}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
+            <img
+              src={coverUrl}
               alt={selectedBook.title}
-              className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-[0_0_50px_rgba(234,179,8,0.3)] cursor-default"
+              className="max-h-[90vh] max-w-full cursor-default rounded-2xl object-contain shadow-[0_0_60px_rgba(139,92,246,0.35)]"
               onClick={(e) => e.stopPropagation()}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <motion.div 
+      {/* ================= MAIN MODAL ================= */}
+      <motion.div
         key="book-details-modal"
-        initial={{ opacity: 0, scale: 0.98 }} 
-        animate={{ opacity: 1, scale: 1 }} 
-        exit={{ opacity: 0, scale: 0.98 }} 
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        className="fixed inset-0 z-[800] bg-[#0a0a0d]"
+        className="fixed inset-0 z-[800] bg-[#0c0a14]"
       >
-        <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          
-          <div className="relative min-h-full flex flex-col">
+        <div
+          ref={scrollContainerRef}
+          className="h-full w-full overflow-y-auto overscroll-contain"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <div className="relative flex min-h-full flex-col">
 
-            <motion.button 
-                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-                onClick={() => setShowBookDetails(false)} 
-                className="absolute top-5 left-5 md:top-8 md:left-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-lg flex items-center justify-center"
-            >
-                <ArrowLeft size={20} className="md:w-6 md:h-6" />
-            </motion.button>
+            {/* Soft ambient light (static gradient = zero lag) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[560px]"
+              style={{
+                backgroundImage:
+                  "radial-gradient(60% 60% at 15% 0%, rgba(139,92,246,0.22), transparent), radial-gradient(50% 50% at 92% 8%, rgba(236,72,153,0.12), transparent)",
+              }}
+            />
 
-            <motion.button 
-                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-                onClick={handleShareBook} 
-                className="absolute top-5 right-5 md:top-8 md:right-8 z-[900] p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 hover:scale-105 transition-all shadow-lg flex items-center justify-center"
+            {/* Floating top buttons (stay visible while scrolling) */}
+            <div className="sticky top-0 z-[900] h-0 shrink-0">
+              <button
+                onClick={() => setShowBookDetails(false)}
+                aria-label="Go back"
+                className="absolute left-4 flex items-center justify-center rounded-full border border-white/10 bg-[#14111f]/90 p-2.5 text-white shadow-lg transition-all hover:bg-white/15 md:left-8"
+                style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <button
+                onClick={handleShareBook}
+                aria-label="Share this book"
                 title="Share this book"
-            >
-                <Share2 size={18} className="md:w-5 md:h-5" />
-            </motion.button>
-
-            <div className="flex flex-col md:flex-row w-full relative flex-1">
-                
-                <div className="w-full md:w-1/2 p-5 pt-20 md:p-16 pb-12 md:pb-16 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
-                  
-                  {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute top-20 md:top-8 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-blue-500/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap mt-4 md:mt-0">
-                      <Handshake size={16}/> Partner Code Active (-{partnerData.discount_pct}%)
-                    </motion.div>
-                  )}
-
-                  <motion.div 
-                    initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}
-                    className="w-full h-64 md:h-96 mb-6 mt-4 md:mt-0 relative cursor-pointer"
-                    onClick={() => setIsPhotoFullScreen(true)}
-                    title="Click to view full screen"
-                  >
-                    <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
-                    
-                    <motion.div 
-                      animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="w-full h-full relative z-10 shadow-2xl rounded-3xl"
-                    >
-                    {selectedBook.cover_path ? (
-                      <div className="w-full h-full relative overflow-hidden rounded-3xl">
-                        <img 
-                          src={`${supabaseUrl}/storage/v1/object/public/books-covers/${selectedBook.cover_path}`} 
-                          alt={selectedBook.title}
-                          className="w-full h-full object-contain transition-transform duration-300 hover:scale-105 drop-shadow-[0_0_15px_rgba(234,179,8,0.2)]"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 flex items-center justify-center rounded-3xl border border-yellow-500/20">
-                        <BookOpen size={64} className="text-yellow-500 opacity-80" />
-                      </div>
-                    )}
-                    </motion.div>
-                  </motion.div>
-
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-400 font-bold bg-white/5 w-fit mx-auto px-6 py-2.5 rounded-full border border-white/10 shadow-inner">
-                      <div className="flex items-center gap-2 text-blue-400">
-                        <Eye size={18} /> {stats.views} Views
-                      </div>
-                      <div className="w-px h-4 bg-white/20"></div>
-                      <button 
-                        onClick={() => handleInteraction('like')} 
-                        className={`flex items-center gap-2 transition ${userInteraction === 'like' ? 'text-yellow-500' : 'hover:text-white'}`}
-                      >
-                        <ThumbsUp size={18} className={userInteraction === 'like' ? 'fill-current' : ''} /> {stats.likes}
-                      </button>
-                      <button 
-                        onClick={() => handleInteraction('dislike')} 
-                        className={`flex items-center gap-2 transition ${userInteraction === 'dislike' ? 'text-red-500' : 'hover:text-white'}`}
-                      >
-                        <ThumbsDown size={18} className={userInteraction === 'dislike' ? 'fill-current' : ''} />
-                      </button>
-                  </motion.div>
-
-                  <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="font-cinzel text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg text-center md:text-left">{selectedBook.title}</motion.h1>
-                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-xl text-yellow-500 mb-6 drop-shadow-md text-center md:text-left">by {selectedBook.author}</motion.p>
-                  
-                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="text-gray-400 leading-relaxed mb-6 text-sm md:text-base text-center md:text-left">
-                    {selectedBook.description || "Immerse yourself in this profound work. Verified and 100% original content."}
-                  </motion.p>
-
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-10">
-                      {selectedBook.pages && (
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
-                          <FileText size={14} className="text-yellow-500" /> {selectedBook.pages} Pages
-                        </div>
-                      )}
-                      {selectedBook.tags && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Tag size={14} className="text-yellow-500" />
-                          {(Array.isArray(selectedBook.tags) ? selectedBook.tags : selectedBook.tags.split(',')).map((tag, idx) => (
-                            <span key={idx} className="text-[10px] uppercase tracking-wider font-bold text-gray-300 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/10 hover:border-yellow-500/30 transition-colors">
-                              {tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                  </motion.div>
-
-                  {/* PRICE AND ACTION BUTTONS */}
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="mt-auto bg-white/5 p-5 rounded-2xl border border-white/10 shadow-lg flex flex-col lg:flex-row items-center justify-between gap-4">
-                    <div className="flex flex-col w-full lg:w-auto">
-                      <span className="text-sm font-semibold text-gray-400 mb-1">Total Price</span>
-                      <div className="flex items-center gap-3">
-                        {partnerData && !purchasedBookIds.includes(selectedBook.id) && (
-                          <span className="text-base text-gray-500 line-through">₹{originalPrice}</span>
-                        )}
-                        <span className="text-4xl font-black text-white">₹{displayPrice}</span>
-                      </div>
-                    </div>
-                    
-                    {purchasedBookIds.includes(selectedBook.id) ? (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
-                          <button onClick={handleDownloadPDF} disabled={isDownloading} className="px-5 py-3 md:px-6 md:py-4 rounded-xl text-sm md:text-base bg-blue-500/15 text-blue-400 border border-blue-500/30 flex justify-center items-center gap-2 font-bold hover:bg-blue-500/25 transition shadow-lg w-full sm:w-auto disabled:opacity-50">
-                            <Download size={18} /> {isDownloading ? "Downloading..." : "Download PDF"}
-                          </button>
-                          <button onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex justify-center items-center gap-2 font-bold hover:bg-emerald-500/25 transition shadow-lg w-full sm:w-auto">
-                            <CheckCircle2 size={20} /> {t.readNow}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-end gap-2.5 w-full lg:w-auto">
-                          <button 
-                            onClick={() => {
-                              setSamplePage(0);
-                              setShowSampleReader(true);
-                            }} 
-                            className="text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-1.5 rounded-full border border-emerald-500/30 transition-all flex items-center gap-1.5 hover:scale-105 shadow-sm self-start sm:self-end"
-                          >
-                            <BookOpen size={14} /> Free Sample
-                          </button>
-                          <div className="flex flex-col sm:flex-row gap-2.5 w-full">
-                            <button onClick={() => setShowCheckout(true)} className="px-5 py-3 md:px-6 md:py-4 rounded-xl text-sm md:text-base bg-gray-500/15 text-gray-400 border border-gray-500/30 flex justify-center items-center gap-2 font-bold hover:bg-gray-500/25 transition shadow-lg w-full sm:w-auto cursor-pointer">
-                              <Lock size={16}/> Download PDF
-                            </button>
-                            <button onClick={() => setShowCheckout(true)} className="px-6 py-3 md:px-8 md:py-4 rounded-xl text-base md:text-lg bg-gradient-to-r from-violet-500 to-purple-700 hover:from-violet-400 hover:to-purple-600 text-white flex justify-center items-center gap-2 font-black transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.45)] hover:shadow-[0_0_30px_rgba(139,92,246,0.65)] transform hover:-translate-y-1 w-full sm:w-auto">
-                              <Lock size={18}/> Buy Now
-                            </button>
-                          </div>
-                        </div>
-                    )}
-                  </motion.div>
-                </div>
-
-                {/* Reviews Section */}
-                <motion.div 
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
-                  className="w-full md:w-1/2 p-5 pt-12 md:p-16 bg-[#0a0a0d] relative overflow-hidden shrink-0 flex flex-col"
-                >
-                  <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500/5 blur-[100px] pointer-events-none" />
-                  
-                  <div className="flex flex-col mb-8 relative z-10">
-                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                      <MessageSquare className="text-yellow-500" /> Ratings and reviews
-                    </h2>
-
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-center justify-center">
-                        <h1 className="text-6xl font-black text-white leading-none">{avgRating}</h1>
-                        <div className="flex text-yellow-500 my-2 gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} size={14} fill={i < Math.round(avgRating) ? "currentColor" : "none"} className={i < Math.round(avgRating) ? "" : "text-gray-600"} />
-                          ))}
-                        </div>
-                        <span className="text-xs text-gray-400">{totalReviewsCount.toLocaleString()} reviews</span>
-                      </div>
-
-                      <div className="flex-1 flex flex-col gap-1.5 border-l border-white/10 pl-6">
-                        {[5, 4, 3, 2, 1].map(star => {
-                          const percentage = totalReviewsCount > 0 ? (ratingStats[star] / totalReviewsCount) * 100 : 0;
-                          return (
-                            <div key={star} className="flex items-center gap-3 text-xs text-gray-400 font-bold">
-                              <span className="w-2">{star}</span>
-                              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${percentage}%` }}></div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {purchasedBookIds.includes(selectedBook.id) && (
-                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl mb-8 relative z-10 shadow-lg">
-                      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                        <CheckCircle2 size={18} className="text-emerald-400"/> {userExistingReview ? "Update your review" : "Rate this book"}
-                      </h3>
-                      
-                      <div className="flex items-center gap-2 mb-4">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button key={star} onClick={() => setUserRating(star)} className="focus:outline-none transition-transform hover:scale-110">
-                            <Star size={24} fill={star <= userRating ? "#EAB308" : "none"} className={star <= userRating ? "text-yellow-500" : "text-gray-600"} />
-                          </button>
-                        ))}
-                      </div>
-
-                      <textarea 
-                        value={newReviewText}
-                        onChange={(e) => setNewReviewText(e.target.value)}
-                        placeholder="Describe your experience (optional)"
-                        className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-yellow-500 resize-none h-24 mb-4 transition"
-                      />
-                      
-                      <button 
-                        onClick={() => {
-                          handleSubmitReview(userRating); 
-                        }} 
-                        className={`btn-gold ml-auto flex items-center justify-center transition-transform hover:scale-105 px-6 py-2.5 rounded-lg text-sm font-bold gap-2`}
-                      >
-                        {userExistingReview ? <><Edit3 size={16} /> Update</> : "Post"}
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-5 relative z-10 pb-10">
-                    {loadingReviews ? (
-                        <div className="text-gray-500 text-sm animate-pulse">Loading reviews...</div>
-                    ) : reviews.length > 0 ? (
-                        <>
-                          {reviews.slice(0, visibleReviewsCount).map(review => (
-                            <div key={review.id} className="bg-transparent border-b border-white/5 pb-5 relative transition duration-300">
-                              {review.user_id === user?.id && <div className="absolute top-0 right-0 text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full">Your Review</div>}
-                              
-                              <div className="flex justify-between items-start mb-4">
-                                <div className="font-bold text-white text-base flex items-center gap-3">
-                                  <UserCircle size={32} className="text-gray-400 bg-white/5 rounded-full p-1"/>
-                                  {review.fake_author_name || review.profiles?.name || "Vedoxa Reader"}
-                                </div>
-                              </div>
-                              
-                              <div className="flex text-yellow-500 mb-3 gap-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star key={i} size={14} fill={i < (review.rating || 5) ? "currentColor" : "none"} className={i < (review.rating || 5) ? "" : "text-gray-600"}/>
-                                ))}
-                              </div>
-                              
-                              <p className="text-gray-300 text-sm leading-relaxed mb-4">{review.review_text}</p>
-
-                              <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
-                                <span>Was this review helpful?</span>
-                                <button 
-                                  onClick={() => setHelpfulVotes(prev => ({...prev, [review.id]: 'yes'}))}
-                                  className={`px-4 py-1.5 rounded-full border transition-all ${helpfulVotes[review.id] === 'yes' ? 'bg-white/20 border-white/50 text-white' : 'border-white/10 hover:bg-white/10 hover:text-white'}`}
-                                >
-                                  Yes
-                                </button>
-                                <button 
-                                  onClick={() => setHelpfulVotes(prev => ({...prev, [review.id]: 'no'}))}
-                                  className={`px-4 py-1.5 rounded-full border transition-all ${helpfulVotes[review.id] === 'no' ? 'bg-white/20 border-white/50 text-white' : 'border-white/10 hover:bg-white/10 hover:text-white'}`}
-                                >
-                                  No
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          
-                          {reviews.length > visibleReviewsCount && (
-                            <button 
-                              onClick={() => setVisibleReviewsCount(prev => prev + 4)}
-                              className="mt-2 py-3 w-full bg-white/5 hover:bg-white/10 text-yellow-500 text-sm font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
-                            >
-                              See all reviews
-                            </button>
-                          )}
-                        </>
-                    ) : (
-                        <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
-                          <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                          <p>{t.noReviews}</p>
-                        </div>
-                    )}
-                  </div>
-                </motion.div>
+                className="absolute right-4 flex items-center justify-center rounded-full border border-white/10 bg-[#14111f]/90 p-2.5 text-white shadow-lg transition-all hover:scale-105 hover:border-amber-400/50 hover:text-amber-300 md:right-8"
+                style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+              >
+                <Share2 size={18} />
+              </button>
             </div>
 
-            {/* SUGGESTED BOOKS SECTION */}
+            <div className="relative flex w-full flex-1 flex-col md:flex-row">
+
+              {/* ============ LEFT: BOOK INFO ============ */}
+              <div className="relative flex w-full shrink-0 flex-col justify-center border-b border-white/[0.06] px-5 pb-10 pt-20 md:w-1/2 md:border-b-0 md:border-r md:p-14 md:pt-16">
+
+                {showDiscount && (
+                  <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-sm font-bold text-sky-200 md:mx-0">
+                    <Handshake size={16} /> Partner code active (-{partnerData.discount_pct}%)
+                  </div>
+                )}
+
+                {/* Cover */}
+                <div
+                  className="relative mx-auto mb-7 w-44 cursor-pointer sm:w-52 md:w-60"
+                  onClick={() => coverUrl && !coverError && setIsPhotoFullScreen(true)}
+                  title="Tap to view full screen"
+                >
+                  <div className="absolute -inset-5 rounded-[2.5rem] bg-gradient-to-br from-violet-500/30 via-fuchsia-500/10 to-amber-400/20 blur-2xl" />
+                  <div className="bdm-float relative">
+                    <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-white/[0.04] shadow-[0_20px_50px_rgba(0,0,0,0.55)] ring-1 ring-white/15">
+                      {coverUrl && !coverError ? (
+                        <img
+                          src={coverUrl}
+                          alt={selectedBook.title}
+                          decoding="async"
+                          onError={() => setCoverError(true)}
+                          className="h-full w-full object-contain transition-transform duration-300 hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-500/15 to-amber-400/10">
+                          <BookOpen size={56} className="text-amber-400/80" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Views / likes */}
+                <div className="mx-auto mb-7 flex w-fit items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1.5 text-sm font-bold text-gray-300">
+                  <div className="flex items-center gap-2 px-3.5 py-1.5 text-sky-300">
+                    <Eye size={17} /> {stats.views}
+                  </div>
+                  <div className="h-4 w-px bg-white/15" />
+                  <button
+                    onClick={() => handleInteraction("like")}
+                    aria-label="Like this book"
+                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 transition active:scale-95 ${userInteraction === "like" ? "bg-amber-400/15 text-amber-300" : "hover:bg-white/10 hover:text-white"}`}
+                  >
+                    <ThumbsUp size={17} className={userInteraction === "like" ? "fill-current" : ""} /> {stats.likes}
+                  </button>
+                  <button
+                    onClick={() => handleInteraction("dislike")}
+                    aria-label="Dislike this book"
+                    className={`flex items-center rounded-full px-3.5 py-1.5 transition active:scale-95 ${userInteraction === "dislike" ? "bg-rose-500/15 text-rose-300" : "hover:bg-white/10 hover:text-white"}`}
+                  >
+                    <ThumbsDown size={17} className={userInteraction === "dislike" ? "fill-current" : ""} />
+                  </button>
+                </div>
+
+                {/* Title + author */}
+                <h1 className="font-cinzel mb-3 text-center text-3xl font-black leading-tight text-white md:text-left md:text-5xl">
+                  {selectedBook.title}
+                </h1>
+                <p className="mb-4 text-center text-lg text-amber-300 md:text-left md:text-xl">by {selectedBook.author}</p>
+
+                {/* Quick rating link */}
+                {totalReviewsCount > 0 && (
+                  <button
+                    onClick={scrollToReviews}
+                    className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full bg-white/[0.04] px-3.5 py-1.5 text-sm text-gray-300 transition hover:bg-white/10 md:mx-0"
+                  >
+                    <Star size={15} className="fill-amber-400 text-amber-400" />
+                    <span className="font-bold text-white">{avgRating}</span>
+                    <span className="text-gray-400">({totalReviewsCount} reviews)</span>
+                  </button>
+                )}
+
+                {/* Description */}
+                <div className="mb-6 text-center md:text-left">
+                  <p className={`text-sm leading-relaxed text-gray-400 md:text-base ${!descExpanded && descIsLong ? "line-clamp-4" : ""}`}>
+                    {description}
+                  </p>
+                  {descIsLong && (
+                    <button
+                      onClick={() => setDescExpanded((v) => !v)}
+                      className="mt-1.5 text-sm font-bold text-amber-300 hover:text-amber-200"
+                    >
+                      {descExpanded ? "Show less" : "Read more"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Meta chips */}
+                {(selectedBook.pages || tagList.length > 0) && (
+                  <div className="mb-8 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+                    {selectedBook.pages && (
+                      <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-gray-300">
+                        <FileText size={14} className="text-amber-400" /> {selectedBook.pages} Pages
+                      </div>
+                    )}
+                    {tagList.length > 0 && (
+                      <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                        <Tag size={14} className="text-amber-400" />
+                        {tagList.map((tag, idx) => (
+                          <span key={idx} className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-bold text-gray-300">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* PRICE AND ACTION BUTTONS */}
+                <div className="mt-auto rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.025] p-5 shadow-xl shadow-black/30">
+                  <div className="mb-5 flex items-end justify-between gap-3">
+                    <div>
+                      <span className="mb-1 block text-sm font-semibold text-gray-400">Total price</span>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="text-4xl font-black text-white">₹{displayPrice}</span>
+                        {showDiscount && (
+                          <span className="text-base text-gray-500 line-through">₹{originalPrice}</span>
+                        )}
+                      </div>
+                    </div>
+                    {showDiscount && pDiscount > 0 && (
+                      <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300">
+                        You save ₹{pDiscount}
+                      </span>
+                    )}
+                  </div>
+
+                  {isPurchased ? (
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={() => { setShowBookDetails(false); openWebReader(selectedBook); }}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-gradient-to-r from-emerald-500/25 to-teal-500/20 px-6 py-4 text-lg font-bold text-emerald-200 shadow-[0_0_24px_rgba(16,185,129,0.2)] transition active:scale-[0.97] hover:from-emerald-500/35"
+                      >
+                        <CheckCircle2 size={20} /> {t?.readNow || "Read Now"}
+                      </button>
+                      <button
+                        onClick={handleDownloadPDF}
+                        disabled={isDownloading}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-400/10 px-5 py-3.5 text-base font-bold text-sky-300 transition hover:bg-sky-400/20 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        <Download size={18} /> {isDownloading ? "Downloading..." : "Download PDF"}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div ref={ctaRef}>
+                        <GlowBuyButton onClick={() => setShowCheckout(true)}>Buy Now</GlowBuyButton>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs font-semibold text-gray-400">
+                        <span className="flex items-center gap-1.5"><Zap size={13} className="text-amber-400" /> Instant access</span>
+                        <span className="flex items-center gap-1.5"><BookOpen size={13} className="text-amber-400" /> Read online</span>
+                        <span className="flex items-center gap-1.5"><Download size={13} className="text-amber-400" /> PDF download</span>
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-2 gap-2.5">
+                        <button
+                          onClick={() => {
+                            setSamplePage(0);
+                            setShowSampleReader(true);
+                          }}
+                          className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/20 active:scale-[0.97]"
+                        >
+                          <BookOpen size={15} /> Free sample
+                        </button>
+                        <button
+                          onClick={() => setShowCheckout(true)}
+                          className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm font-bold text-gray-400 transition hover:bg-white/10 active:scale-[0.97]"
+                        >
+                          <Lock size={15} /> Download PDF
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* ============ RIGHT: RATINGS & REVIEWS ============ */}
+              <section
+                ref={reviewsRef}
+                className="relative flex w-full shrink-0 scroll-mt-4 flex-col px-5 pb-6 pt-10 md:w-1/2 md:p-14"
+              >
+                <h2 className="mb-5 flex items-center gap-2.5 text-xl font-extrabold text-white md:text-2xl">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400/10 text-amber-400">
+                    <MessageSquare size={18} />
+                  </span>
+                  Ratings and reviews
+                </h2>
+
+                {/* Summary card */}
+                <div className="mb-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                  <div className="flex items-center gap-5">
+                    <div className="flex shrink-0 flex-col items-center">
+                      <span className="bg-gradient-to-b from-white to-amber-200 bg-clip-text text-5xl font-black leading-none text-transparent">
+                        {avgRating}
+                      </span>
+                      <div className="my-2"><Stars value={Math.round(avgNum)} /></div>
+                      <span className="text-[11px] text-gray-400">{totalReviewsCount.toLocaleString()} reviews</span>
+                    </div>
+
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5 border-l border-white/10 pl-5">
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const count = ratingStats[star] || 0;
+                        const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
+                        const dimmed = ratingFilter !== "all" && ratingFilter !== star;
+                        return (
+                          <button
+                            key={star}
+                            onClick={() => applyFilter(ratingFilter === star ? "all" : star)}
+                            aria-label={`Show ${star} star reviews`}
+                            className={`flex items-center gap-2.5 text-xs font-bold text-gray-400 transition-opacity ${dimmed ? "opacity-40" : "opacity-100"}`}
+                          >
+                            <span className="w-2.5 text-right">{star}</span>
+                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percentage}%` }}
+                                transition={{ duration: 0.6, ease: "easeOut" }}
+                                className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400"
+                              />
+                            </div>
+                            <span className="w-5 text-right text-[11px] font-semibold text-gray-500">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {totalReviewsCount > 0 && (
+                    <p className="mt-4 flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-xs text-gray-300">
+                      <Sparkles size={14} className="shrink-0 text-amber-400" /> {sentiment}
+                    </p>
+                  )}
+                </div>
+
+                {/* Filter chips */}
+                {totalReviewsCount > 0 && (
+                  <div className="bdm-noscroll -mx-5 mb-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">
+                    {["all", 5, 4, 3, 2, 1].map((f) => {
+                      const active = ratingFilter === f;
+                      const count = f === "all" ? totalReviewsCount : ratingStats[f] || 0;
+                      return (
+                        <button
+                          key={f}
+                          onClick={() => applyFilter(f)}
+                          className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
+                            active
+                              ? "border-amber-400 bg-amber-400 text-black"
+                              : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/10"
+                          }`}
+                        >
+                          {f === "all" ? "All" : (<>{f}<Star size={12} className="fill-current" /></>)}
+                          <span className="opacity-60">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Write a review (only buyers) */}
+                {isPurchased && (
+                  <div className="mb-6 rounded-3xl border border-white/10 bg-gradient-to-br from-violet-500/[0.14] via-white/[0.03] to-transparent p-5">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                        <CheckCircle2 size={18} className="text-emerald-400" />
+                        {userExistingReview ? "Update your review" : "Rate this book"}
+                      </h3>
+                      <motion.span
+                        key={userRating}
+                        initial={{ scale: 0.6, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="flex items-center gap-1.5 text-sm font-bold text-amber-300"
+                      >
+                        <span className="text-2xl leading-none">{mood.emoji}</span> {mood.label}
+                      </motion.span>
+                    </div>
+
+                    <div className="mb-4 flex items-center justify-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setUserRating(star)}
+                          aria-label={`Rate ${star} stars`}
+                          className="p-1 transition-transform hover:scale-110 focus:outline-none active:scale-90"
+                        >
+                          <Star
+                            size={34}
+                            className={star <= userRating ? "fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]" : "text-white/20"}
+                          />
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="bdm-noscroll -mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                      {QUICK_TAGS.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => addQuickTag(tag)}
+                          className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-gray-300 transition hover:border-amber-400/40 hover:text-amber-200"
+                        >
+                          + {tag}
+                        </button>
+                      ))}
+                    </div>
+
+                    <textarea
+                      value={newReviewText}
+                      onChange={(e) => setNewReviewText(e.target.value)}
+                      placeholder="Describe your experience (optional)"
+                      className="mb-4 h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/30 p-3.5 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-amber-400/60"
+                    />
+
+                    <button
+                      onClick={() => {
+                        handleSubmitReview(userRating);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-orange-400 px-6 py-3 text-sm font-black text-black shadow-[0_8px_24px_rgba(251,191,36,0.25)] transition active:scale-[0.97] sm:ml-auto sm:w-auto"
+                    >
+                      {userExistingReview ? (<><Edit3 size={16} /> Update review</>) : "Post review"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Review list */}
+                <div className="relative flex flex-col gap-3.5 pb-8">
+                  {loadingReviews ? (
+                    <div className="animate-pulse text-sm text-gray-500">Loading reviews...</div>
+                  ) : filteredReviews.length > 0 ? (
+                    <>
+                      {filteredReviews.slice(0, visibleReviewsCount).map((review) => {
+                        const name = review.fake_author_name || review.profiles?.name || "Vedoxa Reader";
+                        const rating = review.rating || 5;
+                        const text = review.review_text || "";
+                        const isLong = text.length > 160;
+                        const expanded = !!expandedReviews[review.id];
+                        const mine = !!user && review.user_id === user.id;
+                        const date = formatDate(review.created_at);
+
+                        return (
+                          <div
+                            key={review.id}
+                            className={`rounded-2xl border p-4 ${mine ? "border-amber-400/30 bg-amber-400/[0.05]" : "border-white/[0.07] bg-white/[0.035]"}`}
+                          >
+                            <div className="mb-3 flex items-center gap-3">
+                              <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br ${getGradient(name)} text-base font-black text-white shadow-md`}>
+                                {name.trim().charAt(0).toUpperCase() || "V"}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-bold text-white">{name}</div>
+                                <div className="mt-0.5 flex items-center gap-2">
+                                  <Stars value={rating} size={13} />
+                                  {date && <span className="text-[11px] text-gray-500">{date}</span>}
+                                </div>
+                              </div>
+                              {mine && (
+                                <span className="shrink-0 rounded-full bg-amber-400/15 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+                                  Your review
+                                </span>
+                              )}
+                            </div>
+
+                            {text && (
+                              <>
+                                <p className={`whitespace-pre-line break-words text-sm leading-relaxed text-gray-300 ${!expanded && isLong ? "line-clamp-4" : ""}`}>
+                                  {text}
+                                </p>
+                                {isLong && (
+                                  <button
+                                    onClick={() => setExpandedReviews((prev) => ({ ...prev, [review.id]: !prev[review.id] }))}
+                                    className="mt-1 text-xs font-bold text-amber-300 hover:text-amber-200"
+                                  >
+                                    {expanded ? "Show less" : "Read more"}
+                                  </button>
+                                )}
+                              </>
+                            )}
+
+                            <div className="mt-3.5 flex items-center gap-2 text-xs text-gray-400">
+                              <span className="mr-1">Was this helpful?</span>
+                              <button
+                                onClick={() => setHelpfulVotes((prev) => ({ ...prev, [review.id]: "yes" }))}
+                                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all active:scale-95 ${helpfulVotes[review.id] === "yes" ? "border-emerald-400/50 bg-emerald-400/15 text-emerald-200" : "border-white/10 hover:bg-white/10 hover:text-white"}`}
+                              >
+                                <ThumbsUp size={12} /> Yes
+                              </button>
+                              <button
+                                onClick={() => setHelpfulVotes((prev) => ({ ...prev, [review.id]: "no" }))}
+                                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all active:scale-95 ${helpfulVotes[review.id] === "no" ? "border-rose-400/50 bg-rose-400/15 text-rose-200" : "border-white/10 hover:bg-white/10 hover:text-white"}`}
+                              >
+                                <ThumbsDown size={12} /> No
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {filteredReviews.length > visibleReviewsCount && (
+                        <button
+                          onClick={() => setVisibleReviewsCount((prev) => prev + 4)}
+                          className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-sm font-bold text-amber-300 transition-colors hover:bg-white/10"
+                        >
+                          Show more reviews <ChevronDown size={16} />
+                        </button>
+                      )}
+                    </>
+                  ) : totalReviewsCount > 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] py-10 text-center text-sm text-gray-500">
+                      No {ratingFilter}-star reviews yet.
+                      <button onClick={() => applyFilter("all")} className="mt-2 block w-full font-bold text-amber-300">
+                        Show all reviews
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] py-12 text-center text-gray-500">
+                      <MessageSquare className="mx-auto mb-3 h-8 w-8 opacity-30" />
+                      <p>{t?.noReviews || "No reviews yet."}</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            {/* ============ SUGGESTED BOOKS ============ */}
             {suggestedBooks.length > 0 && (
-              <div className="w-full bg-[#050508] border-t border-white/10 p-6 md:p-12 pb-16 relative z-10">
-                <h3 className="text-xl md:text-2xl font-black text-white mb-6 flex items-center gap-2">
-                  <BookOpen className="text-yellow-500" size={24} />
-                  More Books You Might Like
+              <div className="relative z-10 w-full border-t border-white/[0.06] bg-[#08070d] p-6 pb-14 md:p-12">
+                <h3 className="mb-6 flex items-center gap-2.5 text-xl font-black text-white md:text-2xl">
+                  <BookOpen className="text-amber-400" size={24} />
+                  More books you might like
                 </h3>
-                
-                <div className="flex overflow-x-auto gap-4 md:gap-6 snap-x pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+                <div className="bdm-noscroll flex snap-x gap-4 overflow-x-auto pb-4 md:gap-6">
                   {suggestedBooks.map((book) => (
-                    <div key={book.id} className="flex-none w-32 md:w-40 snap-start group cursor-pointer" onClick={() => onBookChange && onBookChange(book)}>
-                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative mb-3 border border-white/10 group-hover:border-yellow-500/50 transition-all duration-300 shadow-lg group-hover:shadow-[0_0_15px_rgba(234,179,8,0.2)] bg-white/5">
+                    <div
+                      key={book.id}
+                      className="group w-32 flex-none cursor-pointer snap-start md:w-40"
+                      onClick={() => onBookChange && onBookChange(book)}
+                    >
+                      <div className="relative mb-3 aspect-[2/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-lg transition-all duration-300 group-hover:border-amber-400/50 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.2)]">
                         {book.cover_path ? (
-                          <img 
-                            src={`${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path}`} 
+                          <img
+                            src={`${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path}`}
                             alt={book.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            loading="lazy"
+                            decoding="async"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-white/5">
+                          <div className="flex h-full w-full items-center justify-center">
                             <BookOpen size={24} className="text-gray-600" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-3">
-                          <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">View Book</span>
+                        <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/90 via-transparent to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                          <span className="text-xs font-bold text-amber-300">View book</span>
                         </div>
                       </div>
-                      <h4 className="text-sm font-bold text-gray-200 line-clamp-1 group-hover:text-yellow-400 transition-colors" title={book.title}>{book.title}</h4>
-                      <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{book.author}</p>
-                      <div className="flex items-center gap-1 mt-1.5 text-sm font-black text-white">
+                      <h4 className="line-clamp-1 text-sm font-bold text-gray-200 transition-colors group-hover:text-amber-300" title={book.title}>{book.title}</h4>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{book.author}</p>
+                      <div className="mt-1.5 text-sm font-black text-white">
                         ₹{book.final_price || book.price || 0}
                       </div>
                     </div>
@@ -688,7 +1107,33 @@ export default function BookDetailsModal({
                 </div>
               </div>
             )}
-            
+
+            {/* ============ STICKY BUY BAR (mobile) ============ */}
+            <AnimatePresence>
+              {!isPurchased && showStickyBuy && (
+                <motion.div
+                  key="sticky-buy"
+                  initial={{ y: 80, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 80, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="sticky bottom-0 z-[850] flex items-center gap-3 border-t border-white/10 bg-[#0d0b16]/95 px-4 pt-3 md:hidden"
+                  style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
+                >
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-semibold text-gray-400">Total price</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-white">₹{displayPrice}</span>
+                      {showDiscount && <span className="text-xs text-gray-500 line-through">₹{originalPrice}</span>}
+                    </div>
+                  </div>
+                  <GlowBuyButton compact className="flex-1" onClick={() => setShowCheckout(true)}>
+                    Buy Now
+                  </GlowBuyButton>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
           </div>
         </div>
       </motion.div>
