@@ -16,6 +16,8 @@ import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 // IMPORTING THE SEPARATED COMPONENT
 import BookDetailsModal from "../components/BookDetailsModal";
+// HERO SECTION (shared component, same hero is also available as its own page at /hero)
+import HeroSection from "../components/HeroSection";
 
 // NEW ADDITION: Dynamic import ensures fast homepage loading. Flipbook only loads when clicked.
 const FlipbookReader = dynamic(() => import("../components/FlipbookReader"), { 
@@ -1317,7 +1319,8 @@ export default function VedoxaHome() {
           </div>
         </nav>
 
-        {/* Hero section moved to its own page (/hero). The hero styles, particles and video logic above are kept untouched. */}
+        {/* Hero section: separate component (components/HeroSection.jsx), also available as its own page at /hero */}
+        <HeroSection isDark={isDark} lang={lang} />
 
         {/* ─── Dynamic Book Library Grid ────────────────────────── */}
         <section className="px-4 pt-12 pb-8 md:pt-16 md:pb-14 w-full max-w-7xl mx-auto relative z-10">
