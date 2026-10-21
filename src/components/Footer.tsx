@@ -190,21 +190,7 @@ const Footer = () => {
   }, [showFullFooter]);
 
   // Agar user kisi dusre page par hai, toh sirf ek patli premium line dikhegi
-  if (!showFullFooter) {
-    return (
-      <footer
-        ref={footerRef}
-        data-phase={phase || 'night'}
-        className="vx-footer w-full py-10 mt-auto flex justify-center items-center"
-      >
-        <style dangerouslySetInnerHTML={{ __html: FOOTER_CSS }} />
-        {/* Apple style soft gradient divider (ab ismein ek roshni dheere dheere chalti rehti hai) */}
-        <div className="relative overflow-hidden w-[85%] max-w-4xl h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent">
-          <span className="vx-sweep" aria-hidden="true" />
-        </div>
-      </footer>
-    );
-  }
+  if (!showFullFooter) return null;
 
   // Pura Footer - Home aur About page ke liye (Apple UI/UX Style)
   return (
