@@ -1,56 +1,48 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Loader, Info, Shield, Zap, Terminal, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { ArrowLeft, Heart, Loader2, Info, Shield, Zap, Terminal, X, Lock } from "lucide-react";
 
-// --- Mocking Next.js components for the single-file Canvas environment ---
-// Note: In your actual Next.js project, use your standard imports:
-// import Image from "next/image";
-// import Link from "next/link";
-const Image = ({ src, alt, className, fill, priority }) => (
-  <img 
-    src={src} 
-    alt={alt} 
-    className={`object-contain ${className || ''}`} 
-    style={fill ? { width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 } : {}} 
-  />
-);
+// Put this file at app/<your-route>/page.jsx
+// Needs: framer-motion, lucide-react, tailwindcss, /public/logo.svg, NEXT_PUBLIC_RAZORPAY_KEY_ID in .env
 
-const Link = ({ href, children, className, ...props }) => (
-  <a href={href} className={className} {...props}>{children}</a>
-);
+/* ------------------------------------------------------------------ */
+/* Root: switches between the brand view and the System Codex panel    */
+/* ------------------------------------------------------------------ */
+export default function VedoxaPage() {
+  const [view, setView] = useState("brand"); // 'brand' | 'system'
 
-// --- MAIN APP COMPONENT (Manages Navigation in this Canvas) ---
-export default function App() {
-  const [currentView, setCurrentView] = useState("brand"); // 'brand' | 'info'
+  // Deep link (#system) + Esc to close
+  useEffect(() => {
+    if (window.location.hash === "#system") setView("system");
+    const onKey = (e) => e.key === "Escape" && setView("brand");
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    const url = view === "system" ? "#system" : window.location.pathname + window.location.search;
+    window.history.replaceState(null, "", url);
+  }, [view]);
 
   return (
-    <div className="bg-[#06060a] min-h-screen text-white font-sans overflow-hidden">
-      <AnimatePresence mode="wait">
-        {currentView === "brand" && (
+    <div className="relative h-screen w-full overflow-hidden bg-[#06060a] font-sans text-white">
+      <BrandPage onOpen={() => setView("system")} />
+
+      <AnimatePresence>
+        {view === "system" && (
           <motion.div
-            key="brand"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, filter: "blur(10px)", scale: 1.05 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="w-full min-h-screen absolute top-0 left-0"
+            key="system"
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", stiffness: 90, damping: 22 }}
+            className="fixed inset-0 z-50 overflow-y-auto overscroll-contain rounded-t-[2.25rem] bg-gradient-to-b from-[#15110a] to-[#06060a]"
           >
-            <BrandPage onViewChange={setCurrentView} />
-          </motion.div>
-        )}
-        
-        {currentView === "info" && (
-          <motion.div
-            key="info"
-            initial={{ opacity: 0, y: "100%", borderRadius: "100% 100% 0 0" }}
-            animate={{ opacity: 1, y: 0, borderRadius: "0% 0% 0 0" }}
-            exit={{ opacity: 0, y: "100%", borderRadius: "100% 100% 0 0" }}
-            transition={{ type: "spring", stiffness: 60, damping: 20, mass: 1 }}
-            className="w-full min-h-screen absolute top-0 left-0 z-50 bg-[#06060a]"
-          >
-            <InfoPage onViewChange={setCurrentView} />
+            <SystemPanel onClose={() => setView("brand")} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -58,299 +50,427 @@ export default function App() {
   );
 }
 
-// ============================================================================
-// 1. YOUR ORIGINAL BRAND PAGE (Safe & Untouched + Info Button Added)
-// ============================================================================
+/* ------------------------------------------------------------------ */
+/* Brand page                                                          */
+/* ------------------------------------------------------------------ */
 function loadRazorpayScript() {
   return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
+    if (typeof window !== "undefined" && window.Razorpay) return resolve(true);
+    const s = document.createElement("script");
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
   });
 }
 
-function BrandPage({ onViewChange }) {
+const AMOUNTS = [100, 200, 500, 1000];
+
+function BrandPage({ onOpen }) {
+  const reduce = useReducedMotion();
   const [particles, setParticles] = useState([]);
-  const [donationAmount, setDonationAmount] = useState(100);
-  const [isCelebration, setIsCelebration] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [amount, setAmount] = useState(100);
+  const [error, setError] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
 
   useEffect(() => {
     setParticles(
-      Array.from({ length: 40 }, (_, i) => ({
+      Array.from({ length: 34 }, (_, i) => ({
         id: i,
         left: Math.random() * 100,
-        top: Math.random() * 100,
-        duration: 3 + Math.random() * 5,
-        delay: Math.random() * 5,
         size: 2 + Math.random() * 3,
+        duration: 8 + Math.random() * 9,
+        delay: Math.random() * 8,
       }))
     );
   }, []);
 
-  const handleDonate = async () => {
-    if (donationAmount < 10) return; // Minimum 10 rupees logic
-    setIsProcessing(true);
-    
-    const loaded = await loadRazorpayScript();
-    if (!loaded) { setIsProcessing(false); return; }
-
-    const options = {
+  const donate = async () => {
+    if (!amount || amount < 10) return setError("Minimum contribution is ₹10.");
+    setError("");
+    setProcessing(true);
+    const ok = await loadRazorpayScript();
+    if (!ok) {
+      setProcessing(false);
+      return setError("Couldn’t load the payment gateway. Check your connection and try again.");
+    }
+    const rzp = new window.Razorpay({
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_dummy",
-      amount: donationAmount * 100,
+      amount: Math.round(amount * 100),
       currency: "INR",
       name: "VEDOXA Contribution",
       description: "Contribute to Enlightenment",
       theme: { color: "#eab308" },
-      handler: async function (response) {
-        setIsProcessing(false);
-        setIsCelebration(true);
-        setTimeout(() => setIsCelebration(false), 8000);
-      }
-    };
-    const rzp = new window.Razorpay(options);
+      modal: { ondismiss: () => setProcessing(false) },
+      handler: () => {
+        setProcessing(false);
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 6000);
+      },
+    });
     rzp.open();
-    setIsProcessing(false);
+    // Keep the button busy until the checkout is dismissed or completed
   };
 
   return (
-    <div className={`relative min-h-screen w-full flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-1000 ${isCelebration ? 'bg-[#1a1405]' : 'bg-[#06060a]'}`}>
-      
-      {/* Celebration Mode Overlay */}
+    <div
+      className={`relative flex h-screen w-full flex-col items-center justify-center overflow-y-auto px-5 py-24 transition-colors duration-1000 ${
+        celebrate ? "bg-[#1a1405]" : "bg-[#06060a]"
+      }`}
+    >
+      {/* soft ambient glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(234,179,8,0.12),transparent_60%)]" />
+
+      {/* particles */}
+      {!reduce && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {particles.map((p) => (
+            <motion.span
+              key={p.id}
+              className="absolute bottom-0 rounded-full bg-yellow-500/40"
+              style={{ left: `${p.left}%`, width: p.size, height: p.size }}
+              initial={{ y: 0, opacity: 0 }}
+              animate={{ y: "-105vh", opacity: [0, 0.6, 0] }}
+              transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "linear" }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* top bar */}
+      <Link
+        href="/"
+        className="absolute left-5 top-6 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-gray-400 backdrop-blur-md transition hover:-translate-y-0.5 hover:text-white active:scale-95"
+      >
+        <ArrowLeft size={16} /> Library
+      </Link>
+      <button
+        onClick={onOpen}
+        aria-label="Open system info"
+        className="absolute right-5 top-6 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-gray-400 shadow-lg backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-yellow-400/50 hover:bg-yellow-400/10 hover:text-yellow-400 hover:shadow-[0_0_20px_rgba(234,179,8,0.2)] active:scale-95"
+      >
+        <Info size={16} /> System
+      </button>
+
+      {/* hero */}
+      <div className="relative z-10 flex w-full max-w-md flex-col items-center text-center">
+        <motion.div
+          animate={reduce ? {} : { y: [0, -8, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          className="relative mb-5 h-28 w-28 md:h-32 md:w-32"
+        >
+          {!reduce &&
+            [0, 1.5].map((d) => (
+              <motion.span
+                key={d}
+                className="absolute -inset-2 rounded-full border border-yellow-500/50"
+                initial={{ scale: 1, opacity: 0.5 }}
+                animate={{ scale: 1.5, opacity: 0 }}
+                transition={{ duration: 3, delay: d, repeat: Infinity, ease: "easeOut" }}
+              />
+            ))}
+          <div className="absolute inset-0 rounded-full border border-yellow-500/30 bg-yellow-500/10 shadow-[0_0_50px_rgba(234,179,8,0.25)]" />
+          <Image src="/logo.svg" alt="VEDOXA logo" fill priority className="object-contain p-5" />
+        </motion.div>
+
+        <h1
+          className="mb-2 bg-[linear-gradient(100deg,#fff_30%,#eab308_50%,#fff_70%)] bg-[length:220%_100%] bg-clip-text pl-[0.14em] text-6xl font-black tracking-[0.14em] text-transparent md:text-7xl animate-[vshine_6s_linear_infinite]"
+          style={{ fontFamily: "Cinzel, serif" }}
+        >
+          VEDOXA
+        </h1>
+        <p className="mb-10 text-sm font-bold uppercase tracking-[0.3em] text-yellow-500">
+          Awaken Your Consciousness
+        </p>
+
+        {/* contribution card */}
+        <motion.div
+          initial={{ y: 24, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 90, damping: 16, delay: 0.15 }}
+          className="relative w-full overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-7 text-left shadow-[0_30px_70px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+        >
+          <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-yellow-500/70 to-transparent" />
+          <h2 className="mb-1 text-xl font-bold">Contribute to the Mission</h2>
+          <p className="mb-5 text-sm leading-relaxed text-gray-400">
+            Every contribution keeps the library free, ad-light and growing.
+          </p>
+
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            {AMOUNTS.map((a) => (
+              <motion.button
+                key={a}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { setAmount(a); setError(""); }}
+                className={`rounded-2xl border py-3.5 font-bold transition-all ${
+                  amount === a
+                    ? "scale-[1.03] border-yellow-500 bg-yellow-500 text-black shadow-[0_10px_26px_-8px_rgba(234,179,8,0.7)]"
+                    : "border-white/10 bg-white/5 text-white hover:-translate-y-0.5 hover:border-yellow-500/50"
+                }`}
+              >
+                ₹{a}
+              </motion.button>
+            ))}
+          </div>
+
+          <div className="group relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-500 transition-colors group-focus-within:text-yellow-500">₹</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={10}
+              value={amount || ""}
+              onChange={(e) => { setAmount(Number(e.target.value)); setError(""); }}
+              aria-label="Contribution amount in rupees"
+              className="w-full rounded-2xl border border-white/10 bg-black/40 p-4 pl-9 text-lg font-bold text-white outline-none transition-all focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/15"
+            />
+          </div>
+          <p className="mb-3 mt-2 min-h-[1.25rem] text-xs text-red-400" role="alert">{error}</p>
+
+          <button
+            onClick={donate}
+            disabled={processing}
+            className="relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-300 via-yellow-500 to-amber-600 py-4 text-base font-extrabold text-black shadow-[0_14px_34px_-10px_rgba(234,179,8,0.8)] transition-all hover:-translate-y-0.5 active:scale-[0.97] disabled:cursor-wait disabled:opacity-70"
+          >
+            {processing ? <Loader2 className="animate-spin" /> : <><Heart size={18} className="fill-black" /> Contribute now</>}
+          </button>
+
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {["UPI", "Cards", "Net Banking", "Secured by Razorpay"].map((c) => (
+              <span key={c} className="rounded-full border border-white/10 px-3 py-1 text-[11px] font-semibold text-gray-400">{c}</span>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* thank-you overlay */}
       <AnimatePresence>
-        {isCelebration && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-2xl">
-             <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center p-12 bg-gradient-to-b from-yellow-400/20 to-transparent rounded-[3rem] border border-yellow-500/30 shadow-[0_0_100px_rgba(234,179,8,0.3)]">
-               <h2 className="text-5xl font-black text-yellow-400 mb-4">Gratitude! ✨</h2>
-               <p className="text-white text-lg">Your light joins ours in this mission.</p>
-             </motion.div>
+        {celebrate && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setCelebrate(false)}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-2xl"
+          >
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 160, damping: 14 }}
+              className="rounded-[2.5rem] border border-yellow-500/40 bg-gradient-to-b from-yellow-400/20 to-transparent px-10 py-12 text-center shadow-[0_0_90px_rgba(234,179,8,0.35)]"
+            >
+              <h2 className="mb-3 text-4xl font-black text-yellow-400" style={{ fontFamily: "Cinzel, serif" }}>Gratitude ✨</h2>
+              <p className="text-lg text-white">Your light joins ours in this mission.</p>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Decorative Particles */}
-      <div className="absolute inset-0 pointer-events-none">
-        {particles.map((p) => (
-          <motion.div 
-            key={p.id} 
-            className="absolute rounded-full bg-yellow-500/30"
-            initial={{ y: "100vh" }}
-            animate={{ y: "-100vh" }}
-            transition={{
-              duration: p.duration,
-              repeat: Infinity,
-              delay: p.delay,
-              ease: "linear"
-            }}
-            style={{ width: `${p.size}px`, height: `${p.size}px`, left: `${p.left}%`, top: `${p.top}%` }}
-          />
-        ))}
-      </div>
-
-      <Link href="/" className="absolute top-8 left-8 text-gray-400 hover:text-white flex items-center gap-2 transition z-50 font-bold uppercase tracking-widest text-sm">
-        <ArrowLeft size={18} /> Library
-      </Link>
-
-      {/* NEW: INFO BUTTON OPTION ADDED HERE */}
-      <button 
-        onClick={() => onViewChange("info")}
-        className="absolute top-8 right-8 text-gray-400 hover:text-yellow-400 flex items-center gap-2 transition-all z-50 font-bold uppercase tracking-widest text-sm bg-white/5 px-5 py-2.5 rounded-full border border-white/10 hover:border-yellow-400/50 hover:bg-yellow-400/10 shadow-lg hover:shadow-[0_0_20px_rgba(234,179,8,0.2)] active:scale-95"
-      >
-        <Info size={18} /> System Info
-      </button>
-
-      {/* Main Brand Section */}
-      <div className="relative z-10 flex flex-col items-center text-center w-full max-w-lg mt-12 md:mt-0">
-        <div className="w-32 h-32 md:w-40 md:h-40 relative mb-6">
-          {/* Defaulting to a placeholder circle if /logo.svg is missing in the environment, but it keeps your exact structure */}
-          <div className="absolute inset-0 bg-yellow-500/10 rounded-full border border-yellow-500/30 animate-pulse"></div>
-          <Image src="/logo.svg" alt="Logo" fill priority className="object-contain" />
-        </div>
-        <h1 className="font-serif text-6xl md:text-8xl font-black text-white mb-2 tracking-widest" style={{ fontFamily: 'Cinzel, serif' }}>VEDOXA</h1>
-        <p className="text-yellow-500 font-bold uppercase tracking-[0.3em] text-sm mb-12">Awaken Your Consciousness</p>
-
-        {/* Professional Contribution Card */}
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 md:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent"></div>
-          <h2 className="text-white text-2xl font-bold mb-6">Contribute to the Mission</h2>
-          
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {[100, 200, 500, 1000].map((amt) => (
-              <button key={amt} onClick={() => setDonationAmount(amt)} className={`py-4 rounded-2xl font-bold border transition-all ${donationAmount === amt ? 'bg-yellow-500 text-black border-yellow-500 scale-[1.02] shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-white/5 border-white/10 text-white hover:border-yellow-500/50 hover:bg-white/10'}`}>
-                ₹{amt}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative mb-6 group">
-             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold group-focus-within:text-yellow-500 transition-colors">₹</span>
-             <input 
-               type="number" 
-               value={donationAmount} 
-               onChange={(e) => setDonationAmount(Number(e.target.value))} 
-               className="w-full bg-black/40 border border-white/10 p-4 pl-10 rounded-2xl text-white font-bold text-lg outline-none focus:border-yellow-500 focus:bg-black/60 transition-all shadow-inner" 
-             />
-          </div>
-
-          <button onClick={handleDonate} disabled={isProcessing} className="w-full py-5 rounded-2xl bg-yellow-500 text-black font-black text-lg flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-[0_0_30px_rgba(234,179,8,0.3)] disabled:opacity-70 disabled:cursor-not-allowed">
-            {isProcessing ? <Loader className="animate-spin" /> : <><Heart size={20} className="fill-black"/> Contribute Now</>}
-          </button>
-        </motion.div>
-      </div>
+      <style jsx global>{`
+        @keyframes vshine { to { background-position: -220% 0; } }
+      `}</style>
     </div>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* System Codex panel                                                  */
+/* ------------------------------------------------------------------ */
+const container = { hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.25 } } };
+const item = {
+  hidden: { opacity: 0, y: 28, filter: "blur(4px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { type: "spring", stiffness: 90, damping: 16 } },
+};
 
-// ============================================================================
-// 2. THE NEW HIGH-ANIMATION INFO PAGE (Game Style)
-// ============================================================================
-function InfoPage({ onViewChange }) {
-  // Framer Motion variants for cinematic staggered animations
-  const containerVars = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2,
-      },
-    },
-  };
+const CARDS = [
+  { icon: Shield, title: "Mission", text: "Awaken consciousness through calm, immersive digital experiences that blend ancient wisdom with modern craft." },
+  { icon: Zap, title: "Architecture", text: "Built on Next.js with fluid motion, lightweight pages and encrypted checkout, so it stays fast on every device." },
+  { icon: Terminal, title: "Status", text: "Platform online. Contributions are processed securely through Razorpay and confirmed instantly." },
+];
 
-  const itemVars = {
-    hidden: { opacity: 0, x: -50, filter: "blur(5px)" },
-    show: { opacity: 1, x: 0, filter: "blur(0px)", transition: { type: "spring", stiffness: 80, damping: 15 } },
-  };
+const ALLOCATION = [
+  { label: "Library & content", pct: 40 },
+  { label: "Servers & security", pct: 35 },
+  { label: "Community & outreach", pct: 25 },
+];
 
-  const lineVars = {
-    hidden: { width: "0%" },
-    show: { width: "100%", transition: { duration: 1.5, ease: "circOut" } }
-  };
+const FAQ = [
+  { q: "Is my payment safe?", a: "Yes. Payments run through Razorpay’s encrypted checkout. VEDOXA never sees or stores your card or UPI details." },
+  { q: "What is the minimum contribution?", a: "The minimum is ₹10. Choose a preset or enter any amount above that." },
+  { q: "Will I get a confirmation?", a: "You’ll see an instant confirmation on screen, and Razorpay sends a receipt to the contact you provide." },
+];
+
+function SystemPanel({ onClose }) {
+  const [now, setNow] = useState("");
+  useEffect(() => {
+    const tick = () => setNow(new Date().toLocaleTimeString());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
-    <div className="relative min-h-screen w-full bg-[#06060a] p-6 md:p-12 overflow-hidden flex flex-col justify-center">
-       
-       {/* High-tech Game-style Background Elements */}
-       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-900/15 via-[#06060a] to-[#06060a] pointer-events-none" />
-       
-       {/* Subtle grid pattern for technical feel */}
-       <div 
-         className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-         style={{ 
-           backgroundImage: "linear-gradient(#eab308 1px, transparent 1px), linear-gradient(90deg, #eab308 1px, transparent 1px)", 
-           backgroundSize: "40px 40px" 
-         }} 
-       />
-
-       {/* Floating digital particles */}
-       <motion.div 
-         animate={{ rotate: 360 }} 
-         transition={{ duration: 150, repeat: Infinity, ease: "linear" }}
-         className="absolute -top-[20%] -right-[10%] w-[800px] h-[800px] rounded-full border border-yellow-500/5 border-dashed pointer-events-none"
-       />
-
-       {/* Close Button */}
-       <button 
-         onClick={() => onViewChange("brand")}
-         className="absolute top-8 right-8 z-50 p-3 bg-white/5 border border-white/10 rounded-full text-gray-400 hover:text-black hover:bg-yellow-500 hover:border-yellow-500 transition-all hover:rotate-90 hover:scale-110 shadow-xl group"
-       >
-         <X size={24} className="group-hover:drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]" />
-       </button>
-
-       {/* Main Content Container */}
-       <motion.div 
-         variants={containerVars}
-         initial="hidden"
-         animate="show"
-         className="relative z-10 max-w-6xl w-full mx-auto"
-       >
-          <motion.div variants={itemVars} className="mb-16 md:mb-20 border-l-4 border-yellow-500 pl-6 md:pl-8">
-            <h1 className="text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-500 tracking-tighter uppercase" style={{ fontFamily: 'Cinzel, serif' }}>
-              System<br/>Codex
-            </h1>
-            <p className="text-yellow-500 font-mono tracking-[0.2em] mt-4 uppercase text-sm flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
-              Initialization complete // VEDOXA v1.0.0
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-            <InfoCard 
-               icon={<Shield size={36} />}
-               title="Mission Directive"
-               content="To awaken consciousness through immersive digital experiences. We blend ancient wisdom with cutting-edge technology to forge a new path of enlightenment."
-            />
-             <InfoCard 
-               icon={<Zap size={36} />}
-               title="Core Architecture"
-               content="Powered by next-generation web technologies. Utilizing highly optimized components, cinematic physics engines, and seamless global integration networks."
-            />
-             <InfoCard 
-               icon={<Terminal size={36} />}
-               title="System Status"
-               content="All systems optimal. Quantum servers online. Reality engines synchronized. Ready to process contributions and elevate user state immediately."
-            />
-          </div>
-          
-          <motion.div variants={lineVars} className="mt-16 w-full h-[1px] bg-gradient-to-r from-yellow-500/80 via-white/20 to-transparent shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
-          
-          <motion.div variants={itemVars} className="mt-8 flex flex-col md:flex-row items-center justify-between text-gray-500 font-mono text-xs uppercase tracking-widest gap-4">
-            <div className="flex gap-6">
-              <span className="hover:text-yellow-500 cursor-crosshair transition-colors">Data Nodes: 4,092</span>
-              <span className="hover:text-yellow-500 cursor-crosshair transition-colors">Uplink: Secure</span>
-            </div>
-            <span className="flex items-center gap-2">
-              <LockIcon />
-              © 2026 VEDOXA PROTOCOL
-            </span>
-          </motion.div>
-       </motion.div>
-    </div>
-  )
-}
-
-// Sub-component for the Info Cards with hover physics
-function InfoCard({ icon, title, content }) {
-   return (
-      <motion.div 
-        variants={{
-          hidden: { opacity: 0, y: 50, scale: 0.9 },
-          show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 100, damping: 12 } }
+    <div className="relative min-h-full px-5 pb-16 pt-24 md:px-12">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage: "linear-gradient(#eab308 1px, transparent 1px), linear-gradient(90deg, #eab308 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
         }}
-        whileHover={{ y: -10, scale: 1.02, borderColor: "rgba(234, 179, 8, 0.4)", backgroundColor: "rgba(255,255,255,0.05)" }}
-        className="bg-white/[0.02] border border-white/5 p-8 rounded-3xl backdrop-blur-md relative overflow-hidden group transition-all duration-300 shadow-2xl"
+      />
+
+      <button
+        onClick={onClose}
+        aria-label="Close system info"
+        className="fixed right-5 top-6 z-50 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-gray-300 shadow-xl backdrop-blur-md transition-all hover:bg-yellow-500 hover:text-black active:scale-95"
       >
-        {/* Animated Background Glow on Hover */}
-        <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/0 to-yellow-500/0 group-hover:from-yellow-500/10 group-hover:to-transparent transition-all duration-500 ease-out" />
-        
-        {/* Large faint icon in background */}
-        <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-all duration-500 transform group-hover:scale-150 group-hover:rotate-12">
-           {React.cloneElement(icon, { size: 120 })}
+        <X size={16} /> Close
+      </button>
+
+      <motion.div variants={container} initial="hidden" animate="show" className="relative z-10 mx-auto max-w-5xl">
+        <motion.div variants={item} className="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-yellow-500">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+          </span>
+          All systems operational <span className="text-gray-500">{now}</span>
+        </motion.div>
+
+        <motion.h1 variants={item} className="mb-3 mt-4 text-5xl font-extrabold leading-none tracking-wide text-white md:text-7xl" style={{ fontFamily: "Cinzel, serif" }}>
+          System Codex
+        </motion.h1>
+        <motion.p variants={item} className="mb-10 max-w-xl leading-relaxed text-gray-400">
+          VEDOXA is a quiet corner of the internet for reading, reflection and inner growth. Here’s how it works and where your support goes.
+        </motion.p>
+
+        <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {CARDS.map(({ icon: Icon, title, text }) => (
+            <motion.article
+              key={title}
+              variants={item}
+              whileHover={{ y: -6 }}
+              className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl backdrop-blur-md transition-colors hover:border-yellow-500/40"
+            >
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-yellow-500/15 text-yellow-500">
+                <Icon size={22} />
+              </div>
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-[0.14em]">{title}</h3>
+              <p className="text-sm leading-relaxed text-gray-400">{text}</p>
+            </motion.article>
+          ))}
         </div>
 
-        <div className="relative z-10">
-          <div className="text-yellow-500 mb-6 group-hover:scale-110 group-hover:text-white transition-all duration-300 origin-left drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">
-            {icon}
-          </div>
-          <h3 className="text-xl font-bold text-white mb-4 uppercase tracking-widest font-serif">{title}</h3>
-          <p className="text-gray-400 leading-relaxed text-sm font-sans group-hover:text-gray-300 transition-colors">
-            {content}
-          </p>
+        <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <motion.div variants={item}><BreatheSync /></motion.div>
+
+          <motion.div variants={item} className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-md">
+            <h3 className="text-sm font-bold uppercase tracking-[0.14em]">Where support goes</h3>
+            <p className="mb-2 text-xs text-gray-500">Indicative split of contributions.</p>
+            {ALLOCATION.map((r, i) => (
+              <div key={r.label} className="mt-5">
+                <div className="mb-2 flex justify-between text-sm font-semibold">
+                  <span>{r.label}</span><span className="text-yellow-500">{r.pct}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${r.pct}%` }}
+                    transition={{ duration: 1.3, delay: 0.7 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                </div>
+              </div>
+            ))}
+          </motion.div>
         </div>
 
-        {/* Cyberpunk corner accent */}
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-yellow-500/0 group-hover:border-yellow-500/50 transition-all duration-300 rounded-br-3xl" />
+        <motion.div variants={item} className="rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-2 backdrop-blur-md">
+          {FAQ.map((f) => <FaqRow key={f.q} {...f} />)}
+        </motion.div>
+
+        <motion.div variants={item} className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[11px] uppercase tracking-widest text-gray-500">
+          <span className="flex items-center gap-2"><Lock size={12} /> Secure uplink</span>
+          <span>© 2026 VEDOXA</span>
+        </motion.div>
       </motion.div>
-   )
+    </div>
+  );
 }
 
-const LockIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-  </svg>
-)
+function FaqRow({ q, a }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/10 last:border-0">
+      <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center justify-between gap-4 py-4 text-left font-semibold">
+        {q}
+        <motion.span animate={{ rotate: open ? 45 : 0 }} className="text-xl leading-none text-yellow-500">+</motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.p
+            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden pb-4 text-sm leading-relaxed text-gray-400"
+          >
+            {a}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* Breathe Sync: guided inhale / hold / exhale orb (4 rounds, ~56s) */
+const PHASES = [
+  { label: "Inhale", scale: 1, seconds: 4 },
+  { label: "Hold", scale: 1, seconds: 4 },
+  { label: "Exhale", scale: 0.62, seconds: 6 },
+];
+
+function BreatheSync() {
+  const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState(null);
+  const [done, setDone] = useState(false);
+  const timers = useRef([]);
+
+  const clear = useCallback(() => { timers.current.forEach(clearTimeout); timers.current = []; }, []);
+  useEffect(() => clear, [clear]);
+
+  const stop = useCallback(() => { clear(); setRunning(false); setPhase(null); }, [clear]);
+
+  const start = () => {
+    clear();
+    setDone(false);
+    setRunning(true);
+    let t = 0;
+    for (let round = 0; round < 4; round++) {
+      PHASES.forEach((p) => {
+        timers.current.push(setTimeout(() => setPhase(p), t * 1000));
+        t += p.seconds;
+      });
+    }
+    timers.current.push(setTimeout(() => { stop(); setDone(true); }, t * 1000));
+  };
+
+  const current = phase || { label: done ? "Done" : "Ready", scale: 0.62, seconds: 0.6 };
+
+  return (
+    <div className="h-full rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-center backdrop-blur-md">
+      <h3 className="text-sm font-bold uppercase tracking-[0.14em]">Breathe Sync</h3>
+      <p className="text-xs text-gray-500">A one-minute reset. Follow the orb.</p>
+      <div className="flex h-52 items-center justify-center">
+        <motion.div
+          animate={{ scale: current.scale }}
+          transition={{ duration: current.seconds, ease: "easeInOut" }}
+          className="flex h-40 w-40 items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#fff3b0,#eab308_45%,#a16207)] shadow-[0_0_60px_rgba(234,179,8,0.45)]"
+        >
+          <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#2a1c00]">{current.label}</span>
+        </motion.div>
+      </div>
+      <button
+        onClick={running ? stop : start}
+        className="rounded-full border border-yellow-500 px-6 py-2 text-xs font-bold uppercase tracking-widest text-yellow-500 transition hover:bg-yellow-500 hover:text-black active:scale-95"
+      >
+        {running ? "Stop" : done ? "Again" : "Begin"}
+      </button>
+    </div>
+  );
+}
