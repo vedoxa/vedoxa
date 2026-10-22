@@ -1,11 +1,20 @@
 {
   "name": "vedoxa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "Vedoxa: premium digital books platform (spirituality, psychology, self-help) with Soul Echo support chat.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run build",
+    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
+    "rebuild": "npm run clean && npm run build"
   },
   "dependencies": {
     "next": "latest",
@@ -25,6 +34,15 @@
     "react-icons": "latest",
     "react-pdf": "^9.1.0",
     "react-pageflip": "^2.0.3"
+  },
+  "overrides": {
+    "react-pageflip": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "react-pdf": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }
-
