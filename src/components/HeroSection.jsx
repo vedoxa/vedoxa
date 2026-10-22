@@ -293,7 +293,7 @@ const CSS = `
 .dv-ember,.dv-lantern{position:absolute;bottom:-30px;opacity:0;will-change:transform,opacity;animation:dv-rise linear infinite}
 .dv-ember{border-radius:50%;background:radial-gradient(circle,#ffe29a,#ff9a2e 60%,transparent 72%)}
 .dv-lantern{width:16px;height:22px;border-radius:6px 6px 9px 9px;background:linear-gradient(#ffd27a,#ff8a1f);box-shadow:0 0 18px 6px rgba(255,150,40,.45)}
-@keyframes dv-rise{0%{transform:translate3d(0,0,0) scale(1);opacity:0}15%{opacity:.9}100%{transform:translate3d(var(--dx),-560px,0) scale(.5);opacity:0}}
+@keyframes dv-rise{0%{transform:translate3d(0,0,0) scale(1);opacity:0}15%{opacity:.9}100%{transform:translate3d(var(--dx),-380px,0) scale(.5);opacity:0}}
 
 .dv-gold{background:linear-gradient(90deg,#fde68a,#f59e0b,#fff3c4,#f59e0b,#fde68a);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:dv-shine 6s linear infinite;filter:drop-shadow(0 0 14px rgba(255,170,50,.4))}
 @keyframes dv-shine{to{background-position:200% center}}
@@ -345,7 +345,7 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       ref={wrapRef}
       onPointerDown={onTap}
       style={{ touchAction: "manipulation" }}
-      className="dv-sky relative overflow-hidden flex flex-col items-center justify-center text-center px-4 pt-20 pb-36 md:pt-28 md:pb-44 min-h-[540px] md:min-h-[660px]"
+      className="dv-sky relative overflow-hidden flex flex-col items-center justify-center text-center px-4 pt-12 pb-20 md:pt-14 md:pb-24 min-h-[360px] md:min-h-[420px]"
     >
       <style>{CSS}</style>
 
@@ -378,7 +378,7 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-[4]" aria-hidden="true" />
 
       {/* Toran: jagmagati diwali lights */}
-      <div className="absolute top-0 inset-x-0 h-14 md:h-24 pointer-events-none z-[5]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: TORAN_SVG }} />
+      <div className="absolute top-0 inset-x-0 h-10 md:h-16 pointer-events-none z-[5]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: TORAN_SVG }} />
 
       {/* Urte angaare + aakash kandil */}
       <div className="absolute inset-0 pointer-events-none z-[5]" aria-hidden="true">
@@ -394,9 +394,9 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       <div className="absolute bottom-0 inset-x-0 h-10 pointer-events-none z-[6]" style={{ background: `linear-gradient(to bottom, transparent, ${pageBg})` }} />
 
       {/* Diye */}
-      <div className="absolute bottom-5 md:bottom-9 inset-x-0 px-3 md:px-10 flex justify-around items-end pointer-events-none z-[7]" aria-hidden="true">
+      <div className="absolute bottom-3 md:bottom-5 inset-x-0 px-3 md:px-10 flex justify-around items-end pointer-events-none z-[7]" aria-hidden="true">
         {DIYAS.map((d) => (
-          <div key={d.i} className={`dv-diya w-10 sm:w-12 md:w-14 lg:w-16 ${d.mobileHidden ? "hidden md:block" : ""}`} style={{ "--d": `${d.delay}s` }}>
+          <div key={d.i} className={`dv-diya w-8 sm:w-10 md:w-12 lg:w-14 ${d.mobileHidden ? "hidden md:block" : ""}`} style={{ "--d": `${d.delay}s` }}>
             <span className="dv-glow" />
             <svg viewBox="0 0 64 56" className="relative block w-full h-auto">
               <path d="M4 24C8 46 22 52 32 52S56 46 60 24C48 30 16 30 4 24Z" fill="url(#dvBowl)" />
@@ -419,7 +419,7 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       <motion.p
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
-        className="dv-chip relative z-10 mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm md:text-base tracking-wide text-amber-200"
+        className="dv-chip relative z-10 mb-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm md:text-base tracking-wide text-amber-200"
       >
         🪔 {t.greet} 🪔
       </motion.p>
@@ -427,7 +427,7 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       <motion.h1
         initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
-        className="relative z-10 font-cinzel text-[2rem] leading-tight sm:text-5xl md:text-6xl lg:text-7xl font-black mb-5 max-w-4xl mx-auto"
+        className="relative z-10 font-cinzel text-[1.75rem] leading-tight sm:text-4xl md:text-5xl lg:text-6xl font-black mb-3 max-w-5xl mx-auto"
       >
         <span className="dv-gold">{t.title}</span>
       </motion.h1>
@@ -435,7 +435,7 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       <motion.p
         initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
-        className="dv-sub relative z-10 max-w-xl mx-auto text-sm md:text-lg px-2 leading-relaxed font-medium text-amber-50/90"
+        className="dv-sub relative z-10 max-w-xl mx-auto text-sm md:text-base px-2 leading-relaxed font-medium text-amber-50/90"
       >
         {t.sub}
       </motion.p>
@@ -443,9 +443,9 @@ export default function HeroSection({ isDark = false, lang = "EN" }) {
       <motion.div
         initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.35, ease: EASE }}
-        className="relative z-10 mt-8 flex flex-col items-center gap-3"
+        className="relative z-10 mt-5 flex flex-col items-center gap-2"
       >
-        <Link href="/explore" className="dv-cta inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm md:text-base font-bold">
+        <Link href="/explore" className="dv-cta inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm md:text-base font-bold">
           📚 {t.cta}
         </Link>
         <span className="dv-hint text-[11px] md:text-xs text-amber-100/70 tracking-wide">{t.hint}</span>
