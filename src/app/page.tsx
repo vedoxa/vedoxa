@@ -1670,4 +1670,561 @@ export default function VedoxaHome() {
         {partnerData && (
           <div className="w-full bg-blue-500/[0.12] border-b border-blue-500/25 py-2 px-4 text-center flex items-center justify-center gap-2">
             <Handshake size={15} className="text-blue-400"/>
-            <span className="text-blue-300/90 text-xs
+            <span className="text-blue-300/90 text-xs md:text-sm font-bold tracking-wide uppercase">
+              Partner Discount of {partnerData.discount_pct}% has been applied to all books!
+            </span>
+          </div>
+        )}
+
+        {/* Responsive Navbar with Soft Glass & Luxury Profile Capsule */}
+        <nav className={`sticky top-0 z-[500] px-3.5 py-3 md:px-8 md:py-3.5 backdrop-blur-2xl border-b flex justify-between items-center transition-colors duration-300 ${isDark ? 'bg-[#07070d]/85 border-white/[0.07] shadow-[0_8px_32px_rgba(0,0,0,0.4)]' : 'bg-white/88 border-slate-200/90 shadow-sm'}`}>
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/25 to-transparent" />
+
+          <Link href="/brand" className="flex items-center gap-2.5 md:gap-3 group shrink-0">
+            <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full border border-amber-500/50 flex items-center justify-center shadow-[0_0_16px_rgba(212,146,26,0.45)] group-hover:shadow-[0_0_25px_rgba(212,146,26,0.8)] transition-all duration-300 ${isDark ? 'bg-[#0c0c1a]' : 'bg-white'}`}>
+              <span className="font-cinzel text-lg md:text-xl font-black gold-text">V</span>
+            </div>
+            <span className={`font-cinzel text-base sm:text-lg md:text-2xl font-black tracking-widest ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {t.brand}
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Search Box with Outside-Click Close & Clear Button */}
+            <div
+              ref={searchContainerRef}
+              className={`relative flex items-center border rounded-full px-3 py-1.5 transition-all duration-300 ease-out ${isSearchOpen ? 'w-44 sm:w-56 md:w-64 ring-2 ring-amber-500/25 border-amber-500/40' : 'w-10 hover:border-amber-500/35'} ${isDark ? 'bg-white/[0.045] border-white/[0.09]' : 'bg-slate-100/90 border-slate-200'}`}
+            >
+              <Search size={16} className="text-amber-500/80 cursor-pointer shrink-0 hover:text-amber-400 transition" onClick={() => setIsSearchOpen(!isSearchOpen)} />
+              {isSearchOpen && (
+                <>
+                  <input autoFocus type="text" placeholder="Search books..." className={`bg-transparent border-none outline-none text-xs ml-2 w-full ${isDark ? 'text-white placeholder-gray-500' : 'text-slate-900 placeholder-slate-400'}`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  {searchQuery && (
+                    <button type="button" onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-amber-500 p-0.5 shrink-0">
+                      <X size={13} />
+                    </button>
+                  )}
+                  {/* DROP DOWN SEARCH SUGGESTIONS */}
+                  {searchQuery && (
+                    <div className={`absolute top-full mt-3 right-0 w-64 sm:w-72 max-h-72 overflow-y-auto custom-scrollbar rounded-2xl border shadow-2xl z-[600] flex flex-col backdrop-blur-2xl ${isDark ? 'bg-[#0c0c1a]/95 border-white/[0.1]' : 'bg-white/95 border-slate-200'}`}>
+                      {filteredBooks.length > 0 ? (
+                        filteredBooks.slice(0, 5).map(book => (
+                          <div key={book.id} onClick={() => { openBookDetails(book); setIsSearchOpen(false); setSearchQuery(""); }} className={`px-3.5 py-2.5 text-sm cursor-pointer border-b last:border-b-0 transition-colors flex items-center gap-3 ${isDark ? 'border-white/[0.05] text-white hover:bg-white/[0.06]' : 'border-slate-100 text-slate-800 hover:bg-slate-50'}`}>
+                            <div className="w-8 h-10 rounded-md overflow-hidden bg-amber-500/10 border border-amber-500/20 shrink-0 flex items-center justify-center">
+                              {book.cover_path ? (
+                                <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} alt={book.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <Search size={13} className="text-amber-500/70" />
+                              )}
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <div className="font-bold text-xs truncate">{book.title}</div>
+                              <div className="text-[10px] opacity-70 truncate">by {book.author}</div>
+                            </div>
+                            <span className="text-xs font-extrabold text-amber-500 shrink-0">₹{book.final_price}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className={`px-4 py-4 text-xs text-center ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>No matching books found</div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Quick Theme Pill on Mobile/Desktop Navbar */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className={`w-9 h-9 rounded-full border flex items-center justify-center transition shrink-0 ${
+                isDark
+                  ? "bg-white/[0.04] border-white/[0.09] text-amber-400 hover:bg-white/[0.09]"
+                  : "bg-slate-100 border-slate-200 text-amber-600 hover:bg-slate-200"
+              }`}
+            >
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            </motion.button>
+
+            {/* Upgraded Luxury Profile Capsule / Login CTA */}
+            {user ? (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setIsSidebarOpen(true)}
+                className={`group relative flex items-center gap-2 border pl-1 pr-2.5 sm:pr-3 py-1 rounded-full transition-all shrink-0 shadow-[0_4px_20px_rgba(212,146,26,0.16)] ${
+                  isDark
+                    ? 'bg-gradient-to-r from-amber-500/[0.12] via-white/[0.05] to-white/[0.03] border-amber-500/35 hover:border-amber-400/60'
+                    : 'bg-gradient-to-r from-amber-50 via-white to-slate-50 border-amber-400/50 hover:border-amber-500'
+                }`}
+              >
+                {/* Avatar with spinning conic gold ring + mini crown + online dot */}
+                <span className="relative shrink-0">
+                  <span className="avatar-ring absolute -inset-[2px] rounded-full opacity-95" />
+                  <span className={`relative flex w-8 h-8 rounded-full overflow-hidden items-center justify-center border-2 ${isDark ? 'border-[#0c0c1a] bg-[#0c0c1a]' : 'border-white bg-white'}`}>
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    ) : (
+                      <UserCircle size={20} className="text-amber-500/80" />
+                    )}
+                  </span>
+                  <span className="absolute -top-1.5 -left-1 w-4 h-4 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center shadow-sm">
+                    <Crown size={9} />
+                  </span>
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 ${isDark ? 'border-[#07070d]' : 'border-white'}`} />
+                </span>
+
+                {/* Mini Points & Name Chip */}
+                <span className="flex items-center gap-1 text-[11px] font-extrabold text-amber-500 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full">
+                  <Coins size={11} />
+                  <span>{profile?.reward_points || 0}</span>
+                </span>
+
+                <Menu size={16} className={`transition-colors group-hover:text-amber-500 ${isDark ? "text-gray-300" : "text-slate-600"}`} />
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setShowAuthModal(true)}
+                className="btn-gold btn-shine px-4 sm:px-5 py-2 rounded-full text-xs font-extrabold shrink-0 flex items-center gap-1.5"
+              >
+                <Sparkles size={13} />
+                <span>Login</span>
+              </motion.button>
+            )}
+          </div>
+        </nav>
+
+        {/* Hero section: separate component (components/HeroSection.jsx), also available as its own page at /hero */}
+        <HeroSection isDark={isDark} lang={lang} />
+
+        {/* ─── Dynamic Book Library Grid (Upgraded with Mobile-First Controls & 3D Showcase Cards) ─── */}
+        <section className="px-3.5 sm:px-6 pt-10 pb-8 md:pt-16 md:pb-14 w-full max-w-7xl mx-auto relative z-10">
+          
+          <motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center mb-7 md:mb-10">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-500 text-[11px] font-extrabold tracking-widest uppercase mb-3">
+              <Sparkles size={12} /> Curated Digital Editions
+            </div>
+
+            <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-center tracking-wide">
+              {t.premiumLib.split(" ")[0]} <span className="gold-text">{t.premiumLib.split(" ")[1]}</span>
+            </h2>
+            
+            {/* LIVE DATE BADGE ADDED HERE */}
+            <div className={`mt-3 flex items-center gap-2 text-xs md:text-sm font-semibold tracking-wider px-4 py-1.5 rounded-full border shadow-sm ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-amber-400/90' : 'bg-amber-50 border-amber-200/60 text-amber-600'}`}>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              {liveDate}
+            </div>
+          </motion.div>
+
+          {/* NEW INTERACTIVE MOBILE-FIRST BOOK FILTER & SORT BAR */}
+          <div className={`mb-7 p-2.5 sm:p-3 rounded-3xl border backdrop-blur-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 ${
+            isDark ? 'bg-white/[0.025] border-white/[0.07] shadow-[0_8px_32px_rgba(0,0,0,0.3)]' : 'bg-white/90 border-slate-200/90 shadow-sm'
+          }`}>
+            {/* Scrollable Category Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+              {[
+                { id: "all", label: "All Books", icon: BookOpen, count: books.length },
+                { id: "trending", label: "Trending", icon: Flame, count: books.length },
+                { id: "favorites", label: "Saved", icon: Heart, count: favorites.length },
+                { id: "owned", label: "My Library", icon: BookMarked, count: purchasedBookIds.length }
+              ].map((tab) => {
+                const IconComp = tab.icon;
+                const active = activeBookFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveBookFilter(tab.id)}
+                    className={`relative px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-1.5 shrink-0 transition-all ${
+                      active
+                        ? "text-[#150800] shadow-[0_4px_16px_rgba(212,146,26,0.35)]"
+                        : isDark
+                        ? "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    }`}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="activeBookFilterBubble"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 -z-10"
+                      />
+                    )}
+                    <IconComp size={13} className={active ? "text-[#150800]" : "text-amber-500"} />
+                    <span>{tab.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      active
+                        ? "bg-black/15 text-[#150800]"
+                        : isDark
+                        ? "bg-white/[0.06] text-gray-400"
+                        : "bg-slate-200/80 text-slate-600"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Inline Quick Search + Sort Selector */}
+            <div className="flex items-center gap-2">
+              <div className={`flex-1 md:w-48 flex items-center gap-2 px-3 py-2 rounded-2xl border text-xs ${
+                isDark ? "bg-black/30 border-white/[0.08] text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+              }`}>
+                <Search size={14} className="text-amber-500 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter by title or author..."
+                  className="bg-transparent border-none outline-none w-full text-xs placeholder:opacity-60"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-amber-500">
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              <div className={`relative flex items-center px-3 py-2 rounded-2xl border text-xs font-bold shrink-0 ${
+                isDark ? "bg-black/30 border-white/[0.08] text-gray-300" : "bg-slate-50 border-slate-200 text-slate-700"
+              }`}>
+                <SlidersHorizontal size={13} className="text-amber-500 mr-1.5 shrink-0" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent border-none outline-none cursor-pointer text-xs font-bold pr-1 appearance-none"
+                >
+                  <option value="default" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>Featured</option>
+                  <option value="popular" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>Most Popular</option>
+                  <option value="price_low" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>Price: Low → High</option>
+                  <option value="price_high" className={isDark ? "bg-[#0c0c1a]" : "bg-white"}>Price: High → Low</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Book Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
+            {loading ? (
+              [1, 2, 3].map((n) => (
+                <div key={n} className={`border rounded-[1.75rem] p-5 sm:p-6 h-[430px] flex flex-col gap-4 animate-pulse ${isDark ? 'bg-white/[0.025] border-white/[0.06]' : 'bg-white border-slate-200'}`}>
+                  <div className={`w-full h-52 rounded-2xl ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                  <div className={`w-3/4 h-5 rounded-lg mt-2 ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                  <div className={`w-1/2 h-4 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                  <div className={`w-full h-12 rounded-2xl mt-auto ${isDark ? 'bg-white/[0.06]' : 'bg-slate-200'}`} />
+                </div>
+              ))
+            ) : displayedBooks.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`col-span-full rounded-3xl border p-10 text-center flex flex-col items-center justify-center gap-3 ${
+                  isDark ? "bg-white/[0.02] border-white/[0.07]" : "bg-white border-slate-200"
+                }`}
+              >
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-500 flex items-center justify-center">
+                  <BookOpen size={26} />
+                </div>
+                <h3 className="font-cinzel text-lg font-bold">No Books Found Here Yet</h3>
+                <p className={`text-xs max-w-sm ${isDark ? "text-gray-400" : "text-slate-500"}`}>
+                  {activeBookFilter === "favorites"
+                    ? "Tap the heart icon on any book card to save your favorite reads here."
+                    : activeBookFilter === "owned"
+                    ? "Books you unlock will appear right here for instant 1-tap reading."
+                    : "Try clearing your search or switching back to All Books."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setActiveBookFilter("all"); setSearchQuery(""); setSortBy("default"); }}
+                  className="btn-gold px-5 py-2.5 rounded-xl text-xs font-extrabold mt-1"
+                >
+                  Show All Books
+                </button>
+              </motion.div>
+            ) : (
+              displayedBooks.map((book, i) => {
+                const isPurchased = purchasedBookIds.includes(book.id);
+                const isFav = favorites.includes(book.id);
+                const originalPrice = book.final_price;
+                const pDiscount = partnerData ? Math.round(originalPrice * (partnerData.discount_pct / 100)) : 0;
+                const displayPrice = originalPrice - pDiscount;
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-30px" }} transition={{ duration: 0.48, delay: Math.min(i * 0.06, 0.28), ease: [0.16, 1, 0.3, 1] }}
+                    key={book.id} onClick={() => openBookDetails(book)}
+                    className={`luminary-card border rounded-[1.75rem] p-5 sm:p-6 relative flex flex-col h-full group cursor-pointer fast-anim hover:-translate-y-2 active:scale-[0.99] ${
+                      isDark
+                        ? 'bg-gradient-to-b from-white/[0.04] via-white/[0.02] to-[#0a0a16]/90 border-white/[0.08] hover:border-amber-500/35 shadow-[0_10px_35px_rgba(0,0,0,0.45)]'
+                        : 'bg-white border-slate-200/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:shadow-[0_20px_50px_rgba(212,146,26,0.16)] hover:border-amber-500/45'
+                    }`}
+                  >
+                    {/* Top Floating Badges Row */}
+                    {book.discount > 0 && !isPurchased && !partnerData && (
+                      <div className="absolute top-3.5 right-3.5 discount-badge px-3 py-1 rounded-full text-[11px] z-20 flex items-center gap-1">
+                        <Flame size={12} className="text-amber-600 fill-amber-500" />
+                        {book.discount}% OFF
+                      </div>
+                    )}
+                    {partnerData && !isPurchased && (
+                      <div className="absolute top-3.5 right-3.5 bg-blue-500/20 backdrop-blur-md text-blue-300 px-3 py-1 rounded-full text-[11px] font-black border border-blue-400/40 z-20 shadow-[0_0_14px_rgba(59,130,246,0.3)]">
+                        -{partnerData.discount_pct}% (Partner)
+                      </div>
+                    )}
+                    {isPurchased && (
+                      <div className="absolute top-3.5 right-3.5 bg-emerald-500/20 backdrop-blur-md text-emerald-300 px-3 py-1 rounded-full text-[11px] font-black border border-emerald-400/40 z-20 flex items-center gap-1">
+                        <CheckCircle2 size={12} /> Unlocked
+                      </div>
+                    )}
+
+                    {/* Upgraded 3D Showcase Stage for Book Cover */}
+                    <div className={`w-full h-52 mb-5 shrink-0 rounded-2xl relative overflow-hidden flex items-center justify-center p-3 border transition-colors ${
+                      isDark
+                        ? 'bg-gradient-to-b from-amber-500/[0.07] via-white/[0.015] to-black/40 border-white/[0.06] group-hover:border-amber-500/25'
+                        : 'bg-gradient-to-b from-amber-50/70 via-slate-50 to-slate-100/70 border-slate-200/70 group-hover:border-amber-300/70'
+                    }`}>
+                      {/* Soft Radial Pedestal Glow Behind Book */}
+                      <div
+                        className="absolute w-36 h-36 rounded-full blur-2xl opacity-50 group-hover:opacity-85 transition-opacity duration-500 pointer-events-none"
+                        style={{ background: "radial-gradient(circle, rgba(245,158,11,0.38) 0%, transparent 70%)" }}
+                      />
+
+                      {/* Top-Left Verified Rating Pill */}
+                      <div className={`absolute top-2.5 left-2.5 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold backdrop-blur-md border ${
+                        isDark ? "bg-black/55 border-white/10 text-amber-300" : "bg-white/85 border-slate-200 text-amber-600 shadow-sm"
+                      }`}>
+                        <Star size={10} className="fill-amber-400 text-amber-400" />
+                        <span>4.9</span>
+                      </div>
+
+                      {book.cover_path ? (
+                        <div className="w-full h-full relative flex items-center justify-center">
+                          <img 
+                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${book.cover_path}`} 
+                            alt={book.title} 
+                            loading={i < 2 ? "eager" : "lazy"} 
+                            decoding="async"
+                            className="max-h-full max-w-full object-contain rounded-lg shadow-[0_12px_28px_rgba(0,0,0,0.55)] transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-1" 
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center rounded-xl">
+                          <BookOpen size={48} className="text-amber-500/60" />
+                        </div>
+                      )}
+
+                      {/* Subtle Tap-to-Preview Pill on Hover */}
+                      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-10">
+                        <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-black/75 text-amber-300 border border-amber-400/30 backdrop-blur-md flex items-center gap-1 whitespace-nowrap shadow-lg">
+                          <Sparkles size={10} /> Tap for Details & Reviews
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Book Title */}
+                    <h3 className={`font-cinzel text-lg sm:text-xl font-bold mb-1.5 leading-snug line-clamp-2 min-h-[3.1rem] group-hover:text-amber-500 transition-colors ${isDark ? 'text-white/95' : 'text-slate-900'}`}>
+                      {book.title}
+                    </h3>
+                    
+                    {/* Author + Animated Heart Button */}
+                    <div className="flex justify-between items-center mb-4">
+                      <p className={`text-xs sm:text-sm font-medium truncate pr-2 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                        by <span className={isDark ? "text-gray-300" : "text-slate-700"}>{book.author}</span>
+                      </p>
+                      <motion.button
+                        whileTap={{ scale: 0.8 }}
+                        onClick={(e) => toggleFavorite(e, book.id)}
+                        className={`relative focus:outline-none hover:scale-110 transition-all shrink-0 w-9 h-9 rounded-full border flex items-center justify-center ${
+                          isFav
+                            ? "bg-rose-500/15 border-rose-500/35"
+                            : isDark
+                            ? "bg-white/[0.03] border-white/[0.08] hover:border-rose-500/30"
+                            : "bg-slate-50 border-slate-200 hover:border-rose-300"
+                        }`}
+                        title="Add to Favorites"
+                      >
+                        {likedBurstId === book.id && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60" />
+                        )}
+                        <Heart size={16} className={`transition-colors duration-300 ${isFav ? 'text-red-500 fill-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]' : (isDark ? 'text-gray-400 hover:text-red-400' : 'text-slate-400 hover:text-red-500')}`} />
+                      </motion.button>
+                    </div>
+
+                    {/* Price + Buy / Read Now CTA Row */}
+                    <div className={`mt-auto flex justify-between items-center border-t pt-4 gap-3 ${isDark ? 'border-white/[0.07]' : 'border-slate-100'}`}>
+                      <div>
+                        {book.discount > 0 && !isPurchased && !partnerData && (
+                          <div className={`text-[11px] line-through font-semibold ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>₹{book.base_price}</div>
+                        )}
+                        {partnerData && !isPurchased && (
+                          <div className={`text-[11px] line-through font-semibold ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>₹{originalPrice}</div>
+                        )}
+                        <div className={`text-2xl font-black tracking-tight leading-none ${isPurchased ? (isDark ? "text-emerald-400" : "text-emerald-600") : (isDark ? "text-white" : "text-slate-900")}`}>
+                          {isPurchased ? 'Owned' : `₹${displayPrice}`}
+                        </div>
+                      </div>
+
+                      {isPurchased ? (
+                        <motion.button
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={(e) => { e.stopPropagation(); openWebReader(book); }}
+                          className="px-5 py-2.5 rounded-2xl text-xs sm:text-sm bg-emerald-500/[0.14] text-emerald-400 border border-emerald-500/35 flex items-center gap-2 font-extrabold hover:bg-emerald-500/[0.22] transition shadow-[0_4px_20px_rgba(16,185,129,0.2)]"
+                        >
+                          <CheckCircle2 size={15} /> {t.readNow}
+                        </motion.button>
+                      ) : (
+                        <motion.button
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={(e) => { e.stopPropagation(); setSelectedBook(book); setShowCheckout(true); }}
+                          className="btn-gold btn-shine px-5 py-2.5 rounded-2xl text-xs sm:text-sm flex items-center gap-1.5 font-extrabold"
+                        >
+                          {t.buyNow} <ChevronRight size={15} />
+                        </motion.button>
+                      )}
+                    </div>
+                    
+                    {/* NEW VIEWS & LIKES UI BELOW BUY BUTTON (Refined Pill Metrics) */}
+                    <div className={`flex justify-between items-center mt-3.5 pt-3 border-t border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'}`}>
+                      <div className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${isDark ? 'bg-blue-500/[0.08] text-blue-300/90' : 'bg-blue-50 text-blue-700'}`}>
+                        <Eye size={13} className="text-blue-400" />
+                        <span>{book.views || 0} Views</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${isDark ? 'bg-rose-500/[0.08] text-rose-300/90' : 'bg-rose-50 text-rose-700'}`}>
+                        <Heart size={13} className="text-red-500 fill-red-500/25" />
+                        <span>{book.likes || 0} Likes</span>
+                      </div>
+                    </div>
+
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Compact, Animated Glassmorphic Footer Dock (About Us, Safe & Secure, Instant PDF, Share Page) */}
+        <footer className={`py-6 px-4 w-full flex flex-col items-center border-t mt-auto relative z-10 ${isDark ? 'bg-gradient-to-b from-[#07070d] to-[#0a0a16] border-white/[0.06]' : 'bg-gradient-to-b from-slate-50 to-slate-100/80 border-slate-200'}`}>
+          <div className={`w-full max-w-3xl rounded-3xl border p-3 sm:p-4 backdrop-blur-xl ${
+            isDark
+              ? 'bg-white/[0.025] border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.45)]'
+              : 'bg-white/90 border-slate-200/90 shadow-[0_10px_30px_rgba(15,23,42,0.05)]'
+          }`}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* 1. About Us */}
+              <motion.div whileHover={{ y: -2, scale: 1.02 }} whileTap={{ scale: 0.96 }}>
+                <Link
+                  href="/about"
+                  className={`footer-action-pill h-full w-full px-3 py-2.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-extrabold shadow-sm ${
+                    isDark
+                      ? 'bg-white/[0.04] border-white/[0.09] text-gray-200 hover:border-amber-500/40 hover:text-amber-400'
+                      : 'bg-slate-50/90 border-slate-200 text-slate-700 hover:border-amber-500/40 hover:text-amber-600'
+                  }`}
+                >
+                  <span className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0">
+                    <Sparkles size={13} />
+                  </span>
+                  <span className="truncate">About Us</span>
+                </Link>
+              </motion.div>
+
+              {/* 2. Safe & Secure */}
+              <motion.div
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => addToast("100% Verified & SSL Encrypted Library 🛡️", "success")}
+                className={`footer-action-pill cursor-pointer px-3 py-2.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-extrabold shadow-sm ${
+                  isDark
+                    ? 'bg-white/[0.04] border-white/[0.09] text-gray-200 hover:border-emerald-500/40 hover:text-emerald-400'
+                    : 'bg-slate-50/90 border-slate-200 text-slate-700 hover:border-emerald-500/40 hover:text-emerald-600'
+                }`}
+              >
+                <span className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={13} />
+                </span>
+                <span className="truncate">{t.secure}</span>
+              </motion.div>
+
+              {/* 3. Instant PDF Auto-Download */}
+              <motion.button
+                type="button"
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => user ? setIsSidebarOpen(true) : setShowAuthModal(true)}
+                className={`footer-action-pill cursor-pointer px-3 py-2.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-extrabold shadow-sm ${
+                  isDark
+                    ? 'bg-white/[0.04] border-white/[0.09] text-gray-200 hover:border-amber-500/40 hover:text-amber-400'
+                    : 'bg-slate-50/90 border-slate-200 text-slate-700 hover:border-amber-500/40 hover:text-amber-600'
+                }`}
+              >
+                <span className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                  <Zap size={13} />
+                </span>
+                <span className="truncate">{t.instant}</span>
+              </motion.button>
+
+              {/* 4. Share Page */}
+              <motion.button
+                type="button"
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleShare}
+                className="footer-action-pill btn-shine cursor-pointer px-3 py-2.5 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 text-amber-400 hover:border-amber-400 flex items-center justify-center gap-2 text-xs font-extrabold shadow-[0_4px_18px_rgba(212,146,26,0.18)]"
+              >
+                <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-300 to-amber-600 text-[#150800] flex items-center justify-center shrink-0 shadow-sm">
+                  <Share2 size={12} />
+                </span>
+                <span className="truncate">Share Page</span>
+              </motion.button>
+            </div>
+          </div>
+        </footer>
+
+        {/* Scrolling Line Loop */}
+        <div className="w-full bg-amber-500/[0.03] border-t border-amber-500/[0.12] overflow-hidden cursor-pointer py-2 relative z-10" onClick={() => window.location.reload()}>
+          <div className={`animate-scroll text-[10px] tracking-[0.25em] uppercase font-black flex w-max ${isDark ? 'text-amber-500/40' : 'text-amber-500/60'}`}>
+            <span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span><span className="px-8">Vedoxa Library</span>
+          </div>
+        </div>
+
+        {/* PURE SVG TRUST LOGOS SECTION */}
+        <div className={`w-full py-5 flex flex-col items-center border-b relative z-10 ${isDark ? 'bg-[#090914] border-white/[0.04]' : 'bg-slate-100 border-slate-200'}`}>
+          <p className={`text-[10px] font-bold mb-3.5 tracking-widest uppercase ${isDark ? 'text-gray-600' : 'text-slate-500'}`}>Trusted By & Verified Secure</p>
+          <div className="flex flex-wrap justify-center items-center gap-5 md:gap-10 opacity-75 hover:opacity-100 transition-all duration-500 px-4">
+            <div className={`flex items-center gap-2 font-bold tracking-wide text-xs sm:text-sm ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+              <svg viewBox="0 0 48 48" className="h-4 sm:h-5 w-auto grayscale hover:grayscale-0 transition-all cursor-pointer">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              Google Verified
+            </div>
+            <div className="flex items-center gap-1 font-bold tracking-wide text-xs sm:text-sm">
+              <svg viewBox="0 0 100 24" className="h-3.5 sm:h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12.44 19H7.13L16 2.776h5.36L12.44 19z" fill={isDark ? "#fff" : "#334155"}/>
+                <path d="M2.57 18.99l9-16.216h5.21l-9 16.216H2.57z" fill="#3395FF"/>
+                <text x="24" y="17" fill={isDark ? "#fff" : "#334155"} fontSize="16" fontWeight="bold" fontFamily="sans-serif">razorpay</text>
+              </svg>
+            </div>
+            <div className={`flex items-center gap-1.5 text-xs sm:text-sm font-bold ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+              <ShieldCheck className="text-green-500" size={17}/> McAfee Secure
+            </div>
+            <div className={`flex items-center gap-1.5 text-xs sm:text-sm font-bold ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+              <Lock className="text-amber-500" size={17}/> SSL 256-bit
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </>
+  );
+}
