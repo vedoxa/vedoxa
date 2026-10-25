@@ -8,9 +8,12 @@ import {
   BarChart3, TrendingUp, Zap, DollarSign, Tag, Mail, Phone, MapPin, CreditCard,
   Download, Filter, Search, Edit3, Copy, Loader, ChevronDown, Calendar, Star,
   TrendingDown, Activity, Bell, Menu, ChevronRight, Sparkles, ArrowUpRight, ArrowDownLeft, LineChart, PieChart,
-  Handshake, Key, MessageSquare, Send
+  Handshake, Key, MessageSquare, Send, Crown, RefreshCw, Award, ExternalLink, CheckCircle2, Clock, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
+import BlogManager from "../../components/admin/BlogManager";
+import SeoTools from "../../components/admin/SeoTools";
+import SalesInsights from "../../components/admin/SalesInsights";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy-url.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key";
@@ -18,18 +21,33 @@ const lookerStudioUrl = process.env.NEXT_PUBLIC_LOOKER_STUDIO_URL || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function PremiumAdminDashboard() {
-  // AUTH & SECURITY
+  // ==========================================
+  // AUTH & SECURITY (WITH is_admin CHECK)
+  // ==========================================
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [adminEmailDisplay, setAdminEmailDisplay] = useState("Royal Sovereign");
   
-  // NAVIGATION
+  // NAVIGATION & UI HELPERS
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showGa4Panel, setShowGa4Panel] = useState(false);
+  const [currentTime, setCurrentTime] = useState("");
+  const [copiedText, setCopiedText] = useState("");
+
+  // CUSTOM ROYAL CONFIRMATION MODAL (Replaces native confirm)
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null
+  });
+
   // BOOK MANAGEMENT
   const [books, setBooks] = useState([]);
   const [title, setTitle] = useState("");
@@ -53,12 +71,16 @@ export default function PremiumAdminDashboard() {
   const [editingBookId, setEditingBookId] = useState(null);
   const [bookSearch, setBookSearch] = useState("");
   
-  // FAKE REVIEWS (Updated for Rating & Edit/Delete)
+  // FAKE REVIEWS & DEDICATED REVIEW STUDIO
   const [fakeReviewName, setFakeReviewName] = useState("");
   const [fakeReviewText, setFakeReviewText] = useState("");
   const [fakeReviewRating, setFakeReviewRating] = useState(5);
   const [bookReviews, setBookReviews] = useState([]);
   const [editingReviewId, setEditingReviewId] = useState(null);
+  const [selectedReviewBookId, setSelectedReviewBookId] = useState("");
+  const [allReviewsList, setAllReviewsList] = useState([]);
+  const [reviewSearchQuery, setReviewSearchQuery] = useState("");
+  const [hoverStar, setHoverStar] = useState(0);
 
   // DISCOUNT MANAGEMENT
   const [discounts, setDiscounts] = useState([]);
@@ -119,6 +141,17 @@ export default function PremiumAdminDashboard() {
   // PARTNER EDIT STATE
   const [editingPartner, setEditingPartner] = useState(null);
 
+  // Live Clock Effect
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+    };
+    updateClock();
+    const timer = setInterval(updateClock, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     checkSession();
   }, []);
@@ -137,27 +170,102 @@ export default function PremiumAdminDashboard() {
     }
   }, [affiliateMessages, selectedAffiliateId]);
 
+  // Auto-select first book in Dedicated Reviews Studio if none selected
+  useEffect(() => {
+    if (books.length > 0 && !selectedReviewBookId) {
+      setSelectedReviewBookId(books[0].id);
+      fetchBookReviews(books[0].id);
+    }
+  }, [books]);
+
+  // Helper for custom Royal Confirmation Dialog
+  const askConfirmation = (title, message, onConfirmCallback) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        await onConfirmCallback();
+      }
+    });
+  };
+
+  // Helper for Copy to Clipboard
+  const copyToClipboard = (text, label = "Code") => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    addNotification(`${label} copied: ${text} ✨`, "success");
+    setTimeout(() => setCopiedText(""), 2000);
+  };
+
+  // Helper to Export CSV
+  const exportOrdersToCSV = () => {
+    if (!orders || orders.length === 0) {
+      addNotification("No orders to export yet!", "error");
+      return;
+    }
+    const headers = ["Order ID", "Customer", "Book Title", "Final Price (INR)", "Coupon", "Date"];
+    const rows = orders.map(o => [
+      o.id,
+      `"${(o.customer_name || "Guest").replace(/"/g, '""')}"`,
+      `"${(o.book_title || "Book").replace(/"/g, '""')}"`,
+      o.final_price || 0,
+      o.coupon_used || "None",
+      new Date(o.created_at).toLocaleDateString()
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `vedoxa_royal_sales_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addNotification("Sales report exported to CSV! 📊", "success");
+  };
+
+  // ==========================================
+  // SESSION & LOGIN WITH is_admin VERIFICATION
+  // ==========================================
   const checkSession = async () => {
     try {
       const { data } = await supabase.auth.getSession();
-      if (data.session?.user) setIsAuthenticated(true);
+      if (data.session?.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', data.session.user.id)
+          .single();
+
+        if (!profileError && profile?.is_admin) {
+          setIsAuthenticated(true);
+          setAdminEmailDisplay(data.session.user.email || "Royal Admin");
+        } else {
+          await supabase.auth.signOut();
+          setIsAuthenticated(false);
+        }
+      }
     } catch (error) {
       console.log("Session check failed:", error);
     }
   };
 
-  const loadAllData = async () => {
+  const loadAllData = async (manual = false) => {
     if (!isAuthenticated) return;
+    if (manual) setIsRefreshing(true);
     try {
-      const [booksData, discountsData, couponsData, ordersData, customersData, affCodesData, affData, affMsgsData] = await Promise.all([
+      const [booksData, discountsData, couponsData, ordersData, customersData, affCodesData, affData, affMsgsData, allReviewsData] = await Promise.all([
         supabase.from('books').select('*'),
         supabase.from('discounts').select('*'),
         supabase.from('coupons').select('*'),
-        supabase.from('orders').select('*'),
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
         supabase.from('profiles').select('*'),
         supabase.from('affiliate_codes').select('*').order('created_at', { ascending: false }),
         supabase.from('affiliates').select('*').order('joined_at', { ascending: false }),
-        supabase.from('affiliate_messages').select('*').order('created_at', { ascending: true })
+        supabase.from('affiliate_messages').select('*').order('created_at', { ascending: true }),
+        supabase.from('reviews').select('id, book_id, review_text, rating, fake_author_name, created_at, profiles(name)').order('created_at', { ascending: false })
       ]);
 
       if (booksData.data) setBooks(booksData.data);
@@ -169,14 +277,24 @@ export default function PremiumAdminDashboard() {
       if (affCodesData.data) setAffiliateCodes(affCodesData.data);
       if (affData.data) setAffiliates(affData.data);
       if (affMsgsData.data) setAffiliateMessages(affMsgsData.data);
+      if (allReviewsData.data) setAllReviewsList(allReviewsData.data);
+
+      if (manual) addNotification("Royal data synchronized! ✨", "success");
     } catch (error) {
       console.log("Data load error:", error);
+    } finally {
+      if (manual) setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
   const fetchBookReviews = async (bookId) => {
+    if (!bookId) return;
     try {
-      const { data, error } = await supabase.from('reviews').select('id, review_text, rating, fake_author_name, profiles(name)').eq('book_id', bookId).order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('id, book_id, review_text, rating, fake_author_name, created_at, profiles(name)')
+        .eq('book_id', bookId)
+        .order('created_at', { ascending: false });
       if (!error && data) setBookReviews(data);
     } catch (err) {
       console.error("Error fetching reviews:", err);
@@ -193,10 +311,25 @@ export default function PremiumAdminDashboard() {
       if (error) {
         setLoginError("❌ Invalid credentials. Please try again.");
       } else if (data.user) {
+        // Verify is_admin flag in profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError || !profile?.is_admin) {
+          await supabase.auth.signOut();
+          setLoginError("👑 Access Denied: This account does not have Royal Admin (is_admin) privileges.");
+          setIsLoggingIn(false);
+          return;
+        }
+
         setIsAuthenticated(true);
+        setAdminEmailDisplay(data.user.email || "Royal Admin");
         setEmail("");
         setPassword("");
-        addNotification("Welcome back! 👋", "success");
+        addNotification("Welcome to the Royal Suite! 👑", "success");
       }
     } catch (error) {
       setLoginError("Login failed: " + error.message);
@@ -206,8 +339,8 @@ export default function PremiumAdminDashboard() {
   };
 
   const addNotification = (message, type = "info") => {
-    const id = Date.now();
-    setNotifications([...notifications, { id, message, type }]);
+    const id = Date.now() + Math.random();
+    setNotifications(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 4000);
@@ -292,9 +425,14 @@ export default function PremiumAdminDashboard() {
     }
   };
 
-  const handleAddFakeReview = async () => {
+  const handleAddFakeReview = async (targetBookIdOverride = null) => {
+    const activeBookId = targetBookIdOverride || editingBookId || selectedReviewBookId;
+    if (!activeBookId) {
+      addNotification("Please select a book first!", "error");
+      return;
+    }
     if (!fakeReviewName || !fakeReviewText) {
-      addNotification("Name and Review text are required for fake review!", "error");
+      addNotification("Customer Name and Review text are required!", "error");
       return;
     }
     try {
@@ -305,37 +443,59 @@ export default function PremiumAdminDashboard() {
           rating: fakeReviewRating
         }).eq('id', editingReviewId);
         if (error) throw error;
-        addNotification("Fake Review Updated Successfully! 🌟", "success");
+        addNotification("Review Updated Successfully! 🌟", "success");
       } else {
         const { error } = await supabase.from('reviews').insert([{
-          book_id: editingBookId,
+          book_id: activeBookId,
           fake_author_name: fakeReviewName,
           review_text: fakeReviewText,
           rating: fakeReviewRating
         }]);
         if (error) throw error;
-        addNotification("Fake Review Added Successfully! 🌟", "success");
+        addNotification("5-Star Royal Review Injected! 🌟", "success");
       }
       setFakeReviewName("");
       setFakeReviewText("");
       setFakeReviewRating(5);
       setEditingReviewId(null);
-      fetchBookReviews(editingBookId);
+      fetchBookReviews(activeBookId);
+      loadAllData();
     } catch (err) {
       addNotification("Review Error: " + err.message, "error");
     }
   };
 
-  const handleDeleteReview = async (reviewId) => {
-    if(window.confirm("Delete this review?")) {
+  const handleDeleteReview = async (reviewId, bookIdToRefresh = null) => {
+    askConfirmation(
+      "Delete Customer Review?",
+      "Are you sure you want to permanently remove this review from the book?",
+      async () => {
         try {
-            const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
-            if(error) throw error;
-            setBookReviews(bookReviews.filter(r => r.id !== reviewId));
-            addNotification("Review deleted successfully!", "success");
-        } catch(err) {
-            addNotification("Delete failed: " + err.message, "error");
+          const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+          if (error) throw error;
+          setBookReviews(prev => prev.filter(r => r.id !== reviewId));
+          setAllReviewsList(prev => prev.filter(r => r.id !== reviewId));
+          if (bookIdToRefresh) fetchBookReviews(bookIdToRefresh);
+          addNotification("Review deleted successfully!", "success");
+        } catch (err) {
+          addNotification("Delete failed: " + err.message, "error");
         }
+      }
+    );
+  };
+
+  const handleQuickUpdateBookStats = async (bookId, newViews, newLikes, newDislikes) => {
+    try {
+      const { error } = await supabase.from('books').update({
+        views: Number(newViews),
+        likes: Number(newLikes),
+        dislikes: Number(newDislikes)
+      }).eq('id', bookId);
+      if (error) throw error;
+      addNotification("Book social proof updated! ✨", "success");
+      loadAllData();
+    } catch (err) {
+      addNotification("Failed to update stats: " + err.message, "error");
     }
   };
 
@@ -380,16 +540,20 @@ export default function PremiumAdminDashboard() {
   };
 
   const handleDeleteBook = async (id) => {
-    if (window.confirm("Are you sure? This cannot be undone.")) {
-      try {
-        const { error } = await supabase.from('books').delete().eq('id', id);
-        if (error) throw error;
-        setBooks(books.filter(b => b.id !== id));
-        addNotification("Book deleted successfully! 🗑️", "success");
-      } catch (error) {
-        addNotification("Delete failed: " + error.message, "error");
+    askConfirmation(
+      "Remove Book from Vault?",
+      "Are you sure you want to delete this book? This action cannot be undone.",
+      async () => {
+        try {
+          const { error } = await supabase.from('books').delete().eq('id', id);
+          if (error) throw error;
+          setBooks(prev => prev.filter(b => b.id !== id));
+          addNotification("Book deleted successfully! 🗑️", "success");
+        } catch (error) {
+          addNotification("Delete failed: " + error.message, "error");
+        }
       }
-    }
+    );
   };
 
   const handleAddDiscount = async () => {
@@ -421,31 +585,31 @@ export default function PremiumAdminDashboard() {
 
       // Ensure actual books are updated so website reflects discount
       for (const bookId of selectedBooks) {
-         const book = books.find(b => b.id === bookId);
-         if (book) {
-             const newFinalPrice = book.base_price - (book.base_price * discountPercentage / 100);
-             await supabase.from('books').update({
-                 discount: discountPercentage,
-                 final_price: newFinalPrice
-             }).eq('id', bookId);
-         }
+        const book = books.find(b => b.id === bookId);
+        if (book) {
+          const newFinalPrice = book.base_price - (book.base_price * discountPercentage / 100);
+          await supabase.from('books').update({
+            discount: discountPercentage,
+            final_price: newFinalPrice
+          }).eq('id', bookId);
+        }
       }
 
       // If editing, revert books that were removed from the selection
       if (editingDiscountId) {
-          const originalDiscount = discounts.find(d => d.id === editingDiscountId);
-          if (originalDiscount && originalDiscount.appliedBooks) {
-              const removedBooks = originalDiscount.appliedBooks.filter(id => !selectedBooks.includes(id));
-              for (const bookId of removedBooks) {
-                  const book = books.find(b => b.id === bookId);
-                  if (book) {
-                      await supabase.from('books').update({
-                          discount: 0,
-                          final_price: book.base_price
-                      }).eq('id', bookId);
-                  }
-              }
+        const originalDiscount = discounts.find(d => d.id === editingDiscountId);
+        if (originalDiscount && originalDiscount.appliedBooks) {
+          const removedBooks = originalDiscount.appliedBooks.filter(id => !selectedBooks.includes(id));
+          for (const bookId of removedBooks) {
+            const book = books.find(b => b.id === bookId);
+            if (book) {
+              await supabase.from('books').update({
+                discount: 0,
+                final_price: book.base_price
+              }).eq('id', bookId);
+            }
           }
+        }
       }
 
       resetDiscountForm();
@@ -467,32 +631,35 @@ export default function PremiumAdminDashboard() {
   };
 
   const handleDeleteDiscount = async (id) => {
-    if (window.confirm("Delete this discount?")) {
-      try {
-        const discountToDelete = discounts.find(d => d.id === id);
-        const { error } = await supabase.from('discounts').delete().eq('id', id);
-        if (error) throw error;
-        
-        // Revert books prices back to original
-        if (discountToDelete && discountToDelete.appliedBooks) {
+    askConfirmation(
+      "End Discount Campaign?",
+      "Deleting this campaign will restore the original prices on all associated books.",
+      async () => {
+        try {
+          const discountToDelete = discounts.find(d => d.id === id);
+          const { error } = await supabase.from('discounts').delete().eq('id', id);
+          if (error) throw error;
+          
+          if (discountToDelete && discountToDelete.appliedBooks) {
             for (const bookId of discountToDelete.appliedBooks) {
-                const book = books.find(b => b.id === bookId);
-                if (book) {
-                    await supabase.from('books').update({
-                        discount: 0,
-                        final_price: book.base_price
-                    }).eq('id', bookId);
-                }
+              const book = books.find(b => b.id === bookId);
+              if (book) {
+                await supabase.from('books').update({
+                  discount: 0,
+                  final_price: book.base_price
+                }).eq('id', bookId);
+              }
             }
-        }
+          }
 
-        setDiscounts(discounts.filter(d => d.id !== id));
-        addNotification("Discount deleted! 🗑️", "success");
-        loadAllData();
-      } catch (error) {
-        addNotification("Delete failed: " + error.message, "error");
+          setDiscounts(prev => prev.filter(d => d.id !== id));
+          addNotification("Discount deleted & prices restored! 🗑️", "success");
+          loadAllData();
+        } catch (error) {
+          addNotification("Delete failed: " + error.message, "error");
+        }
       }
-    }
+    );
   };
 
   const resetDiscountForm = () => {
@@ -536,16 +703,20 @@ export default function PremiumAdminDashboard() {
   };
 
   const handleDeleteCoupon = async (id) => {
-    if (window.confirm("Delete this coupon?")) {
-      try {
-        const { error } = await supabase.from('coupons').delete().eq('id', id);
-        if (error) throw error;
-        setCoupons(coupons.filter(c => c.id !== id));
-        addNotification("Coupon deleted! 🗑️", "success");
-      } catch (error) {
-        addNotification("Delete failed: " + error.message, "error");
+    askConfirmation(
+      "Delete Promo Coupon?",
+      "Customers will no longer be able to apply this promo code at checkout.",
+      async () => {
+        try {
+          const { error } = await supabase.from('coupons').delete().eq('id', id);
+          if (error) throw error;
+          setCoupons(prev => prev.filter(c => c.id !== id));
+          addNotification("Coupon deleted! 🗑️", "success");
+        } catch (error) {
+          addNotification("Delete failed: " + error.message, "error");
+        }
       }
-    }
+    );
   };
 
   // ==========================================
@@ -584,7 +755,7 @@ export default function PremiumAdminDashboard() {
       }).eq('user_id', affiliateId);
       
       if (error) throw error;
-      setPayAmount(prev => ({...prev, [affiliateId]: ""}));
+      setPayAmount(prev => ({ ...prev, [affiliateId]: "" }));
       addNotification(`Successfully paid ₹${amount} to partner!`, "success");
       loadAllData();
     } catch (err) {
@@ -613,23 +784,23 @@ export default function PremiumAdminDashboard() {
   };
 
   const handleDeletePartner = async (affiliateId, partnerCode) => {
-    if (window.confirm("WARNING: This will delete the partner, their stats, and invalidate their code! Are you sure?")) {
-      try {
-        // First delete their code from affiliate_codes
-        await supabase.from('affiliate_codes').delete().eq('code', partnerCode);
-        
-        // Then delete the partner from affiliates table
-        const { error } = await supabase.from('affiliates').delete().eq('user_id', affiliateId);
-        
-        if (error) throw error;
-        
-        if (selectedAffiliateId === affiliateId) setSelectedAffiliateId(null);
-        addNotification("Partner removed successfully!", "success");
-        loadAllData();
-      } catch (err) {
-        addNotification("Delete Failed: " + err.message, "error");
+    askConfirmation(
+      "Remove Affiliate Partner?",
+      "WARNING: This will delete the partner, their stats, and invalidate their partner code!",
+      async () => {
+        try {
+          await supabase.from('affiliate_codes').delete().eq('code', partnerCode);
+          const { error } = await supabase.from('affiliates').delete().eq('user_id', affiliateId);
+          if (error) throw error;
+          
+          if (selectedAffiliateId === affiliateId) setSelectedAffiliateId(null);
+          addNotification("Partner removed successfully!", "success");
+          loadAllData();
+        } catch (err) {
+          addNotification("Delete Failed: " + err.message, "error");
+        }
       }
-    }
+    );
   };
 
   const handleSendAdminMessage = async () => {
@@ -695,6 +866,9 @@ export default function PremiumAdminDashboard() {
     }
   };
 
+  // ==========================================
+  // COMPUTED METRICS & FILTERS
+  // ==========================================
   const filteredBooks = books.filter(b =>
     b.title?.toLowerCase().includes(bookSearch.toLowerCase()) ||
     b.author?.toLowerCase().includes(bookSearch.toLowerCase())
@@ -713,76 +887,120 @@ export default function PremiumAdminDashboard() {
     c.email?.toLowerCase().includes(searchCustomer.toLowerCase())
   );
 
-  const totalRevenue = orders.reduce((sum, order) => sum + (order.final_price || 0), 0);
+  const totalRevenue = orders.reduce((sum, order) => sum + (Number(order.final_price) || 0), 0);
   const totalOrders = orders.length;
   const totalCustomers = customers.length;
+  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
+  // Today's revenue calculation
+  const todayStr = new Date().toDateString();
+  const todayRevenue = orders
+    .filter(o => o.created_at && new Date(o.created_at).toDateString() === todayStr)
+    .reduce((sum, o) => sum + (Number(o.final_price) || 0), 0);
+
+  // Pending affiliate payouts
+  const totalPendingPayouts = affiliates.reduce((sum, aff) => {
+    const pending = (Number(aff.total_earned) || 0) - (Number(aff.total_paid) || 0);
+    return sum + (pending > 0 ? pending : 0);
+  }, 0);
+
+  // Average rating across all reviews
+  const globalAverageRating = allReviewsList.length > 0
+    ? (allReviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / allReviewsList.length).toFixed(1)
+    : "5.0";
+
+  const selectedBookObject = books.find(b => String(b.id) === String(selectedReviewBookId));
+
+  // Navigation Items Configuration
+  const navItems = [
+    { id: "dashboard", label: "Royal Overview", icon: Crown, badge: null },
+    { id: "books", label: "Book Vault", icon: BookOpen, badge: books.length },
+    { id: "reviews", label: "Reviews & Stars", icon: Star, badge: `${globalAverageRating}★` },
+    { id: "discounts", label: "Royal Deals", icon: Percent, badge: discounts.length || null },
+    { id: "coupons", label: "Promo Codes", icon: Tag, badge: coupons.length || null },
+    { id: "customers", label: "Members", icon: Users, badge: totalCustomers || null },
+    { id: "affiliates", label: "Partners", icon: Handshake, badge: affiliates.length || null },
+    { id: "blog", label: "Editorial Blog", icon: Edit3, badge: null },
+    { id: "seo", label: "SEO Engine", icon: Search, badge: null },
+    { id: "insights", label: "Deep Insights", icon: LineChart, badge: null },
+    { id: "settings", label: "Vault Security", icon: Settings, badge: null }
+  ];
+
+  // ==========================================
+  // ROYAL LOGIN SCREEN
+  // ==========================================
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 flex items-center justify-center p-4 font-sans overflow-hidden relative">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse"></div>
-          <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-gradient-to-r from-pink-500 to-rose-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse animation-delay-2000"></div>
-          <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse animation-delay-4000"></div>
+      <div className="min-h-screen bg-[#07090E] flex items-center justify-center p-4 font-sans overflow-hidden relative selection:bg-amber-500/30 selection:text-amber-200">
+        {/* Soft Royal Ambient Glows */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 left-1/4 w-[28rem] h-[28rem] bg-amber-500/10 rounded-full blur-[130px]"></div>
+          <div className="absolute top-1/2 -right-20 w-[26rem] h-[26rem] bg-indigo-500/10 rounded-full blur-[130px]"></div>
+          <div className="absolute -bottom-24 left-1/3 w-[24rem] h-[24rem] bg-purple-500/10 rounded-full blur-[130px]"></div>
         </div>
 
         <div className="relative max-w-md w-full">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-purple-600/30 to-pink-600/30 rounded-3xl blur-2xl opacity-100"></div>
-          
-          <div className="relative bg-slate-900/70 backdrop-blur-3xl border border-white/20 p-10 rounded-3xl shadow-[0_0_50px_rgba(139,92,246,0.3)]">
-            <div className="flex justify-center mb-8">
+          <div className="relative bg-[#0D111A]/90 backdrop-blur-2xl border border-amber-500/20 p-10 rounded-3xl shadow-[0_20px_70px_rgba(0,0,0,0.75)]">
+            {/* Top Crown Crest */}
+            <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-2xl blur-lg opacity-80 group-hover:opacity-100 transition animate-pulse"></div>
-                <div className="relative bg-gradient-to-br from-blue-600 to-purple-600 p-4 rounded-2xl shadow-xl border border-white/10">
-                  <ShieldCheck size={40} className="text-white drop-shadow-md" />
+                <div className="absolute inset-0 bg-amber-400/25 rounded-2xl blur-xl"></div>
+                <div className="relative bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-4 rounded-2xl shadow-lg border border-amber-200/40">
+                  <Crown size={34} className="text-slate-950" />
                 </div>
               </div>
             </div>
             
-            <h1 className="text-4xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 mb-2">VEDOXA</h1>
-            <p className="text-center text-blue-200 text-sm font-semibold mb-8">Premium Books Management System</p>
+            <div className="text-center mb-8">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold tracking-widest uppercase mb-3">
+                <Sparkles size={12} /> Imperial Access Only
+              </span>
+              <h1 className="text-3xl font-black tracking-tight text-white">
+                VEDOXA <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">ROYAL</span>
+              </h1>
+              <p className="text-slate-400 text-xs font-medium mt-1.5">Executive Publishing & Sovereign Suite</p>
+            </div>
             
             <form onSubmit={handleAdminLogin} className="space-y-5">
               {loginError && (
-                <div className="p-4 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-sm font-bold flex items-center gap-2 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-                  <AlertCircle size={18} /> {loginError}
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs font-semibold flex items-start gap-2.5 leading-relaxed">
+                  <AlertCircle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                  <span>{loginError}</span>
                 </div>
               )}
               
-              <div className="group">
-                <label className="block text-xs font-bold text-indigo-300 mb-3 uppercase tracking-widest">Admin Email</label>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-2 uppercase tracking-wider">Sovereign Email</label>
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/40 to-purple-500/40 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300"></div>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="relative w-full bg-slate-900/60 border border-indigo-500/30 hover:border-indigo-400/70 focus:border-blue-400 rounded-xl px-5 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
+                    className="w-full bg-[#131926] border border-slate-800 hover:border-amber-500/30 focus:border-amber-400 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition"
                     placeholder="admin@vedoxa.com"
                   />
-                  <Mail className="absolute right-4 top-1/2 transform -translate-y-1/2 text-indigo-400 pointer-events-none" size={18} />
+                  <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={17} />
                 </div>
               </div>
               
-              <div className="group">
-                <label className="block text-xs font-bold text-indigo-300 mb-3 uppercase tracking-widest">Secret Passkey</label>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-2 uppercase tracking-wider">Royal Passkey</label>
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/40 to-pink-500/40 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300"></div>
                   <input
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="relative w-full bg-slate-900/60 border border-indigo-500/30 hover:border-indigo-400/70 focus:border-purple-400 rounded-xl px-5 py-4 text-white placeholder-slate-400 outline-none transition duration-300 pr-12 shadow-inner"
+                    className="w-full bg-[#131926] border border-slate-800 hover:border-amber-500/30 focus:border-amber-400 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition pr-11"
                     placeholder="••••••••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-indigo-400 hover:text-white transition"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 transition"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
@@ -790,1247 +1008,1638 @@ export default function PremiumAdminDashboard() {
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="relative w-full mt-8 group"
+                className="w-full mt-4 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-600 hover:from-amber-300 hover:to-yellow-500 disabled:opacity-50 text-slate-950 font-black py-3.5 rounded-xl transition shadow-[0_10px_25px_rgba(245,158,11,0.25)] flex items-center justify-center gap-2 text-sm tracking-wide"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-xl blur-md group-hover:blur-xl opacity-80 group-hover:opacity-100 transition duration-300 group-disabled:opacity-50"></div>
-                <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-500 hover:via-purple-500 hover:to-pink-500 border border-white/20 disabled:opacity-50 text-white font-black py-4 rounded-xl transition transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 uppercase tracking-wider shadow-lg">
-                  {isLoggingIn ? (
-                    <>
-                      <Loader size={20} className="animate-spin" /> Verifying...
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={20} /> Unlock System
-                    </>
-                  )}
-                </div>
+                {isLoggingIn ? (
+                  <>
+                    <Loader size={18} className="animate-spin" /> Verifying Royal Crest...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={18} /> Enter Royal Chamber
+                  </>
+                )}
               </button>
             </form>
+
+            <div className="mt-6 pt-5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5"><Lock size={12} className="text-amber-400/80" /> Protected by `is_admin` Guard</span>
+              <span>v3.5 Imperial</span>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // ==========================================
+  // MAIN ROYAL ADMIN INTERFACE
+  // ==========================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/40 to-slate-950 text-slate-200 font-sans">
+    <div className="min-h-screen bg-[#07090E] text-slate-200 font-sans selection:bg-amber-500/30 selection:text-amber-200 flex flex-col">
       
-      {showLogoutModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-slate-900 border border-red-500/50 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_rgba(239,68,68,0.2)] text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6 border border-red-500/50">
-               <LogOut size={32} className="text-red-400" />
+      {/* CUSTOM ROYAL CONFIRMATION DIALOG */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+          <div className="bg-[#0E131F] border border-amber-500/30 rounded-3xl p-7 max-w-sm w-full shadow-2xl text-center">
+            <div className="mx-auto w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-4 border border-amber-500/30">
+              <AlertCircle size={28} className="text-amber-400" />
             </div>
-            <h3 className="text-2xl font-black text-white mb-2">Confirm Logout</h3>
-            <p className="text-slate-400 mb-8 text-sm leading-relaxed">Are you sure you want to securely log out of the VEDOXA Admin Control Center?</p>
-            <div className="flex gap-4">
-              <button onClick={() => setShowLogoutModal(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition border border-slate-600 shadow-lg">Cancel</button>
-              <button onClick={handleLogoutConfirm} className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl transition shadow-[0_0_20px_rgba(225,29,72,0.4)]">Yes, Logout</button>
+            <h3 className="text-lg font-bold text-white mb-1.5">{confirmDialog.title}</h3>
+            <p className="text-slate-400 mb-6 text-xs leading-relaxed">{confirmDialog.message}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDialog({ isOpen: false, title: "", message: "", onConfirm: null })}
+                className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold py-2.5 rounded-xl text-xs transition border border-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                className="flex-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg"
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
-        <div className="absolute top-40 right-1/4 w-[30rem] h-[30rem] bg-purple-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse animation-delay-2000"></div>
-        <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-pink-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse animation-delay-4000"></div>
+      {/* LOGOUT CONFIRMATION MODAL */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-[#0E131F] border border-amber-500/30 rounded-3xl p-7 max-w-sm w-full shadow-2xl text-center">
+            <div className="mx-auto w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-4 border border-rose-500/30">
+              <LogOut size={26} className="text-rose-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-1.5">Leave Royal Suite?</h3>
+            <p className="text-slate-400 mb-6 text-xs leading-relaxed">Are you sure you want to securely sign out of the VEDOXA Royal Control Center?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition border border-slate-700">Stay Here</button>
+              <button onClick={handleLogoutConfirm} className="flex-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg">Sign Out</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATIONS */}
+      <div className="fixed bottom-5 right-5 space-y-2.5 z-[90]">
+        {notifications.map(notif => (
+          <div key={notif.id} className={`px-4 py-3 rounded-2xl font-semibold text-xs flex items-center gap-2.5 backdrop-blur-xl border shadow-xl ${
+            notif.type === 'success' ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/40' :
+            notif.type === 'error' ? 'bg-rose-950/90 text-rose-200 border-rose-500/40' :
+            'bg-slate-900/90 text-amber-200 border-amber-500/40'
+          }`}>
+            {notif.type === 'success' && <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />}
+            {notif.type === 'error' && <AlertCircle size={16} className="text-rose-400 shrink-0" />}
+            <span>{notif.message}</span>
+          </div>
+        ))}
       </div>
 
-      <header className="relative border-b border-indigo-500/20 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-40 shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-slate-800 rounded-lg transition text-indigo-300">
-              <Menu size={24} />
+      {/* TOP ROYAL HEADER */}
+      <header className="border-b border-slate-800/80 bg-[#0A0E17]/85 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-slate-800/70 rounded-xl transition text-slate-300 hover:text-amber-300 border border-transparent hover:border-slate-700"
+              title="Toggle Royal Navigation"
+            >
+              <Menu size={20} />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-lg shadow-lg border border-white/10">
-                <ShieldCheck size={24} className="text-white" />
+            <div className="flex items-center gap-2.5">
+              <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-2 rounded-xl shadow-md">
+                <Crown size={18} className="text-slate-950" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">VEDOXA</h1>
-                <p className="text-xs text-indigo-300 font-medium">Admin Control Center</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-black tracking-tight text-white">VEDOXA</h1>
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    Royal Suite
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 hidden sm:block">{adminEmailDisplay}</p>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-6">
+          {/* Right Action Bar */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {currentTime && (
+              <div className="hidden md:flex items-center gap-1.5 bg-[#111726] border border-slate-800 px-3 py-1.5 rounded-xl text-xs text-slate-300">
+                <Clock size={13} className="text-amber-400" />
+                <span>{currentTime}</span>
+              </div>
+            )}
+
+            <button
+              onClick={() => loadAllData(true)}
+              className="p-2 bg-[#111726] hover:bg-slate-800 text-slate-300 hover:text-amber-300 rounded-xl border border-slate-800 transition"
+              title="Sync Live Data"
+            >
+              <RefreshCw size={16} className={isRefreshing ? "animate-spin text-amber-400" : ""} />
+            </button>
+
+            <button
+              onClick={() => setActiveTab("reviews")}
+              className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 px-3 py-1.5 rounded-xl font-semibold text-xs transition border border-amber-500/25"
+            >
+              <Star size={14} className="fill-amber-400 text-amber-400" />
+              <span>{globalAverageRating}</span>
+            </button>
+
             <button
               onClick={() => setShowLogoutModal(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-red-500/20 to-rose-600/20 hover:from-red-500/40 hover:to-rose-600/40 text-red-300 px-5 py-2.5 rounded-lg font-bold text-sm transition border border-red-500/30 hover:border-red-400/60 shadow-lg"
+              className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 px-3.5 py-1.5 rounded-xl font-semibold text-xs transition border border-rose-500/25"
             >
-              <LogOut size={18} /> Logout
+              <LogOut size={14} /> <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="relative border-b border-indigo-500/20 bg-slate-900/40 backdrop-blur-md sticky top-[73px] z-30">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-            {[
-              { id: "dashboard", label: "Dashboard & Analytics", icon: "📊" },
-              { id: "books", label: "Books", icon: "📚" },
-              { id: "discounts", label: "Discounts", icon: "💰" },
-              { id: "coupons", label: "Coupons", icon: "🎟️" },
-              { id: "customers", label: "Customers", icon: "👥" },
-              { id: "affiliates", label: "Partners", icon: "🤝" }, 
-              { id: "settings", label: "Settings", icon: "⚙️" }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-5 font-bold text-sm whitespace-nowrap border-b-2 transition duration-300 ${
-                  activeTab === tab.id
-                    ? "border-blue-400 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300 drop-shadow-md"
-                    : "border-transparent text-slate-400 hover:text-indigo-200 hover:bg-white/5"
-                }`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-6 py-10 z-10">
-        <div className="fixed bottom-6 right-6 space-y-3 z-50">
-          {notifications.map(notif => (
-            <div key={notif.id} className={`px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-3 backdrop-blur-xl border shadow-2xl ${
-              notif.type === 'success' ? 'bg-green-900/60 text-green-200 border-green-500/50 shadow-green-500/20' :
-              notif.type === 'error' ? 'bg-red-900/60 text-red-200 border-red-500/50 shadow-red-500/20' :
-              'bg-blue-900/60 text-blue-200 border-blue-500/50 shadow-blue-500/20'
-            } animate-in fade-in slide-in-from-right-4 duration-300`}>
-              {notif.type === 'success' && <Check size={20} className="text-green-400" />}
-              {notif.type === 'error' && <AlertCircle size={20} className="text-red-400" />}
-              {notif.message}
+      {/* BODY LAYOUT: SIDEBAR + MAIN CONTENT */}
+      <div className="flex-1 max-w-[1440px] w-full mx-auto flex relative">
+        
+        {/* LEFT ROYAL SIDEBAR (Desktop) */}
+        {sidebarOpen && (
+          <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-slate-800/80 bg-[#0A0E17]/60 p-4 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-2">
+              Imperial Navigation
             </div>
-          ))}
-        </div>
+            <nav className="space-y-1 flex-1">
+              {navItems.map(item => {
+                const IconComponent = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? "bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-300 border border-amber-500/30 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <IconComponent size={16} className={isActive ? "text-amber-400" : "text-slate-400"} />
+                      {item.label}
+                    </span>
+                    {item.badge !== null && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        isActive ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-400"
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
 
-        {activeTab === "dashboard" && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-blue-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(59,130,246,0.2)]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-indigo-300 text-sm font-bold tracking-wider">TOTAL BOOKS</span>
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 rounded-xl shadow-lg border border-white/20">
-                    <BookOpen className="text-white" size={22} />
-                  </div>
-                </div>
-                <p className="text-4xl font-black text-white mb-2">{books.length}</p>
+            {/* Quick Royal Status Card in Sidebar */}
+            <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-[#111827] to-[#0D1320] border border-amber-500/20">
+              <div className="flex items-center justify-between text-[11px] text-amber-300 font-bold mb-1">
+                <span className="flex items-center gap-1"><ShieldCheck size={13} /> Admin Verified</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               </div>
-
-              <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-green-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(34,197,94,0.2)]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-indigo-300 text-sm font-bold tracking-wider">TOTAL ORDERS</span>
-                  <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-3 rounded-xl shadow-lg border border-white/20">
-                    <CreditCard className="text-white" size={22} />
-                  </div>
-                </div>
-                <p className="text-4xl font-black text-white mb-2">{totalOrders}</p>
-              </div>
-
-              <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-purple-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(168,85,247,0.2)]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-indigo-300 text-sm font-bold tracking-wider">TOTAL REVENUE</span>
-                  <div className="bg-gradient-to-br from-purple-500 to-fuchsia-600 p-3 rounded-xl shadow-lg border border-white/20">
-                    <DollarSign className="text-white" size={22} />
-                  </div>
-                </div>
-                <p className="text-4xl font-black text-white mb-2">₹{(totalRevenue).toFixed(0)}</p>
-              </div>
-
-              <div className="group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 hover:border-pink-400/70 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(236,72,153,0.2)]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-indigo-300 text-sm font-bold tracking-wider">CUSTOMERS</span>
-                  <div className="bg-gradient-to-br from-pink-500 to-rose-600 p-3 rounded-xl shadow-lg border border-white/20">
-                    <Users className="text-white" size={22} />
-                  </div>
-                </div>
-                <p className="text-4xl font-black text-white mb-2">{totalCustomers}</p>
-              </div>
+              <p className="text-[11px] text-slate-400">Today's Sales: <strong className="text-white">₹{todayRevenue}</strong></p>
             </div>
-
-            <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/40 rounded-3xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <div className="flex justify-between items-center mb-6 relative z-10">
-                <h3 className="text-2xl font-black text-white flex items-center gap-3">
-                  <PieChart className="text-blue-400" size={28} /> Google Analytics 4 Dashboard
-                </h3>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
-                <div className="lg:col-span-3 bg-slate-900/80 rounded-2xl border border-indigo-500/30 overflow-hidden min-h-[400px] flex flex-col">
-                  <div className="p-3 bg-slate-800/80 border-b border-indigo-500/30 flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                  </div>
-                  <div className="flex-1 w-full bg-slate-900">
-                    {/* 👇 REPLACE 'YOUR_LOOKER_STUDIO_EMBED_URL' WITH YOUR ACTUAL GA4 LINK 👇 */}
-                    <iframe 
-                        width="100%" 
-                        height="100%" 
-                        src={lookerStudioUrl} 
-                        frameBorder="0" 
-                        style={{ border: 0, minHeight: '500px' }} 
-                        allowFullScreen 
-                        sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
-                    </iframe> 
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-indigo-500/30 rounded-3xl p-8 backdrop-blur-xl shadow-2xl">
-              <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
-                <Activity className="text-cyan-400" /> Recent Sales Activity
-              </h3>
-              <div className="overflow-x-auto rounded-xl border border-indigo-500/20">
-                <table className="w-full">
-                  <thead className="bg-slate-800/80 border-b border-indigo-500/30">
-                    <tr>
-                      <th className="text-left py-4 px-6 text-xs font-black text-indigo-300 uppercase tracking-wider">Customer</th>
-                      <th className="text-left py-4 px-6 text-xs font-black text-indigo-300 uppercase tracking-wider">Book</th>
-                      <th className="text-left py-4 px-6 text-xs font-black text-indigo-300 uppercase tracking-wider">Amount</th>
-                      <th className="text-left py-4 px-6 text-xs font-black text-indigo-300 uppercase tracking-wider">Date</th>
-                      <th className="text-left py-4 px-6 text-xs font-black text-indigo-300 uppercase tracking-wider">Coupon</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-indigo-500/10">
-                    {orders.slice(0, 8).map(order => (
-                      <tr key={order.id} className="hover:bg-indigo-500/10 transition duration-200">
-                        <td className="py-4 px-6 text-white font-bold text-sm flex items-center gap-3">
-                           {order.customer_name || "Guest"}
-                        </td>
-                        <td className="py-4 px-6 text-slate-300 text-sm">{order.book_title || "—"}</td>
-                        <td className="py-4 px-6 text-green-400 font-bold text-sm">₹{order.final_price || 0}</td>
-                        <td className="py-4 px-6 text-slate-400 text-xs">{new Date(order.created_at).toLocaleDateString()}</td>
-                        <td className="py-4 px-6">
-                          {order.coupon_used ? (
-                            <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-md text-xs font-bold border border-purple-500/30">{order.coupon_used}</span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          </aside>
         )}
 
-        {/* =========================================
-            AFFILIATE / PARTNER MANAGEMENT TAB
-            ========================================= */}
-        {activeTab === "affiliates" && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            
-            <div className="bg-slate-900/50 p-6 rounded-2xl border border-blue-500/20 backdrop-blur-md">
-              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center gap-2">
-                <Handshake className="text-blue-400" /> Partners Management
-              </h2>
-              <p className="text-indigo-300 text-sm mt-1">Generate secret codes, manage influencer payouts, and chat securely.</p>
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+          
+          {/* MOBILE / COMPACT TOP PILL BAR (Always accessible on smaller screens or when sidebar is closed) */}
+          <div className={`${sidebarOpen ? "lg:hidden" : "block"} mb-6 overflow-x-auto pb-2`}>
+            <div className="flex gap-1.5">
+              {navItems.map(item => {
+                const IconComponent = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                      isActive
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                        : "bg-[#111726] text-slate-400 hover:text-slate-200 border border-slate-800"
+                    }`}
+                  >
+                    <IconComponent size={14} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* CODE GENERATOR */}
-              <div className="bg-slate-900/80 border border-blue-500/30 rounded-3xl p-6 relative overflow-hidden shadow-2xl">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[30px] rounded-full"></div>
-                <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Key className="text-cyan-400"/> Generate Partner Code</h3>
-                
-                <div className="space-y-4 relative z-10">
-                  <div>
-                    <label className="block text-xs font-bold text-blue-300 mb-2 uppercase">Commission (%)</label>
-                    <input type="number" value={newCommission} onChange={(e) => setNewCommission(Number(e.target.value))} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-400"/>
+          {/* =========================================
+              1. COMPACT & CLEAR ROYAL DASHBOARD TAB
+              ========================================= */}
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              
+              {/* Compact Royal Greeting & Quick Actions Bar */}
+              <div className="bg-gradient-to-r from-[#111827] via-[#131B2E] to-[#111827] border border-amber-500/25 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <Crown size={22} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-blue-300 mb-2 uppercase">Customer Discount (%)</label>
-                    <input type="number" value={newCodeDiscount} onChange={(e) => setNewCodeDiscount(Number(e.target.value))} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-400"/>
+                    <h2 className="text-lg font-black text-white flex items-center gap-2">
+                      Royal Executive Overview
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Clean, real-time snapshot of your store performance & quick actions.
+                    </p>
                   </div>
-                  <button onClick={handleCreateAffiliateCode} className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-black py-4 rounded-xl hover:from-blue-500 hover:to-cyan-500 transition shadow-lg mt-2">
-                    Generate Secret Code
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => { resetBookForm(); setActiveTab("books"); setShowAddBookModal(true); }}
+                    className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    <Plus size={14} /> Add Book
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("reviews")}
+                    className="bg-[#182032] hover:bg-slate-800 text-amber-300 border border-amber-500/25 font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition"
+                  >
+                    <Star size={14} /> Review Studio
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("coupons"); setShowAddCouponModal(true); }}
+                    className="bg-[#182032] hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition"
+                  >
+                    <Tag size={14} /> + Coupon
+                  </button>
+                  <button
+                    onClick={exportOrdersToCSV}
+                    className="bg-[#182032] hover:bg-slate-800 text-slate-300 border border-slate-700 font-semibold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition"
+                    title="Download Sales CSV"
+                  >
+                    <Download size={14} /> CSV
                   </button>
                 </div>
               </div>
 
-              {/* CODES LIST */}
-              <div className="lg:col-span-2 bg-slate-900/80 border border-indigo-500/30 rounded-3xl p-6 overflow-hidden flex flex-col">
-                <h3 className="text-xl font-black text-white mb-4">Active & Claimed Codes</h3>
-                <div className="overflow-y-auto flex-1 pr-2 space-y-3 max-h-[300px] hide-scrollbar">
-                  {affiliateCodes.map((codeObj, i) => (
-                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${codeObj.is_claimed ? 'bg-green-900/20 border-green-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
-                      <div>
-                        <p className="text-xl font-mono font-black tracking-widest text-white">{codeObj.code}</p>
-                        <p className="text-xs font-bold text-slate-400 mt-1">Comm: <span className="text-green-400">{codeObj.commission_pct}%</span> | Disc: <span className="text-pink-400">{codeObj.discount_pct}%</span></p>
-                      </div>
-                      <div className="text-right">
-                        {codeObj.is_claimed ? (
-                          <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded text-xs font-bold border border-green-500/50">CLAIMED</span>
-                        ) : (
-                          <span className="bg-slate-700 text-slate-300 px-3 py-1 rounded text-xs font-bold border border-slate-600">WAITING</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {affiliateCodes.length === 0 && <p className="text-slate-500 text-sm text-center mt-10">No codes generated yet.</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* EDIT PARTNER MODAL */}
-            {editingPartner && (
-              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                 <div className="bg-slate-900 border border-blue-500/50 rounded-3xl p-8 max-w-md w-full shadow-2xl">
-                    <div className="flex justify-between items-center mb-6 border-b border-blue-500/20 pb-4">
-                      <h3 className="text-xl font-black text-white">Edit Partner Details</h3>
-                      <button onClick={() => setEditingPartner(null)} className="text-slate-400 hover:text-white"><X size={20}/></button>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-blue-300 mb-1">Full Name</label>
-                        <input value={editingPartner.full_name} onChange={(e) => setEditingPartner({...editingPartner, full_name: e.target.value})} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-400"/>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-blue-300 mb-1">Channel Name</label>
-                        <input value={editingPartner.channel_name} onChange={(e) => setEditingPartner({...editingPartner, channel_name: e.target.value})} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-400"/>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-blue-300 mb-1">UPI ID</label>
-                        <input value={editingPartner.payment_upi} onChange={(e) => setEditingPartner({...editingPartner, payment_upi: e.target.value})} className="w-full bg-slate-800/80 border border-blue-500/30 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-400"/>
-                      </div>
-                      <button onClick={handleUpdatePartner} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl mt-4 transition">Update Partner</button>
-                    </div>
-                 </div>
-              </div>
-            )}
-
-            {/* AFFILIATES & CHAT SYSTEM */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Affiliates List */}
-              <div className="lg:col-span-2 bg-slate-900/80 border border-purple-500/30 rounded-3xl p-6 overflow-hidden">
-                <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Users className="text-purple-400"/> Registered Partners</h3>
-                <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2 hide-scrollbar">
-                  {affiliates.map(aff => {
-                    const pendingPayout = (aff.total_earned || 0) - (aff.total_paid || 0);
-                    return (
-                      <div key={aff.user_id} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5 hover:border-purple-500/50 transition relative group">
-                        
-                        {/* Edit and Delete Actions */}
-                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                           <button onClick={() => setEditingPartner(aff)} className="bg-blue-500/20 text-blue-400 p-2 rounded-lg hover:bg-blue-500 hover:text-white transition"><Edit3 size={16}/></button>
-                           <button onClick={() => handleDeletePartner(aff.user_id, aff.partner_code)} className="bg-red-500/20 text-red-400 p-2 rounded-lg hover:bg-red-500 hover:text-white transition"><Trash2 size={16}/></button>
-                        </div>
-
-                        <div className="flex justify-between items-start mb-4 pr-20">
-                          <div>
-                            <h4 className="text-lg font-black text-white">{aff.full_name}</h4>
-                            <p className="text-sm font-bold text-purple-400">{aff.channel_name}</p>
-                            <p className="text-xs text-slate-400 mt-1 font-mono">UPI: {aff.payment_upi}</p>
-                          </div>
-                          <button 
-                            onClick={() => setSelectedAffiliateId(aff.user_id)}
-                            className={`px-4 py-2 rounded-lg font-bold text-xs border transition ${selectedAffiliateId === aff.user_id ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'}`}
-                          >
-                            Chat
-                          </button>
-                        </div>
-                        
-                        <div className="grid grid-cols-4 gap-2 mb-4">
-                          <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/50">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold">Clicks</p>
-                            <p className="text-white font-black">{aff.clicks || 0}</p>
-                          </div>
-                          <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/50">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold">Sales</p>
-                            <p className="text-green-400 font-black">{aff.sales || 0}</p>
-                          </div>
-                          <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/50">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold">Earned</p>
-                            <p className="text-white font-black">₹{aff.total_earned || 0}</p>
-                          </div>
-                          <div className="bg-orange-900/20 p-2 rounded-lg text-center border border-orange-500/30">
-                            <p className="text-[10px] text-orange-400 uppercase font-bold">Pending</p>
-                            <p className="text-orange-400 font-black">₹{pendingPayout}</p>
-                          </div>
-                        </div>
-
-                        {/* Pay Affiliate Actions */}
-                        {pendingPayout > 0 && (
-                          <div className="flex gap-2 items-center bg-slate-900/80 p-3 rounded-xl border border-slate-700">
-                            <input 
-                              type="number" 
-                              placeholder="Amount sent" 
-                              value={payAmount[aff.user_id] || ""}
-                              onChange={(e) => setPayAmount({...payAmount, [aff.user_id]: e.target.value})}
-                              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm outline-none flex-1"
-                            />
-                            <button onClick={() => handlePayAffiliate(aff.user_id, aff.total_paid || 0)} className="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition whitespace-nowrap">
-                              Mark as Paid
-                           </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {affiliates.length === 0 && <p className="text-slate-500 text-center py-10">No partners registered yet.</p>}
-                </div>
-              </div>
-
-              {/* Chat Panel */}
-              <div className="bg-[#0a0a0f] border border-blue-500/30 rounded-3xl overflow-hidden flex flex-col h-[600px] shadow-2xl relative">
-                {!selectedAffiliateId ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <MessageSquare size={48} className="text-slate-600 mb-4"/>
-                    <p className="text-slate-400 font-bold">Select a partner to view chat history and reply.</p>
+              {/* Compact 4+2 KPI Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-3.5">
+                <div className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-4 transition">
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] font-semibold mb-1.5">
+                    <span>REVENUE</span>
+                    <DollarSign size={15} className="text-emerald-400" />
                   </div>
-                ) : (
-                  <>
-                    <div className="bg-slate-900 border-b border-slate-800 p-4">
-                      <h3 className="font-bold text-white flex items-center gap-2">Live Support Chat</h3>
-                      <p className="text-xs text-blue-400">Chatting with {affiliates.find(a => a.user_id === selectedAffiliateId)?.full_name}</p>
+                  <p className="text-2xl font-black text-white">₹{totalRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-[11px] text-emerald-400 mt-1">Today: ₹{todayRevenue}</p>
+                </div>
+
+                <div className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-4 transition">
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] font-semibold mb-1.5">
+                    <span>ORDERS</span>
+                    <CreditCard size={15} className="text-blue-400" />
+                  </div>
+                  <p className="text-2xl font-black text-white">{totalOrders}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Avg: ₹{avgOrderValue}/order</p>
+                </div>
+
+                <div className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-4 transition">
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] font-semibold mb-1.5">
+                    <span>BOOKS VAULT</span>
+                    <BookOpen size={15} className="text-amber-400" />
+                  </div>
+                  <p className="text-2xl font-black text-white">{books.length}</p>
+                  <p className="text-[11px] text-amber-300/80 mt-1">{discounts.length} Active Deals</p>
+                </div>
+
+                <div className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-4 transition">
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] font-semibold mb-1.5">
+                    <span>CUSTOMERS</span>
+                    <Users size={15} className="text-purple-400" />
+                  </div>
+                  <p className="text-2xl font-black text-white">{totalCustomers}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Verified Readers</p>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("reviews")}
+                  className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/40 rounded-2xl p-4 transition cursor-pointer"
+                >
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] font-semibold mb-1.5">
+                    <span>TRUST SCORE</span>
+                    <Star size={15} className="text-amber-400 fill-amber-400" />
+                  </div>
+                  <p className="text-2xl font-black text-amber-300">{globalAverageRating} ★</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{allReviewsList.length} Total Reviews</p>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("affiliates")}
+                  className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/40 rounded-2xl p-4 transition cursor-pointer"
+                >
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] font-semibold mb-1.5">
+                    <span>PARTNER DUE</span>
+                    <Handshake size={15} className="text-cyan-400" />
+                  </div>
+                  <p className="text-2xl font-black text-white">₹{totalPendingPayouts}</p>
+                  <p className="text-[11px] text-cyan-400 mt-1">{affiliates.length} Active Partners</p>
+                </div>
+              </div>
+
+              {/* Clean 2-Column Split: Recent Orders (Left) & Top Books + GA4 Toggle (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Recent Sales Activity (Compact Table) */}
+                <div className="lg:col-span-2 bg-[#0E131F] border border-slate-800/90 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Activity size={16} className="text-amber-400" /> Recent Royal Orders
+                    </h3>
+                    <span className="text-[11px] text-slate-400">Showing latest {Math.min(orders.length, 6)} of {orders.length}</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase">
+                          <th className="py-2.5 px-3">Customer</th>
+                          <th className="py-2.5 px-3">Book</th>
+                          <th className="py-2.5 px-3">Amount</th>
+                          <th className="py-2.5 px-3">Coupon</th>
+                          <th className="py-2.5 px-3 text-right">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 text-xs">
+                        {orders.slice(0, 6).map(order => (
+                          <tr key={order.id} className="hover:bg-slate-800/30 transition">
+                            <td className="py-3 px-3 font-semibold text-white">{order.customer_name || "Guest Reader"}</td>
+                            <td className="py-3 px-3 text-slate-300 max-w-[180px] truncate">{order.book_title || "—"}</td>
+                            <td className="py-3 px-3 text-emerald-400 font-bold">₹{order.final_price || 0}</td>
+                            <td className="py-3 px-3">
+                              {order.coupon_used ? (
+                                <span className="bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30">
+                                  {order.coupon_used}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-slate-400 text-right">{new Date(order.created_at).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                        {orders.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">No orders recorded yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right Column: Top Books Quick List & Collapsible GA4 */}
+                <div className="space-y-4">
+                  <div className="bg-[#0E131F] border border-slate-800/90 rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-3.5">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Award size={16} className="text-amber-400" /> Top Vault Books
+                      </h3>
+                      <button onClick={() => setActiveTab("books")} className="text-[11px] text-amber-400 hover:underline">View All</button>
                     </div>
-                    
-                    <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-                      {affiliateMessages.filter(m => m.affiliate_id === selectedAffiliateId).map(msg => (
-                        <div key={msg.id} className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.sender_type === 'admin' ? 'bg-blue-600 text-white self-end rounded-tr-sm ml-auto' : 'bg-slate-800 border border-slate-700 text-gray-200 self-start rounded-tl-sm mr-auto'}`}>
-                          {msg.message}
+                    <div className="space-y-2.5">
+                      {books.slice(0, 4).map(book => (
+                        <div key={book.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#131A29] border border-slate-800/70">
+                          <div className="min-w-0 pr-2">
+                            <p className="text-xs font-bold text-white truncate">{book.title}</p>
+                            <p className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                              <span>👁️ {book.views || 0}</span>
+                              <span>❤️ {book.likes || 0}</span>
+                            </p>
+                          </div>
+                          <span className="text-xs font-black text-emerald-400 shrink-0">₹{book.final_price || book.base_price}</span>
                         </div>
                       ))}
-                      {affiliateMessages.filter(m => m.affiliate_id === selectedAffiliateId).length === 0 && (
-                        <div className="text-center text-slate-500 text-sm mt-10">No messages yet.</div>
+                      {books.length === 0 && (
+                        <p className="text-xs text-slate-500 text-center py-4">No books published yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Clean Toggleable GA4 Card so it never clutters the dashboard unless needed */}
+                  <div className="bg-[#0E131F] border border-slate-800/90 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <PieChart size={16} className="text-indigo-400" />
+                        <div>
+                          <h4 className="text-xs font-bold text-white">Google Analytics 4 Live</h4>
+                          <p className="text-[11px] text-slate-400">Looker Studio Embed</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowGa4Panel(!showGa4Panel)}
+                        className="px-3 py-1.5 rounded-xl bg-[#161F30] hover:bg-slate-800 text-xs font-semibold text-amber-300 border border-slate-700 transition"
+                      >
+                        {showGa4Panel ? "Hide Studio" : "Open Studio"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Collapsible GA4 Embed Panel */}
+              {showGa4Panel && (
+                <div className="bg-[#0E131F] border border-indigo-500/30 rounded-2xl p-5">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <PieChart className="text-indigo-400" size={16} /> Google Analytics 4 Live Stream
+                    </h3>
+                    <button onClick={() => setShowGa4Panel(false)} className="text-xs text-slate-400 hover:text-white">Close</button>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-950 min-h-[420px]">
+                    <iframe
+                      width="100%"
+                      height="420"
+                      src={lookerStudioUrl}
+                      frameBorder="0"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                    ></iframe>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =========================================
+              2. DEDICATED REVIEWS & STARS STUDIO TAB (NEW!)
+              ========================================= */}
+          {activeTab === "reviews" && (
+            <div className="space-y-6">
+              <div className="bg-[#0E131F] border border-amber-500/25 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Social Proof Engine</span>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2 mt-0.5">
+                    <Star className="text-amber-400 fill-amber-400" size={20} /> Royal Star & Review Studio
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Select any book, click the stars, and add or manage customer reviews & social stats in one click.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 bg-[#141C2B] px-4 py-2.5 rounded-xl border border-slate-800">
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Store Rating</p>
+                    <p className="text-lg font-black text-amber-300">{globalAverageRating} / 5.0</p>
+                  </div>
+                  <div className="h-8 w-[1px] bg-slate-800"></div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Total Reviews</p>
+                    <p className="text-lg font-black text-white">{allReviewsList.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Left Column: Interactive Star & Review Composer + Quick Social Proof */}
+                <div className="bg-[#0E131F] border border-slate-800 rounded-2xl p-5 space-y-5 h-fit">
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-300 mb-2 uppercase tracking-wider">1. Select Target Book</label>
+                    <select
+                      value={selectedReviewBookId}
+                      onChange={(e) => {
+                        setSelectedReviewBookId(e.target.value);
+                        fetchBookReviews(e.target.value);
+                        setEditingReviewId(null);
+                      }}
+                      className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none cursor-pointer"
+                    >
+                      <option value="">-- Choose a Book --</option>
+                      {books.map(b => (
+                        <option key={b.id} value={b.id}>{b.title}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Quick Views/Likes Booster for the Selected Book */}
+                  {selectedBookObject && (
+                    <div className="bg-[#131A29] border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-300">Quick Social Counters</span>
+                        <span className="text-[10px] text-amber-400">Instant Save</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">👁️ Views</label>
+                          <input
+                            type="number"
+                            defaultValue={selectedBookObject.views || 0}
+                            onBlur={(e) => handleQuickUpdateBookStats(selectedBookObject.id, e.target.value, selectedBookObject.likes || 0, selectedBookObject.dislikes || 0)}
+                            className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">👍 Likes</label>
+                          <input
+                            type="number"
+                            defaultValue={selectedBookObject.likes || 0}
+                            onBlur={(e) => handleQuickUpdateBookStats(selectedBookObject.id, selectedBookObject.views || 0, e.target.value, selectedBookObject.dislikes || 0)}
+                            className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">👎 Dislikes</label>
+                          <input
+                            type="number"
+                            defaultValue={selectedBookObject.dislikes || 0}
+                            onBlur={(e) => handleQuickUpdateBookStats(selectedBookObject.id, selectedBookObject.views || 0, selectedBookObject.likes || 0, e.target.value)}
+                            className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interactive Star Clicker & Review Form */}
+                  <div className="pt-2 border-t border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">
+                        {editingReviewId ? "✏️ Edit Selected Review" : "✨ Add New Customer Review"}
+                      </span>
+                      {editingReviewId && (
+                        <button
+                          onClick={() => {
+                            setEditingReviewId(null);
+                            setFakeReviewName("");
+                            setFakeReviewText("");
+                            setFakeReviewRating(5);
+                          }}
+                          className="text-[11px] text-rose-400 hover:underline"
+                        >
+                          Cancel Edit
+                        </button>
                       )}
                     </div>
 
-                    <div className="p-4 bg-slate-900 border-t border-slate-800 flex gap-2">
-                      <input 
-                        type="text" 
-                        value={adminChatInput}
-                        onChange={(e) => setAdminChatInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSendAdminMessage()}
-                        placeholder="Reply to partner..." 
-                        className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-500"
-                      />
-                      <button 
-                        onClick={handleSendAdminMessage}
-                        disabled={!adminChatInput.trim()}
-                        className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl disabled:opacity-50 transition"
-                      >
-                        <Send size={18}/>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* =========================================
-            BOOKS TAB (Updated with Views/Likes & Fake Reviews)
-            ========================================= */}
-        {activeTab === "books" && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-indigo-500/20 backdrop-blur-md">
-              <div>
-                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300 flex items-center gap-2">
-                  <Sparkles className="text-purple-400" /> Book Inventory
-                </h2>
-                <p className="text-indigo-300 text-sm mt-1">Manage your digital products and social proof (Views/Likes/Reviews).</p>
-              </div>
-              <button
-                onClick={() => {
-                  resetBookForm();
-                  setShowAddBookModal(true);
-                }}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.4)] transform hover:scale-105 group"
-              >
-                <Plus size={20} className="group-hover:rotate-90 transition duration-300" /> Add New Book
-              </button>
-            </div>
-
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
-              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-indigo-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search books by title or author..."
-                value={bookSearch}
-                onChange={(e) => setBookSearch(e.target.value)}
-                className="relative w-full bg-slate-900/60 border border-indigo-500/30 hover:border-indigo-400/60 focus:border-blue-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
-              />
-            </div>
-
-            {showAddBookModal && (
-              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-slate-900 border border-indigo-500/50 rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-[0_0_50px_rgba(99,102,241,0.2)]">
-                  <div className="flex justify-between items-center mb-6 border-b border-indigo-500/20 pb-4">
-                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">{editingBookId ? "Edit Book Details" : "Publish New Book"}</h3>
-                    <button onClick={resetBookForm} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
-                      <X size={24} />
-                    </button>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Title *</label>
-                        <input value={title} onChange={(e) => setTitle(e.target.value)} type="text" className="w-full bg-slate-800/80 border border-indigo-500/30 focus:border-blue-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Author</label>
-                        <input value={author} onChange={(e) => setAuthor(e.target.value)} type="text" className="w-full bg-slate-800/80 border border-indigo-500/30 focus:border-blue-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                    {/* Interactive Clickable Stars */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Click Star Rating ({fakeReviewRating} Stars)</label>
+                      <div className="flex items-center gap-2 bg-[#141C2B] p-3 rounded-xl border border-slate-800 justify-center">
+                        {[1, 2, 3, 4, 5].map(starVal => {
+                          const active = (hoverStar || fakeReviewRating) >= starVal;
+                          return (
+                            <button
+                              key={starVal}
+                              type="button"
+                              onMouseEnter={() => setHoverStar(starVal)}
+                              onMouseLeave={() => setHoverStar(0)}
+                              onClick={() => setFakeReviewRating(starVal)}
+                              className="p-1 transition transform hover:scale-110"
+                            >
+                              <Star
+                                size={26}
+                                className={active ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "text-slate-600"}
+                              />
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Description</label>
-                      <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-slate-800/80 border border-indigo-500/30 focus:border-blue-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner h-24 resize-none" />
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Reader Name</label>
+                      <input
+                        type="text"
+                        value={fakeReviewName}
+                        onChange={(e) => setFakeReviewName(e.target.value)}
+                        placeholder="e.g. Aarav Singhania"
+                        className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none"
+                      />
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-5 bg-slate-800/40 p-5 rounded-2xl border border-indigo-500/10">
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Pages</label>
-                        <input value={pages} onChange={(e) => setPages(e.target.value)} type="number" className="w-full bg-slate-900/80 border border-indigo-500/30 focus:border-blue-400 rounded-xl px-4 py-3 text-white outline-none transition" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Language</label>
-                        <input value={language} onChange={(e) => setLanguage(e.target.value)} type="text" className="w-full bg-slate-900/80 border border-indigo-500/30 focus:border-blue-400 rounded-xl px-4 py-3 text-white outline-none transition" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Price (₹) *</label>
-                        <input value={basePrice} onChange={(e) => setBasePrice(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-indigo-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition text-green-300 font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Discount %</label>
-                        <input value={discount} onChange={(e) => setDiscount(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-indigo-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition text-pink-300 font-bold" />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Review Comment</label>
+                      <textarea
+                        value={fakeReviewText}
+                        onChange={(e) => setFakeReviewText(e.target.value)}
+                        placeholder="Write an authentic, high-converting reader review..."
+                        className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none h-24 resize-none"
+                      />
                     </div>
 
-                    {/* NEW SECTION: MANUAL VIEWS AND LIKES OVERRIDE */}
-                    <div className="grid grid-cols-3 gap-5 bg-slate-800/40 p-5 rounded-2xl border border-blue-500/30">
-                      <div className="col-span-3"><label className="block text-xs font-bold text-blue-300 uppercase tracking-wide">Social Proof Control (Manual Override)</label></div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-2">Fake Views</label>
-                        <input value={bookViews} onChange={(e) => setBookViews(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-2 text-white outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-2">Fake Likes</label>
-                        <input value={bookLikes} onChange={(e) => setBookLikes(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-2 text-white outline-none" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-2">Fake Dislikes</label>
-                        <input value={bookDislikes} onChange={(e) => setBookDislikes(Number(e.target.value))} type="number" className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-2 text-white outline-none" />
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddFakeReview(selectedReviewBookId)}
+                      className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-600 hover:from-amber-300 hover:to-yellow-500 text-slate-950 font-black py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2"
+                    >
+                      <Star size={15} className="fill-slate-950" />
+                      {editingReviewId ? "Save Review Changes" : "Publish Review Instantly"}
+                    </button>
+                  </div>
+                </div>
 
-                    {/* NEW SECTION: FAKE REVIEW INJECTOR */}
-                    {editingBookId && (
-                      <div className="bg-yellow-500/10 p-5 rounded-2xl border border-yellow-500/30 mt-4">
-                        <label className="block text-xs font-bold text-yellow-500 mb-3 uppercase tracking-wide flex items-center gap-2"><Star size={16}/> {editingReviewId ? "Edit Review" : "Inject Fake Review"}</label>
-                        <div className="flex flex-col gap-3">
-                          <div className="flex gap-3">
-                            <input value={fakeReviewName} onChange={(e) => setFakeReviewName(e.target.value)} type="text" placeholder="Customer Name (e.g. Rahul Sharma)" className="flex-1 bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none" />
-                            <select value={fakeReviewRating} onChange={(e) => setFakeReviewRating(Number(e.target.value))} className="bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none w-32 cursor-pointer">
-                              <option value={5}>5 Stars</option>
-                              <option value={4}>4 Stars</option>
-                              <option value={3}>3 Stars</option>
-                              <option value={2}>2 Stars</option>
-                              <option value={1}>1 Star</option>
-                            </select>
+                {/* Right 2 Columns: Live Reviews Feed for Selected Book */}
+                <div className="lg:col-span-2 bg-[#0E131F] border border-slate-800 rounded-2xl p-5 flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">
+                        Reviews for: <span className="text-amber-300">{selectedBookObject?.title || "Selected Book"}</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">{bookReviews.length} reviews on this book</p>
+                    </div>
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="text"
+                        value={reviewSearchQuery}
+                        onChange={(e) => setReviewSearchQuery(e.target.value)}
+                        placeholder="Filter reviews..."
+                        className="bg-[#141C2B] border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 overflow-y-auto max-h-[520px] pr-1">
+                    {bookReviews
+                      .filter(r =>
+                        (r.fake_author_name || r.profiles?.name || "").toLowerCase().includes(reviewSearchQuery.toLowerCase()) ||
+                        (r.review_text || "").toLowerCase().includes(reviewSearchQuery.toLowerCase())
+                      )
+                      .map(review => (
+                        <div key={review.id} className="bg-[#131A29] border border-slate-800/80 hover:border-amber-500/30 rounded-xl p-4 flex justify-between items-start gap-4 transition">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-7 h-7 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center">
+                                {(review.fake_author_name || review.profiles?.name || "U")[0]}
+                              </span>
+                              <div>
+                                <p className="text-xs font-bold text-white">{review.fake_author_name || review.profiles?.name || "Verified Reader"}</p>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  {[...Array(5)].map((_, idx) => (
+                                    <Star
+                                      key={idx}
+                                      size={11}
+                                      className={idx < (review.rating || 5) ? "text-amber-400 fill-amber-400" : "text-slate-700"}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-300 leading-relaxed pl-9">{review.review_text}</p>
                           </div>
-                          <textarea value={fakeReviewText} onChange={(e) => setFakeReviewText(e.target.value)} placeholder="Write review text here..." className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-xl px-4 py-2 text-white outline-none h-16 resize-none" />
-                          <div className="flex gap-2">
-                             <button onClick={handleAddFakeReview} type="button" className="flex-1 bg-yellow-500 text-black font-bold py-2 rounded-xl hover:bg-yellow-400 transition">{editingReviewId ? "Update Review" : "Add Fake Review Now"}</button>
-                             {editingReviewId && <button onClick={() => {setEditingReviewId(null); setFakeReviewName(""); setFakeReviewText(""); setFakeReviewRating(5);}} type="button" className="bg-slate-700 text-white font-bold py-2 px-4 rounded-xl hover:bg-slate-600 transition">Cancel</button>}
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingReviewId(review.id);
+                                setFakeReviewName(review.fake_author_name || review.profiles?.name || "");
+                                setFakeReviewText(review.review_text || "");
+                                setFakeReviewRating(review.rating || 5);
+                              }}
+                              className="p-2 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 transition"
+                              title="Edit Review"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(review.id, selectedReviewBookId)}
+                              className="p-2 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition"
+                              title="Delete Review"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </div>
+                      ))}
 
-                        {/* List of existing reviews */}
-                        {bookReviews.length > 0 && (
-                          <div className="mt-6 space-y-3">
-                            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Manage Existing Reviews</label>
-                            <div className="max-h-48 overflow-y-auto pr-2 space-y-2 hide-scrollbar">
+                    {bookReviews.length === 0 && (
+                      <div className="text-center py-12 text-slate-500 text-xs">
+                        No reviews yet for this book. Use the Star Studio on the left to add the first review!
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================
+              3. BOOKS VAULT TAB
+              ========================================= */}
+          {activeTab === "books" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0E131F] p-5 rounded-2xl border border-slate-800">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <BookOpen className="text-amber-400" size={20} /> Royal Book Vault
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Manage digital editions, pricing, PDFs, and social proof.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+                    <input
+                      type="text"
+                      placeholder="Search books..."
+                      value={bookSearch}
+                      onChange={(e) => setBookSearch(e.target.value)}
+                      className="bg-[#141C2B] border border-slate-800 focus:border-amber-400 rounded-xl pl-9 pr-4 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      resetBookForm();
+                      setShowAddBookModal(true);
+                    }}
+                    className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm shrink-0"
+                  >
+                    <Plus size={16} /> Add Book
+                  </button>
+                </div>
+              </div>
+
+              {/* Add / Edit Book Modal */}
+              {showAddBookModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#0E131F] border border-amber-500/30 rounded-3xl p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                    <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+                      <h3 className="text-lg font-black text-white flex items-center gap-2">
+                        <Crown size={18} className="text-amber-400" />
+                        {editingBookId ? "Edit Book Edition" : "Publish New Royal Edition"}
+                      </h3>
+                      <button onClick={resetBookForm} className="p-1.5 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">Title *</label>
+                          <input value={title} onChange={(e) => setTitle(e.target.value)} type="text" className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">Author</label>
+                          <input value={author} onChange={(e) => setAuthor(e.target.value)} type="text" className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">Description</label>
+                        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none h-20 resize-none" />
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-[#131A29] p-4 rounded-2xl border border-slate-800">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Pages</label>
+                          <input value={pages} onChange={(e) => setPages(e.target.value)} type="number" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Language</label>
+                          <input value={language} onChange={(e) => setLanguage(e.target.value)} type="text" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-emerald-400 mb-1 uppercase">Price (₹) *</label>
+                          <input value={basePrice} onChange={(e) => setBasePrice(Number(e.target.value))} type="number" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-bold outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-amber-400 mb-1 uppercase">Discount %</label>
+                          <input value={discount} onChange={(e) => setDiscount(Number(e.target.value))} type="number" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold outline-none" />
+                        </div>
+                      </div>
+
+                      {/* Social Proof Override */}
+                      <div className="grid grid-cols-3 gap-4 bg-[#131A29] p-4 rounded-2xl border border-slate-800">
+                        <div className="col-span-3"><label className="block text-[10px] font-bold text-amber-400 uppercase">Social Proof Counters (Manual Override)</label></div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-1">Views</label>
+                          <input value={bookViews} onChange={(e) => setBookViews(Number(e.target.value))} type="number" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-1">Likes</label>
+                          <input value={bookLikes} onChange={(e) => setBookLikes(Number(e.target.value))} type="number" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-1">Dislikes</label>
+                          <input value={bookDislikes} onChange={(e) => setBookDislikes(Number(e.target.value))} type="number" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                        </div>
+                      </div>
+
+                      {/* Review Injector inside Modal (Preserved & Upgraded with Interactive Stars) */}
+                      {editingBookId && (
+                        <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/25">
+                          <label className="block text-[11px] font-bold text-amber-300 mb-3 uppercase flex items-center gap-1.5">
+                            <Star size={14} className="fill-amber-400" /> {editingReviewId ? "Edit Review" : "Quick Review Injector"}
+                          </label>
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <input value={fakeReviewName} onChange={(e) => setFakeReviewName(e.target.value)} type="text" placeholder="Customer Name (e.g. Rahul Sharma)" className="flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                              <div className="flex items-center gap-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-1.5">
+                                {[1, 2, 3, 4, 5].map(st => (
+                                  <button key={st} type="button" onClick={() => setFakeReviewRating(st)}>
+                                    <Star size={16} className={st <= fakeReviewRating ? "text-amber-400 fill-amber-400" : "text-slate-600"} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <textarea value={fakeReviewText} onChange={(e) => setFakeReviewText(e.target.value)} placeholder="Write review text here..." className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none h-16 resize-none" />
+                            <div className="flex gap-2">
+                              <button onClick={() => handleAddFakeReview(editingBookId)} type="button" className="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold py-2 rounded-xl text-xs transition">
+                                {editingReviewId ? "Update Review" : "Add Review Now"}
+                              </button>
+                              {editingReviewId && (
+                                <button onClick={() => { setEditingReviewId(null); setFakeReviewName(""); setFakeReviewText(""); setFakeReviewRating(5); }} type="button" className="bg-slate-800 text-white font-bold py-2 px-4 rounded-xl text-xs">
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {bookReviews.length > 0 && (
+                            <div className="mt-4 space-y-2 max-h-40 overflow-y-auto pr-1">
                               {bookReviews.map(review => (
-                                <div key={review.id} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/50 flex justify-between items-start gap-4">
-                                   <div className="flex-1">
-                                      <div className="flex items-center gap-2">
-                                         <p className="text-sm font-bold text-white">{review.fake_author_name || review.profiles?.name || "User"}</p>
-                                         <span className="flex text-yellow-500">
-                                            {[...Array(review.rating || 5)].map((_, i) => <Star key={i} size={10} className="fill-current"/>)}
-                                         </span>
-                                      </div>
-                                      <p className="text-xs text-slate-300 mt-1 line-clamp-2">{review.review_text}</p>
-                                   </div>
-                                   <div className="flex gap-2 shrink-0">
-                                      <button type="button" onClick={() => {
-                                          setEditingReviewId(review.id);
-                                          setFakeReviewName(review.fake_author_name || review.profiles?.name || "");
-                                          setFakeReviewText(review.review_text || "");
-                                          setFakeReviewRating(review.rating || 5);
-                                      }} className="text-blue-400 hover:text-blue-300 bg-blue-500/10 p-1.5 rounded transition"><Edit3 size={14}/></button>
-                                      <button type="button" onClick={() => handleDeleteReview(review.id)} className="text-red-400 hover:text-red-300 bg-red-500/10 p-1.5 rounded transition"><Trash2 size={14}/></button>
-                                   </div>
+                                <div key={review.id} className="bg-[#0B0F19] p-2.5 rounded-xl border border-slate-800 flex justify-between items-start gap-3">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-xs font-bold text-white">{review.fake_author_name || review.profiles?.name || "User"}</p>
+                                      <span className="flex text-amber-400">
+                                        {[...Array(review.rating || 5)].map((_, i) => <Star key={i} size={10} className="fill-current" />)}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{review.review_text}</p>
+                                  </div>
+                                  <div className="flex gap-1.5 shrink-0">
+                                    <button type="button" onClick={() => {
+                                      setEditingReviewId(review.id);
+                                      setFakeReviewName(review.fake_author_name || review.profiles?.name || "");
+                                      setFakeReviewText(review.review_text || "");
+                                      setFakeReviewRating(review.rating || 5);
+                                    }} className="text-amber-400 bg-amber-500/10 p-1.5 rounded"><Edit3 size={12} /></button>
+                                    <button type="button" onClick={() => handleDeleteReview(review.id, editingBookId)} className="text-rose-400 bg-rose-500/10 p-1.5 rounded"><Trash2 size={12} /></button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">Tags (comma separated)</label>
+                        <input value={tags} onChange={(e) => setTags(e.target.value)} type="text" placeholder="Psychology, Focus, Wealth" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
                       </div>
-                    )}
 
-                    <div>
-                      <label className="block text-xs font-bold text-indigo-300 mb-2 uppercase tracking-wide">Tags (comma separated)</label>
-                      <input value={tags} onChange={(e) => setTags(e.target.value)} type="text" placeholder="Psychology, Focus, Growth" className="w-full bg-slate-800/80 border border-indigo-500/30 focus:border-blue-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-800/40 p-5 rounded-2xl border border-indigo-500/20">
-                      <div className="border-r border-indigo-500/20 pr-0 md:pr-4">
-                        <label className="block text-xs font-black text-pink-400 mb-3 uppercase flex items-center gap-2">
-                          <BookOpen size={16} /> 1. Upload Cover Image {editingBookId && '(Optional)'}
-                        </label>
-                        <div className="relative">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#131A29] p-4 rounded-2xl border border-slate-800">
+                        <div>
+                          <label className="block text-[11px] font-bold text-amber-300 mb-2 uppercase">1. Cover Image {editingBookId && '(Optional)'}</label>
                           <input
                             type="file"
                             accept="image/*"
                             onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-                            className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-pink-500/20 file:text-pink-300 file:font-bold hover:file:bg-pink-500/30 cursor-pointer transition"
+                            className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-500/20 file:text-amber-300 file:font-semibold cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-blue-300 mb-2 uppercase">2. Book PDF {editingBookId ? '(Optional)' : '*'}</label>
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={(e) => setFile(e.target.files?.[0] || null)}
+                            className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-500/20 file:text-blue-300 file:font-semibold cursor-pointer"
                           />
                         </div>
                       </div>
 
-                      <div className="pl-0 md:pl-4 mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-indigo-500/20">
-                        <label className="block text-xs font-black text-blue-400 mb-3 uppercase flex items-center gap-2">
-                          <Upload size={16} /> 2. Upload Book PDF {editingBookId ? '(Optional)' : '*'}
-                        </label>
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) => setFile(e.target.files?.[0] || null)}
-                          className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-blue-600/20 file:text-blue-300 file:font-bold hover:file:bg-blue-600/30 cursor-pointer transition"
-                        />
-                      </div>
-                    </div>
+                      {uploadStatus && (
+                        <div className="p-3.5 rounded-xl text-xs font-bold bg-[#141C2B] border border-amber-500/30 text-amber-200 flex items-center gap-2">
+                          <Sparkles size={15} /> {uploadStatus}
+                        </div>
+                      )}
 
-                    {uploadStatus && (
-                      <div className={`p-4 rounded-xl text-sm font-bold border flex items-center gap-2 animate-pulse ${
-                        uploadStatus.includes("🎉") || uploadStatus.includes("✅") ? "bg-green-900/60 text-green-300 border-green-500/50" :
-                        uploadStatus.includes("❌") ? "bg-red-900/60 text-red-300 border-red-500/50" :
-                        "bg-blue-900/60 text-blue-300 border-blue-500/50"
-                      }`}>
-                        {uploadStatus.includes("❌") ? <AlertCircle size={18}/> : <Sparkles size={18}/>}
-                        {uploadStatus}
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          onClick={handlePublishBook}
+                          disabled={isUploading}
+                          className="flex-[2] bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 disabled:opacity-50 text-slate-950 font-black py-3 rounded-xl text-xs transition flex items-center justify-center gap-2"
+                        >
+                          {isUploading ? <Loader size={16} className="animate-spin" /> : <Upload size={16} />}
+                          {isUploading ? "Processing..." : (editingBookId ? "Save Changes" : "Publish to Vault")}
+                        </button>
+                        <button
+                          onClick={resetBookForm}
+                          className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl text-xs transition"
+                        >
+                          Cancel
+                        </button>
                       </div>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-indigo-500/20 mt-4">
-                      <button
-                        onClick={handlePublishBook}
-                        disabled={isUploading}
-                        className="flex-[2] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition duration-300 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg transform hover:scale-[1.02] active:scale-95"
-                      >
-                        {isUploading ? <Loader size={20} className="animate-spin" /> : <Upload size={20} />}
-                        {isUploading ? "Processing..." : (editingBookId ? "Update Book" : "Publish Book")}
-                      </button>
-                      <button
-                        onClick={resetBookForm}
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition duration-300 uppercase tracking-widest border border-slate-600 hover:border-slate-500"
-                      >
-                        Cancel
-                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredBooks.map(book => (
-                <div key={book.id} className="group bg-slate-900/60 border border-indigo-500/20 hover:border-blue-400/60 rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 hover:shadow-[0_10px_40px_rgba(99,102,241,0.2)] transform hover:-translate-y-2 flex flex-col h-full relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-500 pointer-events-none"></div>
-                  
-                  <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className="flex-1 flex gap-4">
-                      <div className="w-16 h-20 bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center border border-indigo-500/30 overflow-hidden shadow-md">
-                        {book.cover_path ? (
-                          <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: `url(${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path})`}}></div>
-                        ) : (
-                          <BookOpen size={24} className="text-indigo-400/50" />
+              {/* Books Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredBooks.map(book => (
+                  <div key={book.id} className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/40 rounded-2xl p-5 transition flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start gap-3 mb-3.5">
+                        <div className="flex gap-3.5 min-w-0">
+                          <div className="w-14 h-20 bg-[#141C2B] rounded-xl shrink-0 flex items-center justify-center border border-slate-800 overflow-hidden">
+                            {book.cover_path ? (
+                              <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path})` }}></div>
+                            ) : (
+                              <BookOpen size={20} className="text-slate-600" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-white text-sm line-clamp-2">{book.title}</h3>
+                            <p className="text-[11px] text-amber-400/90 mt-0.5">by {book.author}</p>
+                            <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-2">
+                              <span>👁️ {book.views || 0}</span>
+                              <span>❤️ {book.likes || 0}</span>
+                              <span>📄 {book.pages || "—"}p</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => {
+                              setSelectedReviewBookId(book.id);
+                              fetchBookReviews(book.id);
+                              setActiveTab("reviews");
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
+                            title="Manage Reviews & Stars"
+                          >
+                            <Star size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleEditBookClick(book)}
+                            className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition"
+                            title="Edit Book"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBook(book.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                            title="Delete Book"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-400 line-clamp-2 mb-4">{book.description || "No description provided."}</p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-emerald-400">₹{book.final_price || book.base_price}</span>
+                        {book.discount > 0 && (
+                          <>
+                            <span className="text-xs line-through text-slate-500">₹{book.base_price}</span>
+                            <span className="text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded font-bold">{book.discount}% OFF</span>
+                          </>
                         )}
                       </div>
-                      <div>
-                        <h3 className="font-black text-white text-lg line-clamp-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-300 group-hover:to-purple-300 transition">{book.title}</h3>
-                        <p className="text-xs text-indigo-300 mt-1 font-medium">by {book.author}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleEditBookClick(book)}
-                        className="text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 p-2 rounded-lg transition"
+                        onClick={() => {
+                          setSelectedReviewBookId(book.id);
+                          fetchBookReviews(book.id);
+                          setActiveTab("reviews");
+                        }}
+                        className="text-[11px] font-semibold text-amber-300 hover:underline flex items-center gap-1"
                       >
-                        <Edit3 size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBook(book.id)}
-                        className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition"
-                      >
-                        <Trash2 size={20} />
+                        <Star size={12} className="fill-amber-400 text-amber-400" /> Add Review
                       </button>
                     </div>
                   </div>
-                  
-                  <p className="text-sm text-slate-400 mb-4 flex-1 line-clamp-3 relative z-10">{book.description || "No description provided."}</p>
-                  
-                  <div className="flex items-center gap-4 text-xs font-bold text-slate-500 mb-4 bg-black/40 p-2 rounded-lg justify-center relative z-10">
-                    <span className="flex items-center gap-1"><Eye size={14} className="text-blue-400"/> {book.views || 0}</span>
-                    <span className="flex items-center gap-1"><Star size={14} className="text-yellow-400"/> {book.likes || 0}</span>
-                  </div>
-
-                  <div className="space-y-3 relative z-10">
-                    <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-indigo-500/10">
-                       <span className="text-xs font-bold text-slate-400">PAGES</span>
-                       <span className="text-sm font-bold text-white">{book.pages || "—"}</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center bg-gradient-to-r from-slate-800/50 to-indigo-900/30 p-3 rounded-xl border border-indigo-500/20">
-                      <span className="text-xs font-bold text-slate-400">PRICE</span>
-                      <p className="flex items-center gap-2">
-                        {book.discount > 0 && <span className="text-xs line-through text-slate-500">₹{book.base_price}</span>}
-                        <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-cyan-300">₹{book.final_price || book.base_price}</span>
-                        {book.discount > 0 && <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded-md font-bold">{book.discount}% OFF</span>}
-                      </p>
-                    </div>
-                  </div>
-
-                  {book.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4 relative z-10 pt-4 border-t border-indigo-500/20">
-                      {book.tags.map((tag, i) => (
-                        <span key={i} className="text-[10px] uppercase font-bold tracking-wider bg-indigo-500/20 text-indigo-200 px-3 py-1.5 rounded-full border border-indigo-500/30">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Existing Tabs Continuation ... */}
-        {activeTab === "discounts" && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-             <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-green-500/20 backdrop-blur-md">
-              <div>
-                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300 flex items-center gap-2">
-                  <Percent className="text-green-400" /> Deals & Discounts
-                </h2>
+                ))}
               </div>
-              <button
-                onClick={() => {
-                  resetDiscountForm();
-                  setShowAddDiscountModal(true);
-                }}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-black px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] transform hover:scale-105 flex items-center gap-2"
-              >
-                <Plus size={20} /> Create Discount
-              </button>
             </div>
+          )}
 
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
-              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-green-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search discounts..."
-                value={discountSearch}
-                onChange={(e) => setDiscountSearch(e.target.value)}
-                className="relative w-full bg-slate-900/60 border border-green-500/30 hover:border-green-400/60 focus:border-green-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
-              />
-            </div>
+          {/* =========================================
+              4. AFFILIATE / PARTNERS TAB
+              ========================================= */}
+          {activeTab === "affiliates" && (
+            <div className="space-y-6">
+              <div className="bg-[#0E131F] p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <Handshake className="text-amber-400" size={20} /> Royal Partners & Affiliates
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Generate partner codes, track payouts, and chat with influencers.</p>
+                </div>
+                <div className="bg-[#141C2B] px-4 py-2 rounded-xl border border-slate-800 text-xs">
+                  <span className="text-slate-400">Total Unpaid Dues: </span>
+                  <strong className="text-amber-300">₹{totalPendingPayouts}</strong>
+                </div>
+              </div>
 
-            {showAddDiscountModal && (
-              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-slate-900 border border-green-500/50 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(34,197,94,0.2)]">
-                  <div className="flex justify-between items-center mb-6 border-b border-green-500/20 pb-4">
-                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{editingDiscountId ? "Edit Discount" : "New Discount"}</h3>
-                    <button onClick={resetDiscountForm} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
-                      <X size={24} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* CODE GENERATOR */}
+                <div className="bg-[#0E131F] border border-slate-800 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2"><Key size={16} className="text-amber-400" /> Generate Partner Code</h3>
+                  <div className="space-y-3.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase">Commission (%)</label>
+                      <input type="number" value={newCommission} onChange={(e) => setNewCommission(Number(e.target.value))} className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-amber-400" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase">Customer Discount (%)</label>
+                      <input type="number" value={newCodeDiscount} onChange={(e) => setNewCodeDiscount(Number(e.target.value))} className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-amber-400" />
+                    </div>
+                    <button onClick={handleCreateAffiliateCode} className="w-full bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black py-3 rounded-xl text-xs hover:from-amber-300 hover:to-yellow-400 transition">
+                      Generate Secret Code
                     </button>
                   </div>
+                </div>
 
-                  <div className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-bold text-green-300 mb-2 uppercase">Discount Name *</label>
-                      <input value={discountName} onChange={(e) => setDiscountName(e.target.value)} type="text" placeholder="Summer Sale" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                {/* CODES LIST WITH COPY BUTTON */}
+                <div className="lg:col-span-2 bg-[#0E131F] border border-slate-800 rounded-2xl p-5 flex flex-col">
+                  <h3 className="text-sm font-bold text-white mb-3.5">Active & Claimed Partner Codes</h3>
+                  <div className="overflow-y-auto space-y-2.5 max-h-[240px] pr-1">
+                    {affiliateCodes.map((codeObj, i) => (
+                      <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-[#131A29] border border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-mono font-black tracking-widest text-amber-300">{codeObj.code}</span>
+                          <button
+                            onClick={() => copyToClipboard(codeObj.code, "Partner Code")}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                            title="Copy Code"
+                          >
+                            <Copy size={12} />
+                          </button>
+                          <span className="text-xs text-slate-400">
+                            Comm: <strong className="text-emerald-400">{codeObj.commission_pct}%</strong> · Disc: <strong className="text-amber-300">{codeObj.discount_pct}%</strong>
+                          </span>
+                        </div>
+                        <div>
+                          {codeObj.is_claimed ? (
+                            <span className="bg-emerald-500/15 text-emerald-300 px-2.5 py-1 rounded-md text-[10px] font-bold border border-emerald-500/30">CLAIMED</span>
+                          ) : (
+                            <span className="bg-slate-800 text-slate-400 px-2.5 py-1 rounded-md text-[10px] font-bold">UNCLAIMED</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {affiliateCodes.length === 0 && <p className="text-slate-500 text-xs text-center py-8">No partner codes generated yet.</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* EDIT PARTNER MODAL */}
+              {editingPartner && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#0E131F] border border-amber-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+                    <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                      <h3 className="text-base font-bold text-white">Edit Partner Details</h3>
+                      <button onClick={() => setEditingPartner(null)} className="text-slate-400 hover:text-white"><X size={18} /></button>
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-green-300 mb-2 uppercase">Percentage % *</label>
-                      <input value={discountPercentage} onChange={(e) => setDiscountPercentage(Number(e.target.value))} type="number" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3.5">
                       <div>
-                        <label className="block text-xs font-bold text-green-300 mb-2 uppercase">Start Date *</label>
-                        <input value={discountStartDate} onChange={(e) => setDiscountStartDate(e.target.value)} type="date" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1">Full Name</label>
+                        <input value={editingPartner.full_name} onChange={(e) => setEditingPartner({ ...editingPartner, full_name: e.target.value })} className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-green-300 mb-2 uppercase">End Date *</label>
-                        <input value={discountEndDate} onChange={(e) => setDiscountEndDate(e.target.value)} type="date" className="w-full bg-slate-800/80 border border-green-500/30 focus:border-green-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1">Channel Name</label>
+                        <input value={editingPartner.channel_name} onChange={(e) => setEditingPartner({ ...editingPartner, channel_name: e.target.value })} className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
                       </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1">UPI ID</label>
+                        <input value={editingPartner.payment_upi} onChange={(e) => setEditingPartner({ ...editingPartner, payment_upi: e.target.value })} className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                      </div>
+                      <button onClick={handleUpdatePartner} className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2.5 rounded-xl text-xs mt-2 transition">Save Partner</button>
                     </div>
+                  </div>
+                </div>
+              )}
 
-                    <div>
-                      <label className="block text-xs font-bold text-green-300 mb-3 uppercase">Select Books</label>
-                      <div className="space-y-2 max-h-48 overflow-y-auto bg-slate-800/40 p-3 rounded-xl border border-green-500/20">
-                        {books.map(book => (
-                          <label key={book.id} className="flex items-center gap-3 p-3 hover:bg-slate-800/80 rounded-lg cursor-pointer transition">
-                            <input
-                              type="checkbox"
-                              checked={selectedBooks.includes(book.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedBooks([...selectedBooks, book.id]);
-                                } else {
-                                  setSelectedBooks(selectedBooks.filter(id => id !== book.id));
-                                }
-                              }}
-                              className="w-4 h-4 rounded accent-green-500"
-                            />
-                            <span className="text-sm text-slate-300">{book.title}</span>
-                          </label>
+              {/* AFFILIATES LIST & CHAT */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-[#0E131F] border border-slate-800 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-white mb-4">Registered Partners ({affiliates.length})</h3>
+                  <div className="space-y-3.5 overflow-y-auto max-h-[520px] pr-1">
+                    {affiliates.map(aff => {
+                      const pendingPayout = (aff.total_earned || 0) - (aff.total_paid || 0);
+                      return (
+                        <div key={aff.user_id} className="bg-[#131A29] border border-slate-800 rounded-2xl p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h4 className="text-sm font-bold text-white">{aff.full_name}</h4>
+                              <p className="text-xs text-amber-400">{aff.channel_name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[11px] text-slate-400 font-mono">UPI: {aff.payment_upi}</span>
+                                {aff.payment_upi && (
+                                  <button onClick={() => copyToClipboard(aff.payment_upi, "UPI ID")} className="text-slate-400 hover:text-white">
+                                    <Copy size={11} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setSelectedAffiliateId(aff.user_id)}
+                                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+                                  selectedAffiliateId === aff.user_id ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                }`}
+                              >
+                                Chat
+                              </button>
+                              <button onClick={() => setEditingPartner(aff)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-amber-300 rounded-lg"><Edit3 size={14} /></button>
+                              <button onClick={() => handleDeletePartner(aff.user_id, aff.partner_code)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg"><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-2 mb-3">
+                            <div className="bg-[#0B0F19] p-2 rounded-lg text-center">
+                              <p className="text-[10px] text-slate-500 uppercase">Clicks</p>
+                              <p className="text-xs font-bold text-white">{aff.clicks || 0}</p>
+                            </div>
+                            <div className="bg-[#0B0F19] p-2 rounded-lg text-center">
+                              <p className="text-[10px] text-slate-500 uppercase">Sales</p>
+                              <p className="text-xs font-bold text-emerald-400">{aff.sales || 0}</p>
+                            </div>
+                            <div className="bg-[#0B0F19] p-2 rounded-lg text-center">
+                              <p className="text-[10px] text-slate-500 uppercase">Earned</p>
+                              <p className="text-xs font-bold text-white">₹{aff.total_earned || 0}</p>
+                            </div>
+                            <div className="bg-amber-500/10 p-2 rounded-lg text-center border border-amber-500/20">
+                              <p className="text-[10px] text-amber-300 uppercase">Pending</p>
+                              <p className="text-xs font-bold text-amber-300">₹{pendingPayout}</p>
+                            </div>
+                          </div>
+
+                          {pendingPayout > 0 && (
+                            <div className="flex gap-2 items-center pt-2 border-t border-slate-800">
+                              <input
+                                type="number"
+                                placeholder="Amount sent (₹)"
+                                value={payAmount[aff.user_id] || ""}
+                                onChange={(e) => setPayAmount({ ...payAmount, [aff.user_id]: e.target.value })}
+                                className="bg-[#0B0F19] border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs outline-none flex-1"
+                              />
+                              <button onClick={() => handlePayAffiliate(aff.user_id, aff.total_paid || 0)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg transition">
+                                Mark Paid
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {affiliates.length === 0 && <p className="text-slate-500 text-xs text-center py-10">No partners registered yet.</p>}
+                  </div>
+                </div>
+
+                {/* Partner Chat Panel */}
+                <div className="bg-[#0E131F] border border-slate-800 rounded-2xl overflow-hidden flex flex-col h-[560px]">
+                  {!selectedAffiliateId ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                      <MessageSquare size={36} className="text-slate-600 mb-3" />
+                      <p className="text-slate-400 text-xs font-semibold">Select a partner to open live support chat.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-[#131A29] border-b border-slate-800 p-3.5">
+                        <h3 className="font-bold text-xs text-white">Partner Direct Line</h3>
+                        <p className="text-[11px] text-amber-400">{affiliates.find(a => a.user_id === selectedAffiliateId)?.full_name}</p>
+                      </div>
+                      <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {affiliateMessages.filter(m => m.affiliate_id === selectedAffiliateId).map(msg => (
+                          <div key={msg.id} className={`max-w-[85%] p-2.5 rounded-xl text-xs ${
+                            msg.sender_type === 'admin'
+                              ? 'bg-amber-400 text-slate-950 font-medium ml-auto'
+                              : 'bg-[#141C2B] border border-slate-800 text-slate-200 mr-auto'
+                          }`}>
+                            {msg.message}
+                          </div>
                         ))}
                       </div>
-                    </div>
-
-                    <div className="flex gap-4 pt-4 border-t border-green-500/20">
-                      <button
-                        onClick={handleAddDiscount}
-                        className="flex-[2] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg transform hover:scale-[1.02]"
-                      >
-                        {editingDiscountId ? "Update Discount" : "Create Discount"}
-                      </button>
-                      <button
-                        onClick={resetDiscountForm}
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition border border-slate-600 uppercase"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
+                      <div className="p-3 bg-[#131A29] border-t border-slate-800 flex gap-2">
+                        <input
+                          type="text"
+                          value={adminChatInput}
+                          onChange={(e) => setAdminChatInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSendAdminMessage()}
+                          placeholder="Type message..."
+                          className="flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                        />
+                        <button
+                          onClick={handleSendAdminMessage}
+                          disabled={!adminChatInput.trim()}
+                          className="bg-amber-400 hover:bg-amber-300 text-slate-950 p-2.5 rounded-xl disabled:opacity-50 transition"
+                        >
+                          <Send size={15} />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDiscounts.map(discount => {
-                const isActive = new Date() >= new Date(discount.startDate) && new Date() <= new Date(discount.endDate);
-                return (
-                  <div key={discount.id} className={`border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:shadow-lg ${
-                    isActive
-                      ? "bg-gradient-to-br from-green-900/40 to-emerald-900/20 border-green-500/40 hover:border-green-400/70 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
-                      : "bg-gradient-to-br from-slate-900/60 to-slate-800/40 border-slate-700/50 hover:border-slate-500/50"
-                  }`}>
-                    <div className="absolute top-4 right-4 flex items-center gap-2">
-                      {isActive ? (
-                        <span className="bg-green-500/20 text-green-300 text-xs font-black px-3 py-1.5 rounded-md border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]">✅ ACTIVE</span>
-                      ) : (
-                        <span className="bg-slate-700/50 text-slate-300 text-xs font-black px-3 py-1.5 rounded-md border border-slate-600/50">⏰ UPCOMING</span>
-                      )}
-                      <button onClick={() => handleEditDiscountClick(discount)} className="text-slate-400 hover:text-blue-400 bg-slate-800/80 hover:bg-blue-500/20 p-1.5 rounded-md transition"><Edit3 size={16}/></button>
-                      <button onClick={() => handleDeleteDiscount(discount.id)} className="text-slate-400 hover:text-red-400 bg-slate-800/80 hover:bg-red-500/20 p-1.5 rounded-md transition"><Trash2 size={16}/></button>
-                    </div>
-
-                    <div className="mb-4">
-                      <h3 className="font-black text-white text-xl">{discount.name}</h3>
-                    </div>
-
-                    <div className="flex items-end justify-between mb-6">
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1 font-bold">DISCOUNT</p>
-                        <p className={`text-4xl font-black ${isActive ? "text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300" : "text-slate-300"}`}>{discount.percentage}%</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-slate-400 mb-1 font-bold">BOOKS APPLIED</p>
-                        <p className="text-2xl font-black text-white">{discount.appliedBooks?.length || 0}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4 text-xs text-slate-400 border-t border-slate-700/50 pt-4">
-                      <p className="flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700/30">
-                        <Calendar size={14} className={isActive ? "text-green-400" : ""} /> {new Date(discount.startDate).toLocaleDateString()}
-                      </p>
-                      <p className="flex items-center gap-1.5 bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700/30">
-                        <Calendar size={14} className={isActive ? "text-red-400" : ""} /> {new Date(discount.endDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === "coupons" && (
-           <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-pink-500/20 backdrop-blur-md">
-             <div>
-               <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-300 flex items-center gap-2">
-                 <Tag className="text-pink-400" /> Promo Codes
-               </h2>
-             </div>
-             <button
-               onClick={() => setShowAddCouponModal(true)}
-               className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white font-black px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] transform hover:scale-105 flex items-center gap-2"
-             >
-               <Plus size={20} /> Generate Code
-             </button>
-           </div>
-
-           <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-rose-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
-              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-pink-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search coupons..."
-                value={couponSearch}
-                onChange={(e) => setCouponSearch(e.target.value)}
-                className="relative w-full bg-slate-900/60 border border-pink-500/30 hover:border-pink-400/60 focus:border-pink-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
-              />
-            </div>
-
-            {showAddCouponModal && (
-              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-slate-900 border border-pink-500/50 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(236,72,153,0.2)]">
-                  <div className="flex justify-between items-center mb-6 border-b border-pink-500/20 pb-4">
-                    <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">New Coupon</h3>
-                    <button onClick={() => setShowAddCouponModal(false)} className="p-2 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white">
-                      <X size={24} />
-                    </button>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Coupon Code *</label>
-                      <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} type="text" placeholder="SAVE20" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner font-black tracking-widest text-lg" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Discount %*</label>
-                        <input value={couponDiscount} onChange={(e) => setCouponDiscount(Number(e.target.value))} type="number" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Usage Limit *</label>
-                        <input value={couponLimit} onChange={(e) => setCouponLimit(Number(e.target.value))} type="number" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-pink-300 mb-2 uppercase">Expiry Date *</label>
-                      <input value={couponExpiry} onChange={(e) => setCouponExpiry(e.target.value)} type="date" className="w-full bg-slate-800/80 border border-pink-500/30 focus:border-pink-400 rounded-xl px-4 py-3 text-white outline-none transition shadow-inner" />
-                    </div>
-
-                    <div className="flex gap-4 pt-4 border-t border-pink-500/20">
-                      <button
-                        onClick={handleAddCoupon}
-                        className="flex-[2] bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg transform hover:scale-[1.02]"
-                      >
-                        Create Coupon
-                      </button>
-                      <button
-                        onClick={() => setShowAddCouponModal(false)}
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition border border-slate-600 uppercase"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
+          {/* =========================================
+              5. DISCOUNTS TAB
+              ========================================= */}
+          {activeTab === "discounts" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0E131F] p-5 rounded-2xl border border-slate-800">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <Percent className="text-amber-400" size={20} /> Royal Deals & Campaigns
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Run time-limited discount campaigns on selected books.</p>
                 </div>
+                <button
+                  onClick={() => {
+                    resetDiscountForm();
+                    setShowAddDiscountModal(true);
+                  }}
+                  className="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5"
+                >
+                  <Plus size={16} /> Create Discount
+                </button>
               </div>
-            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCoupons.map(coupon => {
-                const isExpired = new Date(coupon.expiry) < new Date();
-                const isExhausted = coupon.used >= coupon.limit_count;
-                const usagePercent = (coupon.used / coupon.limit_count) * 100;
-
-                return (
-                  <div key={coupon.id} className={`border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 ${
-                    isExpired || isExhausted
-                      ? "bg-slate-900/40 border-slate-700/30 opacity-60 grayscale hover:grayscale-0"
-                      : "bg-gradient-to-br from-pink-900/40 to-rose-900/20 border-pink-500/40 hover:border-pink-400/70 shadow-[0_0_15px_rgba(236,72,153,0.1)] hover:shadow-[0_0_25px_rgba(236,72,153,0.2)]"
-                  }`}>
-                    {isExpired && <div className="absolute top-3 right-3 bg-red-500/20 text-red-300 text-[10px] font-black px-2 py-1 rounded border border-red-500/30">EXPIRED</div>}
-                    {isExhausted && <div className="absolute top-3 right-3 bg-yellow-500/20 text-yellow-300 text-[10px] font-black px-2 py-1 rounded border border-yellow-500/30">EXHAUSTED</div>}
-
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="font-black text-white text-3xl tracking-widest">{coupon.code}</h3>
-                        <p className="text-sm text-pink-300 mt-1 font-bold">{coupon.discount}% Discount</p>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteCoupon(coupon.id)}
-                        className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition"
-                      >
-                        <Trash2 size={20} />
-                      </button>
+              {showAddDiscountModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#0E131F] border border-amber-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+                    <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                      <h3 className="text-base font-bold text-white">{editingDiscountId ? "Edit Discount" : "New Discount Campaign"}</h3>
+                      <button onClick={resetDiscountForm} className="text-slate-400 hover:text-white"><X size={18} /></button>
                     </div>
 
-                    <div className="space-y-4 mb-2">
-                      <div className="bg-slate-900/50 p-3 rounded-xl border border-pink-500/10">
-                        <div className="flex justify-between text-xs mb-2">
-                          <span className="text-slate-400 font-bold">Usage</span>
-                          <span className="text-white font-black">{coupon.used} / {coupon.limit_count}</span>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Campaign Name *</label>
+                        <input value={discountName} onChange={(e) => setDiscountName(e.target.value)} type="text" placeholder="Royal Diwali Sale" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Discount % *</label>
+                        <input value={discountPercentage} onChange={(e) => setDiscountPercentage(Number(e.target.value))} type="number" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Start Date *</label>
+                          <input value={discountStartDate} onChange={(e) => setDiscountStartDate(e.target.value)} type="date" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
                         </div>
-                        <div className="w-full bg-slate-800 rounded-full h-2.5 shadow-inner overflow-hidden border border-slate-700/50">
-                          <div
-                            className="bg-gradient-to-r from-pink-500 to-rose-500 h-full rounded-full transition-all duration-500 relative"
-                            style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">End Date *</label>
+                          <input value={discountEndDate} onChange={(e) => setDiscountEndDate(e.target.value)} type="date" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase">Select Books</label>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto bg-[#131A29] p-2.5 rounded-xl border border-slate-800">
+                          {books.map(book => (
+                            <label key={book.id} className="flex items-center gap-2.5 p-2 hover:bg-slate-800/60 rounded-lg cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedBooks.includes(book.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedBooks([...selectedBooks, book.id]);
+                                  else setSelectedBooks(selectedBooks.filter(id => id !== book.id));
+                                }}
+                                className="rounded accent-amber-400"
+                              />
+                              <span className="text-xs text-slate-200">{book.title}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-2.5 pt-2">
+                        <button onClick={handleAddDiscount} className="flex-[2] bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2.5 rounded-xl text-xs">
+                          {editingDiscountId ? "Update Campaign" : "Launch Campaign"}
+                        </button>
+                        <button onClick={resetDiscountForm} className="flex-1 bg-slate-800 text-slate-300 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {filteredDiscounts.map(discount => {
+                  const isActive = new Date() >= new Date(discount.startDate) && new Date() <= new Date(discount.endDate);
+                  return (
+                    <div key={discount.id} className="bg-[#0E131F] border border-slate-800 rounded-2xl p-5">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                            {isActive ? "ACTIVE" : "SCHEDULED"}
+                          </span>
+                          <h3 className="font-bold text-white text-base mt-1.5">{discount.name}</h3>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleEditDiscountClick(discount)} className="p-1.5 text-slate-400 hover:text-amber-300 bg-slate-800/70 rounded-lg"><Edit3 size={14} /></button>
+                          <button onClick={() => handleDeleteDiscount(discount.id)} className="p-1.5 text-slate-400 hover:text-rose-400 bg-slate-800/70 rounded-lg"><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-between my-4">
+                        <p className="text-3xl font-black text-amber-300">{discount.percentage}% OFF</p>
+                        <p className="text-xs text-slate-400">{discount.appliedBooks?.length || 0} Books</p>
+                      </div>
+                      <div className="text-[11px] text-slate-400 pt-3 border-t border-slate-800 flex justify-between">
+                        <span>{new Date(discount.startDate).toLocaleDateString()}</span>
+                        <span>→</span>
+                        <span>{new Date(discount.endDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* =========================================
+              6. COUPONS TAB (With One-Click Copy)
+              ========================================= */}
+          {activeTab === "coupons" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0E131F] p-5 rounded-2xl border border-slate-800">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <Tag className="text-amber-400" size={20} /> Promo Codes & Vouchers
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Create and copy checkout promo codes in one click.</p>
+                </div>
+                <button
+                  onClick={() => setShowAddCouponModal(true)}
+                  className="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5"
+                >
+                  <Plus size={16} /> Generate Coupon
+                </button>
+              </div>
+
+              {showAddCouponModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#0E131F] border border-amber-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+                    <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                      <h3 className="text-base font-bold text-white">New Promo Code</h3>
+                      <button onClick={() => setShowAddCouponModal(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Coupon Code *</label>
+                        <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} type="text" placeholder="ROYAL25" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-amber-300 outline-none" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Discount % *</label>
+                          <input value={couponDiscount} onChange={(e) => setCouponDiscount(Number(e.target.value))} type="number" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Usage Limit *</label>
+                          <input value={couponLimit} onChange={(e) => setCouponLimit(Number(e.target.value))} type="number" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase">Expiry Date *</label>
+                        <input value={couponExpiry} onChange={(e) => setCouponExpiry(e.target.value)} type="date" className="w-full bg-[#141C2B] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none" />
+                      </div>
+                      <div className="flex gap-2.5 pt-2">
+                        <button onClick={handleAddCoupon} className="flex-[2] bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2.5 rounded-xl text-xs">Create Coupon</button>
+                        <button onClick={() => setShowAddCouponModal(false)} className="flex-1 bg-slate-800 text-slate-300 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {filteredCoupons.map(coupon => {
+                  const isExpired = new Date(coupon.expiry) < new Date();
+                  const isExhausted = coupon.used >= coupon.limit_count;
+                  const usagePercent = (coupon.used / coupon.limit_count) * 100;
+
+                  return (
+                    <div key={coupon.id} className="bg-[#0E131F] border border-slate-800 rounded-2xl p-5">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-mono font-black text-white text-xl tracking-wider">{coupon.code}</h3>
+                          <button
+                            onClick={() => copyToClipboard(coupon.code, "Coupon Code")}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 transition"
+                            title="Copy Coupon"
                           >
-                             <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                        <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-1.5 text-slate-400 hover:text-rose-400"><Trash2 size={15} /></button>
+                      </div>
+                      <p className="text-xs font-bold text-amber-300 mb-3">{coupon.discount}% Instant Discount</p>
+                      <div className="bg-[#131A29] p-3 rounded-xl border border-slate-800 mb-3">
+                        <div className="flex justify-between text-[11px] mb-1.5">
+                          <span className="text-slate-400">Redeemed</span>
+                          <span className="text-white font-bold">{coupon.used} / {coupon.limit_count}</span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.min(usagePercent, 100)}%` }}></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Expires: {new Date(coupon.expiry).toLocaleDateString()}</span>
+                        {(isExpired || isExhausted) && (
+                          <span className="text-rose-400 font-bold">{isExpired ? "EXPIRED" : "FULL"}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* =========================================
+              7. CUSTOMERS TAB
+              ========================================= */}
+          {activeTab === "customers" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0E131F] p-5 rounded-2xl border border-slate-800">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <Users className="text-amber-400" size={20} /> Royal Member Directory
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Reader profiles, lifetime spend, and purchase history.</p>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+                  <input
+                    type="text"
+                    placeholder="Search readers..."
+                    value={searchCustomer}
+                    onChange={(e) => setSearchCustomer(e.target.value)}
+                    className="bg-[#141C2B] border border-slate-800 focus:border-amber-400 rounded-xl pl-9 pr-4 py-2 text-xs text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3.5">
+                {filteredCustomers.map(customer => {
+                  const customerOrders = orders.filter(o => o.customer_id === customer.id);
+                  const totalSpent = customerOrders.reduce((sum, o) => sum + (Number(o.final_price) || 0), 0);
+
+                  return (
+                    <div key={customer.id} className="bg-[#0E131F] border border-slate-800 hover:border-amber-500/30 rounded-2xl p-5 transition">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-11 h-11 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-xl flex items-center justify-center text-slate-950 font-black text-base overflow-hidden shrink-0">
+                            {customer.avatar_url ? (
+                              <img src={customer.avatar_url} alt={customer.name} className="w-full h-full object-cover" />
+                            ) : (
+                              customer.name?.[0] || "R"
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="font-bold text-white text-sm truncate">{customer.name || "Vedoxa Reader"}</h3>
+                              {customer.is_admin && (
+                                <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-bold">ADMIN</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 truncate">{customer.email || "No email"}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-slate-300 space-y-1">
+                          <p className="flex items-center gap-1.5"><Phone size={12} className="text-slate-500" /> {customer.phone || "—"}</p>
+                          <p className="flex items-center gap-1.5"><MapPin size={12} className="text-slate-500" /> {customer.city || "—"}</p>
+                        </div>
+
+                        <div className="bg-[#131A29] rounded-xl p-3 border border-slate-800">
+                          <p className="text-[10px] text-slate-400 uppercase font-bold">Lifetime Spend</p>
+                          <p className="text-lg font-black text-emerald-400">₹{totalSpent.toFixed(0)}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="bg-[#131A29] rounded-xl p-3 border border-slate-800 text-center">
+                            <p className="text-[10px] text-slate-400 uppercase">Orders</p>
+                            <p className="text-sm font-black text-white">{customerOrders.length}</p>
+                          </div>
+                          <div className="bg-[#131A29] rounded-xl p-3 border border-slate-800 text-center">
+                            <p className="text-[10px] text-slate-400 uppercase">Points</p>
+                            <p className="text-sm font-black text-amber-300">{customer.reward_points || 0}</p>
                           </div>
                         </div>
                       </div>
-
-                      <p className="text-xs text-slate-400 flex items-center gap-2 bg-slate-800/50 px-3 py-2 rounded-md border border-slate-700/30 w-fit">
-                        <Calendar size={14} className={isExpired ? "text-red-400" : "text-pink-400"} /> Expires: {new Date(coupon.expiry).toLocaleDateString()}
-                      </p>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-         </div>
-        )}
+          )}
 
-        {activeTab === "customers" && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-             <div className="bg-slate-900/50 p-6 rounded-2xl border border-amber-500/20 backdrop-blur-md">
-              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400 flex items-center gap-2">
-                <Users className="text-amber-400" /> Customer Database
-              </h2>
-            </div>
+          {/* =========================================
+              8. EXTERNAL ADMIN MODULES (PRESERVED 100%)
+              ========================================= */}
+          {activeTab === "blog" && (
+            <BlogManager supabase={supabase} addNotification={addNotification} books={books} />
+          )}
+          {activeTab === "seo" && (
+            <SeoTools supabase={supabase} addNotification={addNotification} books={books} onSaved={loadAllData} />
+          )}
+          {activeTab === "insights" && (
+            <SalesInsights orders={orders} books={books} customers={customers} />
+          )}
 
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
-              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-amber-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchCustomer}
-                onChange={(e) => setSearchCustomer(e.target.value)}
-                className="relative w-full bg-slate-900/60 border border-amber-500/30 hover:border-amber-400/60 focus:border-amber-400 rounded-xl px-5 pl-14 py-4 text-white placeholder-slate-400 outline-none transition duration-300 shadow-inner"
-              />
-            </div>
+          {/* =========================================
+              9. SETTINGS & VAULT SECURITY TAB
+              ========================================= */}
+          {activeTab === "settings" && (
+            <div className="space-y-6 max-w-2xl">
+              <div className="bg-[#0E131F] p-5 rounded-2xl border border-slate-800">
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <Settings className="text-amber-400" size={20} /> Royal Vault Security
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Update your sovereign passkey and security preferences.</p>
+              </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              {filteredCustomers.map(customer => {
-                const customerOrders = orders.filter(o => o.customer_id === customer.id);
-                const totalSpent = customerOrders.reduce((sum, o) => sum + (o.final_price || 0), 0);
+              <div className="bg-[#0E131F] border border-slate-800 rounded-2xl p-6 space-y-5">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Lock size={16} className="text-amber-400" /> Change Admin Password
+                </h3>
 
-                return (
-                  <div key={customer.id} className="bg-gradient-to-r from-slate-900/80 to-slate-800/60 border border-amber-500/20 hover:border-amber-400/50 rounded-3xl p-8 backdrop-blur-xl transition-all duration-300 hover:shadow-[0_10px_30px_rgba(245,158,11,0.15)] relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center relative z-10">
-                      <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg border border-white/20 transform rotate-3 overflow-hidden">
-                          {customer.avatar_url ? (
-                             <img src={customer.avatar_url} alt={customer.name} className="w-full h-full object-cover" />
-                          ) : (
-                             customer.name?.[0] || "?"
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-black text-white text-xl">{customer.name || "Vedoxa Reader"}</h3>
-                          <p className="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
-                            <Mail size={14} className="text-amber-400/70" /> {customer.email || "No email"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/30">
-                        <p className="text-[10px] text-amber-300 font-bold uppercase tracking-widest">Contact Info</p>
-                        <p className="text-sm text-white flex items-center gap-2">
-                          <Phone size={14} className="text-slate-400" /> {customer.phone || "—"}
-                        </p>
-                        <p className="text-sm text-white flex items-center gap-2">
-                          <MapPin size={14} className="text-slate-400" /> {customer.city || "—"}
-                        </p>
-                      </div>
-
-                      <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/20 rounded-2xl p-5 border border-green-500/30 shadow-inner">
-                        <p className="text-[10px] text-green-300 font-bold uppercase tracking-widest mb-2">Total Value</p>
-                        <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">₹{totalSpent.toFixed(0)}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-900/50 rounded-2xl p-4 border border-blue-500/20">
-                          <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">Orders</p>
-                          <p className="text-2xl font-black text-white mt-1">{customerOrders.length}</p>
-                        </div>
-                        <div className="bg-slate-900/50 rounded-2xl p-4 border border-purple-500/20">
-                          <p className="text-[10px] text-purple-300 font-bold uppercase tracking-widest">Reward Pts</p>
-                          <p className="text-xl font-bold text-white mt-1">{customer.reward_points || 0}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {customerOrders.length > 0 && (
-                      <div className="mt-8 pt-6 border-t border-amber-500/10 relative z-10">
-                        <p className="text-xs font-bold text-amber-400/80 mb-4 uppercase tracking-widest flex items-center gap-2">
-                           <BookOpen size={14} /> Purchase History
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                          {customerOrders.slice(0, 4).map((order, i) => (
-                            <div key={i} className="bg-slate-900/80 border border-slate-700/50 hover:border-amber-500/40 rounded-xl px-4 py-2.5 text-sm transition-colors duration-300 flex items-center gap-3">
-                              <span className="text-white font-bold">{order.book_title}</span>
-                              <span className="text-green-400 bg-green-500/10 px-2 py-0.5 rounded text-xs font-black">₹{order.final_price}</span>
-                            </div>
-                          ))}
-                          {customerOrders.length > 4 && (
-                            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-sm text-amber-300 font-bold flex items-center">
-                              +{customerOrders.length - 4} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "settings" && (
-          <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl">
-             <div className="bg-slate-900/50 p-6 rounded-2xl border border-red-500/20 backdrop-blur-md">
-              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400 flex items-center gap-2">
-                <Settings className="text-red-400" /> Settings & Security
-              </h2>
-            </div>
-
-            <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/60 border border-red-500/30 rounded-3xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3 relative z-10">
-                <Lock className="text-orange-400" /> Change Password
-              </h3>
-
-              <div className="space-y-6 relative z-10">
                 <div>
-                  <label className="block text-xs font-bold text-orange-300 mb-2 uppercase tracking-wide">Current Password</label>
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300 pointer-events-none"></div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase">Current Password</label>
+                  <div className="relative">
                     <input
                       type={showCurrentPass ? "text" : "password"}
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="relative w-full bg-slate-900/80 border border-red-500/30 focus:border-orange-400 rounded-xl px-5 py-4 text-white outline-none transition duration-300 pr-12 shadow-inner"
+                      className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-xs text-white outline-none pr-10"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPass(!showCurrentPass)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition"
-                    >
-                      {showCurrentPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                    <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                      {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-orange-300 mb-2 uppercase tracking-wide">New Password</label>
-                    <div className="relative group">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase">New Password</label>
+                    <div className="relative">
                       <input
                         type={showNewPass ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-red-500/30 focus:border-orange-400 rounded-xl px-5 py-4 text-white outline-none transition duration-300 pr-12 shadow-inner"
+                        className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-xs text-white outline-none pr-10"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPass(!showNewPass)}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition"
-                      >
-                        {showNewPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                      <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                        {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-orange-300 mb-2 uppercase tracking-wide">Confirm Password</label>
-                    <div className="relative group">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase">Confirm Password</label>
+                    <div className="relative">
                       <input
                         type={showConfirmPass ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-red-500/30 focus:border-orange-400 rounded-xl px-5 py-4 text-white outline-none transition duration-300 pr-12 shadow-inner"
+                        className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-xs text-white outline-none pr-10"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPass(!showConfirmPass)}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition"
-                      >
-                        {showConfirmPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                      <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                        {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
                 </div>
 
                 {passwordError && (
-                  <div className="p-4 rounded-xl bg-red-900/60 border border-red-500/50 text-red-200 text-sm font-bold flex items-center gap-2 shadow-lg animate-pulse">
-                    <AlertCircle size={18} /> {passwordError}
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle size={15} /> {passwordError}
                   </div>
                 )}
 
                 {passwordSuccess && (
-                  <div className="p-4 rounded-xl bg-green-900/60 border border-green-500/50 text-green-200 text-sm font-bold flex items-center gap-2 shadow-lg">
-                    <Check size={18} /> {passwordSuccess}
+                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                    <Check size={15} /> {passwordSuccess}
                   </div>
                 )}
 
                 <button
                   onClick={handleChangePassword}
-                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-black py-4 rounded-xl transition duration-300 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg transform hover:scale-[1.02] active:scale-95 mt-4"
+                  className="w-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black py-3 rounded-xl text-xs transition"
                 >
-                  <Lock size={20} /> Update Password
+                  Update Royal Passkey
                 </button>
               </div>
             </div>
+          )}
 
-            <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border border-blue-500/30 rounded-3xl p-8 backdrop-blur-xl">
-              <h3 className="text-xl font-black text-blue-300 mb-6 flex items-center gap-3">
-                <Zap size={24} className="text-yellow-400" /> Security Guidelines
-              </h3>
-              <ul className="space-y-4 text-sm text-slate-300">
-                <li className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                  <Check size={20} className="text-green-400 flex-shrink-0" />
-                  <span>Use strong passwords with at least 8 characters, mixing letters, numbers, and symbols</span>
-                </li>
-                <li className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                  <Check size={20} className="text-green-400 flex-shrink-0" />
-                  <span>Change your password every 30 days for maximum security</span>
-                </li>
-                <li className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                  <Check size={20} className="text-green-400 flex-shrink-0" />
-                  <span>Never share your login credentials with anyone</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        )}
+        </main>
       </div>
     </div>
   );
-}
+  }
