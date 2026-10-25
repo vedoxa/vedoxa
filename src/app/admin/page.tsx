@@ -233,13 +233,9 @@ export default function PremiumAdminDashboard() {
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session?.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', data.session.user.id)
-          .single();
+        const { data: isAdminOk, error: adminErr } = await supabase.rpc('is_admin');
 
-        if (!profileError && profile?.is_admin) {
+if (!adminErr && isAdminOk === true) {
           setIsAuthenticated(true);
           setAdminEmailDisplay(data.session.user.email || "Royal Admin");
         } else {
@@ -312,13 +308,9 @@ export default function PremiumAdminDashboard() {
         setLoginError("❌ Invalid credentials. Please try again.");
       } else if (data.user) {
         // Verify is_admin flag in profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', data.user.id)
-          .single();
+        const { data: isAdminOk, error: adminErr } = await supabase.rpc('is_admin');
 
-        if (profileError || !profile?.is_admin) {
+if (adminErr || isAdminOk !== true) {
           await supabase.auth.signOut();
           setLoginError("👑 Access Denied: This account does not have Royal Admin (is_admin) privileges.");
           setIsLoggingIn(false);
