@@ -114,11 +114,12 @@ const KB = [
   },
   {
     id: "refund", ticket: "Payment", rel: ["payment", "ticket"],
+    href: { to: "/refund", l: { en: "Refund policy", hi: "रिफंड पॉलिसी", hg: "Refund policy" } },
     k: ["refund", "money back", "return money", "cancel order", "wapas", "vapas", "paise wapas", "रिफंड", "वापस", "पैसे वापस"],
     l: {
-      en: { label: "Refund", q: "How do I get a refund?", a: "Our team reviews every refund request after verifying your payment. Please raise a ticket with your payment ID and the reason, and we’ll reply within 48 hours." },
-      hi: { label: "रिफंड", q: "रिफंड कैसे मिलेगा?", a: "हमारी टीम हर रिफंड रिक्वेस्ट को पेमेंट वेरिफाई करने के बाद देखती है। कृपया अपना पेमेंट ID और कारण लिखकर टिकट बनाएं, हम 48 घंटे में जवाब देंगे।" },
-      hg: { label: "Refund", q: "Refund kaise milega?", a: "Hamari team har refund request ko payment verify karke dekhti hai. Apna payment ID aur reason likhkar ticket raise kijiye, hum 48 ghante me reply denge." },
+      en: { label: "Refund", q: "How do I get a refund?", a: "Digital books can’t be refunded once they’ve been accessed — see our Refund & Cancellation policy for details. But if you were charged and the book didn’t unlock, or you were charged twice, raise a ticket with your payment ID and we’ll verify it within 48 hours." },
+      hi: { label: "रिफंड", q: "रिफंड कैसे मिलेगा?", a: "डिजिटल किताबें एक बार एक्सेस हो जाने के बाद रिफंड नहीं होतीं — विस्तार के लिए हमारी Refund & Cancellation पॉलिसी देखें। लेकिन अगर पैसे कटे हैं और किताब अनलॉक नहीं हुई, या दो बार पैसे कटे हैं, तो अपने पेमेंट ID के साथ टिकट बनाएं, हम 48 घंटे में जाँच करेंगे।" },
+      hg: { label: "Refund", q: "Refund kaise milega?", a: "Digital books ek baar access hone ke baad refund nahi hoti — details ke liye hamari Refund & Cancellation policy dekhiye. Lekin agar paisa kata hai aur book unlock nahi hui, ya do baar paisa kata hai, to apne payment ID ke saath ticket raise kijiye, hum 48 ghante me check karenge." },
     },
   },
   {
