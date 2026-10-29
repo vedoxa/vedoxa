@@ -1,455 +1,609 @@
-// @ts-nocheck
 "use client";
+
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 
-// Save as: src/components/HeroSection.jsx
-// 0 image / 0 video / 0 font download: library, aasmaan, toran-lights, diye, patakhe sab code se bante hain.
-// Tap/click karne par us jagah rocket jaakar patakha fodta hai.
+/*
+ * Vedoxa immersive Diwali hero
+ * Save as: src/components/HeroSection.jsx
+ * No remote images, videos, fonts, or animation libraries are required.
+ */
 
-const dict = {
+const COPY = {
   EN: {
     greet: "Happy Diwali",
     title: "Awaken Your Consciousness",
-    sub: "100% original, verified digital books on spirituality & psychology.",
+    sub: "Original digital books exploring spirituality, psychology, and a more meaningful life.",
     cta: "Explore Books",
-    hint: "Tap anywhere for fireworks ✨",
+    hint: "Tap anywhere to launch a firework ✨",
+    bookLeft: "THE INNER\nUNIVERSE",
+    bookRight: "WISDOM\nWITHIN",
   },
   HI: {
     greet: "शुभ दीपावली",
     title: "अपनी चेतना को जागृत करें",
-    sub: "आध्यात्मिकता और मनोविज्ञान पर 100% मूल, सत्यापित डिजिटल पुस्तकें।",
+    sub: "आध्यात्मिकता, मनोविज्ञान और बेहतर जीवन की खोज करती मौलिक डिजिटल पुस्तकें।",
     cta: "किताबें देखें",
-    hint: "पटाखे देखने के लिए कहीं भी टैप करें ✨",
+    hint: "पटाखा चलाने के लिए स्क्रीन पर टैप करें ✨",
+    bookLeft: "भीतर का\nब्रह्मांड",
+    bookRight: "ज्ञान की\nरोशनी",
   },
 };
 
 const EMBERS = [
-  { l: "8%", s: 4, t: "7s", d: "-1s", x: "18px" }, { l: "19%", s: 3, t: "9s", d: "-4s", x: "-22px" },
-  { l: "31%", s: 5, t: "8s", d: "-2s", x: "26px" }, { l: "44%", s: 3, t: "10s", d: "-6s", x: "-16px" },
-  { l: "57%", s: 4, t: "7.5s", d: "-3s", x: "20px" }, { l: "69%", s: 5, t: "9.5s", d: "-5s", x: "-24px" },
-  { l: "81%", s: 3, t: "8.5s", d: "-2.5s", x: "16px" }, { l: "92%", s: 4, t: "7s", d: "-4.5s", x: "-18px" },
+  { left: "7%", size: 4, duration: "8s", delay: "-2s", dx: "22px" },
+  { left: "18%", size: 3, duration: "10s", delay: "-5s", dx: "-18px" },
+  { left: "29%", size: 5, duration: "8.5s", delay: "-3s", dx: "26px" },
+  { left: "42%", size: 3, duration: "11s", delay: "-7s", dx: "-14px" },
+  { left: "58%", size: 4, duration: "9s", delay: "-4s", dx: "18px" },
+  { left: "71%", size: 5, duration: "10s", delay: "-6s", dx: "-25px" },
+  { left: "84%", size: 3, duration: "8.5s", delay: "-2.5s", dx: "17px" },
+  { left: "94%", size: 4, duration: "9.5s", delay: "-5.5s", dx: "-19px" },
 ];
+
 const LANTERNS = [
-  { l: "12%", t: "20s", d: "-6s", x: "26px", m: false }, { l: "34%", t: "24s", d: "-14s", x: "-30px", m: true },
-  { l: "66%", t: "22s", d: "-9s", x: "28px", m: true }, { l: "87%", t: "26s", d: "-18s", x: "-24px", m: false },
+  { left: "11%", duration: "22s", delay: "-7s", dx: "28px", hideMobile: false },
+  { left: "34%", duration: "25s", delay: "-15s", dx: "-26px", hideMobile: true },
+  { left: "66%", duration: "23s", delay: "-10s", dx: "24px", hideMobile: true },
+  { left: "88%", duration: "26s", delay: "-18s", dx: "-25px", hideMobile: false },
 ];
-// 7 diye: beech wala pehle jalta hai, phir dono taraf. Mobile par 5 dikhte hain.
-const DIYAS = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ i, delay: 0.9 + Math.abs(i - 3) * 0.4, mobileHidden: i === 0 || i === 6 }));
 
-const PALETTE = [[255, 200, 70], [255, 130, 40], [255, 80, 100], [255, 230, 150], [255, 140, 210], [130, 210, 255], [160, 255, 190]];
+const DIYAS = [0, 1, 2, 3, 4, 5, 6].map((i) => ({
+  id: i,
+  delay: 0.65 + Math.abs(i - 3) * 0.32,
+  hideMobile: i === 0 || i === 6,
+}));
 
-/* ═══════════ Book-library (pure SVG string, ek hi baar bana, ek hi baar parse) ═══════════ */
-function rng(seed) {
-  let a = seed;
+const COLORS = [
+  [255, 200, 70],
+  [255, 130, 40],
+  [255, 80, 100],
+  [255, 230, 150],
+  [255, 140, 210],
+  [130, 210, 255],
+  [160, 255, 190],
+];
+
+function seededRandom(seed) {
+  let value = seed;
   return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    value |= 0;
+    value = (value + 0x6d2b79f5) | 0;
+    let t = Math.imul(value ^ (value >>> 15), 1 | value);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-function buildLibrary() {
-  const r = rng(20261022);
-  const PAL = ["#7f1d1d", "#9a3412", "#92400e", "#78350f", "#1e3a5f", "#1e40af", "#312e81", "#581c87", "#831843", "#14532d", "#115e59", "#3f3f46", "#a16207", "#7c2d12", "#9f1239"];
-  const WIN = { x1: 430, x2: 770, sill: 470, spring: 200, rad: 170 };
-  const wall = `M0 0H1200V640H0Z M${WIN.x1} ${WIN.sill}V${WIN.spring}A${WIN.rad} ${WIN.rad} 0 0 1 ${WIN.x2} ${WIN.spring}V${WIN.sill}Z`;
+function buildLibrarySvg() {
+  const rand = seededRandom(20261029);
+  const bookColors = [
+    "#7f1d1d", "#9a3412", "#92400e", "#78350f", "#1e3a5f",
+    "#1e40af", "#312e81", "#581c87", "#831843", "#14532d",
+    "#115e59", "#3f3f46", "#a16207", "#7c2d12", "#9f1239",
+  ];
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMax slice" style="width:100%;height:100%;display:block" aria-hidden="true">
+    <defs>
+      <linearGradient id="vdShelfWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a56b35"/><stop offset="1" stop-color="#45240f"/></linearGradient>
+      <linearGradient id="vdWall" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#20122a"/><stop offset="1" stop-color="#080511"/></linearGradient>
+      <radialGradient id="vdMoonGlow"><stop offset="0" stop-color="#fff4c6" stop-opacity=".78"/><stop offset="1" stop-color="#fff4c6" stop-opacity="0"/></radialGradient>
+      <linearGradient id="vdWindowGlow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37264a"/><stop offset="1" stop-color="#0b1029"/></linearGradient>
+    </defs>
+    <rect width="1200" height="700" fill="url(#vdWall)"/>`;
 
-  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMax slice" style="width:100%;height:100%;display:block" aria-hidden="true"><defs>`
-    + `<linearGradient id="dvWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a6531"/><stop offset="1" stop-color="#4a2a12"/></linearGradient>`
-    + `<linearGradient id="dvShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>`
-    + `<radialGradient id="dvMoon"><stop offset="0" stop-color="#fff6d6" stop-opacity=".6"/><stop offset="1" stop-color="#fff6d6" stop-opacity="0"/></radialGradient></defs>`;
-
-  // Khidki me chaand
-  s += `<circle cx="676" cy="124" r="46" fill="url(#dvMoon)"/><circle cx="676" cy="124" r="17" fill="#fff6d6"/><circle cx="670" cy="120" r="3" fill="#e9dcae" opacity=".6"/>`;
-  // Deewar (khidki ke hole ke saath)
-  s += `<path d="${wall}" fill-rule="evenodd" fill="#140b1b"/>`;
-
-  // Kitabein
-  const baselines = [170, 320, 470, 620];
-  for (const b of baselines) {
-    const segs = b <= 470 ? [[10, WIN.x1 - 4], [WIN.x2 + 4, 1190]] : [[10, 1190]];
-    for (const [start, end] of segs) {
+  const shelves = [190, 350, 510, 670];
+  for (const baseline of shelves) {
+    const sections = baseline < 510 ? [[14, 420], [780, 1186]] : [[14, 1186]];
+    for (const [start, end] of sections) {
       let x = start;
       while (x < end - 12) {
-        if (r() < 0.05) { x += 14 + Math.floor(r() * 10); continue; }
-        let w = 14 + Math.floor(r() * 17);
-        if (x + w > end) w = end - x;
-        if (w < 10) break;
-        const h = 128 - Math.floor(r() * 46), y = b - h;
-        const c = PAL[Math.floor(r() * PAL.length)];
-        s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${c}"/>`;
-        if (r() < 0.7) s += `<rect x="${x}" y="${y + 10}" width="${w}" height="3" fill="#e9c46a" opacity=".75"/>`;
-        if (r() < 0.5) s += `<rect x="${x}" y="${y + h - 14}" width="${w}" height="3" fill="#e9c46a" opacity=".6"/>`;
-        if (r() < 0.3) s += `<rect x="${Math.round(x + w * 0.25)}" y="${Math.round(y + h * 0.38)}" width="${Math.round(w * 0.5)}" height="${Math.round(h * 0.2)}" rx="1" fill="#f5e6c8" opacity=".5"/>`;
-        x += w + 1;
+        if (rand() < 0.045) {
+          x += 12 + Math.floor(rand() * 13);
+          continue;
+        }
+        let width = 14 + Math.floor(rand() * 17);
+        if (x + width > end) width = end - x;
+        if (width < 9) break;
+        const height = 106 + Math.floor(rand() * 40);
+        const y = baseline - height;
+        const color = bookColors[Math.floor(rand() * bookColors.length)];
+        svg += `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="1.5" fill="${color}"/>`;
+        svg += `<path d="M${x + 2} ${y + 3}V${baseline - 3}" stroke="#fff2c5" stroke-opacity=".08" stroke-width="1"/>`;
+        if (rand() > 0.26) svg += `<rect x="${x}" y="${y + 10}" width="${width}" height="3" fill="#f8d68b" opacity=".68"/>`;
+        if (rand() > 0.55) svg += `<rect x="${x}" y="${baseline - 14}" width="${width}" height="3" fill="#f8d68b" opacity=".52"/>`;
+        if (rand() > 0.68) svg += `<rect x="${Math.round(x + width * .25)}" y="${Math.round(y + height * .4)}" width="${Math.max(3, Math.round(width * .45))}" height="${Math.round(height * .14)}" rx="1" fill="#f9e9c8" opacity=".38"/>`;
+        x += width + 1;
       }
-      s += `<rect x="${start - 8}" y="${b}" width="${end - start + 16}" height="9" fill="url(#dvWood)"/><rect x="${start - 8}" y="${b + 9}" width="${end - start + 16}" height="14" fill="url(#dvShade)"/>`;
+      svg += `<rect x="${start - 7}" y="${baseline}" width="${end - start + 14}" height="10" fill="url(#vdShelfWood)"/>`;
+      svg += `<rect x="${start - 7}" y="${baseline + 10}" width="${end - start + 14}" height="12" fill="#000" opacity=".28"/>`;
     }
   }
 
-  // Deewar ko halka dim (kitabein peeche rahein, text saaf dikhe)
-  s += `<path d="${wall}" fill-rule="evenodd" fill="rgba(10,5,20,.36)"/>`;
-
-  // Khidki ka frame
-  s += `<path d="M${WIN.x1} ${WIN.sill}V${WIN.spring}A${WIN.rad} ${WIN.rad} 0 0 1 ${WIN.x2} ${WIN.spring}V${WIN.sill}" fill="none" stroke="#8a5a2b" stroke-width="8"/>`
-    + `<path d="M${WIN.x1 + 8} ${WIN.sill}V${WIN.spring}A${WIN.rad - 8} ${WIN.rad - 8} 0 0 1 ${WIN.x2 - 8} ${WIN.spring}V${WIN.sill}" fill="none" stroke="#f3c969" stroke-width="1.5" opacity=".45"/>`
-    + `<path d="M600 34V${WIN.sill}M${WIN.x1} 330H${WIN.x2}" stroke="#6b3f1d" stroke-width="3" opacity=".85"/>`
-    + `<rect x="${WIN.x1 - 12}" y="${WIN.sill}" width="${WIN.x2 - WIN.x1 + 24}" height="10" rx="2" fill="url(#dvWood)"/>`
-    + `<rect x="0" y="0" width="8" height="640" fill="#2a1509"/><rect x="1192" y="0" width="8" height="640" fill="#2a1509"/>`;
-  return s + `</svg>`;
-}
-
-function buildToran() {
-  const cols = ["#ffd166", "#ff9f1c", "#ff5d8f", "#fff1b8"];
-  let d = "M0 6", bulbs = "", n = 0;
-  for (let i = 0; i < 4; i++) {
-    const x0 = i * 300, x2 = x0 + 300, cx = x0 + 150, cy = 88, y0 = 6;
-    d += `Q${cx} ${cy} ${x2} ${y0}`;
-    for (let k = 1; k <= 6; k++) {
-      const t = k / 7, m = 1 - t;
-      const x = (m * m * x0 + 2 * m * t * cx + t * t * x2).toFixed(1);
-      const y = (m * m * y0 + 2 * m * t * cy + t * t * y0).toFixed(1);
-      const c = cols[n % 4];
-      const dl = ((n * 0.37) % 3).toFixed(2);
-      bulbs += `<circle cx="${x}" cy="${y}" r="9" fill="${c}" fill-opacity=".25" class="dv-bulb" style="animation-delay:-${dl}s"/><circle cx="${x}" cy="${y}" r="3.6" fill="${c}" class="dv-bulb" style="animation-delay:-${dl}s"/>`;
-      n++;
-    }
-    if (i > 0) bulbs += `<circle cx="${x0}" cy="6" r="4" fill="#f59e0b"/>`;
+  // Central arched window and moon are drawn above the books to create a clean focal point.
+  svg += `<path d="M420 500V225A180 180 0 0 1 780 225V500Z" fill="url(#vdWindowGlow)"/>`;
+  svg += `<circle cx="680" cy="155" r="112" fill="url(#vdMoonGlow)"/>`;
+  svg += `<circle cx="680" cy="155" r="31" fill="#fff4c6"/>`;
+  svg += `<circle cx="670" cy="146" r="5" fill="#e8d9a9" opacity=".6"/>`;
+  for (let i = 0; i < 40; i++) {
+    const x = 444 + rand() * 310;
+    const y = 92 + rand() * 310;
+    const r = rand() * 1.45 + 0.45;
+    svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="#fff1c4" opacity="${(0.2 + rand() * 0.68).toFixed(2)}"/>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 96" preserveAspectRatio="xMidYMin slice" style="width:100%;height:100%;display:block" aria-hidden="true"><path d="${d}" fill="none" stroke="#7a4a1e" stroke-width="1.6" opacity=".85"/>${bulbs}</svg>`;
+  svg += `<path d="M420 500V225A180 180 0 0 1 780 225V500" fill="none" stroke="#8e5c2e" stroke-width="10"/>`;
+  svg += `<path d="M430 500V226A170 170 0 0 1 770 226V500" fill="none" stroke="#f1c66e" stroke-width="1.8" opacity=".6"/>`;
+  svg += `<path d="M600 45V500M420 348H780" stroke="#7c522c" stroke-width="3" opacity=".8"/>`;
+  svg += `<rect x="407" y="499" width="386" height="13" rx="2" fill="url(#vdShelfWood)"/>`;
+  svg += `<rect x="0" y="0" width="10" height="700" fill="#120a12"/><rect x="1190" y="0" width="10" height="700" fill="#120a12"/>`;
+  svg += `<rect width="1200" height="700" fill="#07040e" opacity=".19"/></svg>`;
+  return svg;
 }
 
-const LIBRARY_SVG = buildLibrary();
-const TORAN_SVG = buildToran();
+function buildToranSvg() {
+  const colors = ["#ffd166", "#ff9f1c", "#ff5d8f", "#fff1b8"];
+  let path = "M0 7";
+  let bulbs = "";
+  let index = 0;
+  for (let segment = 0; segment < 4; segment++) {
+    const x0 = segment * 300;
+    const x2 = x0 + 300;
+    const cx = x0 + 150;
+    const y = 7;
+    path += `Q${cx} 90 ${x2} ${y}`;
+    for (let point = 1; point <= 6; point++) {
+      const t = point / 7;
+      const m = 1 - t;
+      const x = m * m * x0 + 2 * m * t * cx + t * t * x2;
+      const yy = m * m * y + 2 * m * t * 90 + t * t * y;
+      const color = colors[index % colors.length];
+      const delay = ((index * 0.37) % 2.8).toFixed(2);
+      bulbs += `<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="9" fill="${color}" fill-opacity=".25" class="dv-toran-bulb" style="animation-delay:-${delay}s"/><circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="3.5" fill="${color}" class="dv-toran-bulb" style="animation-delay:-${delay}s"/>`;
+      index++;
+    }
+    if (segment > 0) bulbs += `<circle cx="${x0}" cy="7" r="4" fill="#f59e0b"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" preserveAspectRatio="xMidYMin slice" style="width:100%;height:100%;display:block" aria-hidden="true"><path d="${path}" fill="none" stroke="#7a4a1e" stroke-width="1.7" opacity=".9"/>${bulbs}</svg>`;
+}
 
-/* ═══════════ Patakhe (canvas) ═══════════ */
+const LIBRARY_SVG = buildLibrarySvg();
+const TORAN_SVG = buildToranSvg();
+
 function useFireworks(wrapRef, canvasRef, apiRef) {
   useEffect(() => {
-    const wrap = wrapRef.current, cv = canvasRef.current;
-    if (!wrap || !cv) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const ctx = cv.getContext("2d");
-    if (!ctx) return;
+    const wrap = wrapRef.current;
+    const canvas = canvasRef.current;
+    if (!wrap || !canvas) return undefined;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
 
-    const small = () => window.innerWidth < 640;
-    let dpr = 1, w = 0, h = 0, raf = 0, last = 0, nextAt = 0.6, visible = true;
-    const rockets = [], sparks = [], flashes = [];
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return undefined;
+
+    const isSmall = () => window.innerWidth < 640;
+    let dpr = 1;
+    let width = 0;
+    let height = 0;
+    let rafId = 0;
+    let previousTime = 0;
+    let elapsed = 0;
+    let nextLaunch = 0.65;
+    let secondLaunchAt = -1;
+    let isVisible = true;
+    const rockets = [];
+    const sparks = [];
+    const flashes = [];
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, small() ? 1.5 : 2);
-      const r = wrap.getBoundingClientRect();
-      w = r.width; h = r.height;
-      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      dpr = Math.min(window.devicePixelRatio || 1, isSmall() ? 1.35 : 1.7);
+      const rect = wrap.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      canvas.width = Math.max(1, Math.round(width * dpr));
+      canvas.height = Math.max(1, Math.round(height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
-    const pickColor = () => PALETTE[(Math.random() * PALETTE.length) | 0];
+    const chooseColor = () => COLORS[(Math.random() * COLORS.length) | 0];
 
-    const explode = (x, y) => {
-      const c = pickColor(), c2 = pickColor();
-      const sm = small();
-      const power = (sm ? 105 : 160) * (0.85 + Math.random() * 0.45);
-      const roll = Math.random();
-      flashes.push({ x, y, life: 1, c });
-
-      if (roll < 0.5) {
-        // Peony: gol fuvaara
-        const n = sm ? 36 : 64;
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * Math.PI * 2 + Math.random() * 0.12;
-          const sp = power * (0.3 + Math.random() * 0.7);
-          sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, decay: 0.6 + Math.random() * 0.5, c: i % 3 === 0 ? c2 : c, g: 70, dr: 0.12, tl: 0.035 });
-        }
-      } else if (roll < 0.78) {
-        // Double ring
-        const n = sm ? 26 : 44;
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * Math.PI * 2;
-          sparks.push({ x, y, vx: Math.cos(a) * power, vy: Math.sin(a) * power, life: 1, decay: 0.75, c, g: 60, dr: 0.12, tl: 0.035 });
-          if (i % 2 === 0) sparks.push({ x, y, vx: Math.cos(a) * power * 0.5, vy: Math.sin(a) * power * 0.5, life: 1, decay: 0.85, c: c2, g: 60, dr: 0.12, tl: 0.035 });
-        }
-      } else {
-        // Willow: sunehri lambi jhadi
-        const n = sm ? 28 : 48;
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * Math.PI * 2 + Math.random() * 0.2;
-          const sp = power * 0.7 * (0.45 + Math.random() * 0.55);
-          sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, decay: 0.24 + Math.random() * 0.16, c: [255, 205, 100], g: 115, dr: 0.4, tl: 0.07 });
-        }
-      }
-      const cap = sm ? 280 : 460;
-      if (sparks.length > cap) sparks.splice(0, sparks.length - cap);
-    };
-
-    const launch = (tx, ty) => {
-      const aimed = typeof tx === "number";
+    const launch = (targetX, targetY) => {
+      const aimed = Number.isFinite(targetX) && Number.isFinite(targetY);
       rockets.push({
-        x: aimed ? tx : w * (0.1 + Math.random() * 0.8),
-        y: h * 0.96,
-        ty: aimed ? ty : h * (0.1 + Math.random() * 0.32),
-        vx: aimed ? 0 : (Math.random() - 0.5) * 22,
-        v: Math.max(380, h * (aimed ? 1.35 : 0.95)),
+        x: aimed ? Math.max(8, Math.min(width - 8, targetX)) : width * (0.1 + Math.random() * 0.8),
+        y: height * 0.97,
+        targetY: aimed ? Math.max(28, Math.min(height * 0.84, targetY)) : height * (0.12 + Math.random() * 0.28),
+        vx: aimed ? 0 : (Math.random() - 0.5) * 18,
+        speed: Math.max(330, height * (aimed ? 1.25 : 0.88)),
       });
     };
+
+    const explode = (x, y) => {
+      const primary = chooseColor();
+      const secondary = chooseColor();
+      const small = isSmall();
+      const power = (small ? 90 : 135) * (0.82 + Math.random() * 0.42);
+      const kind = Math.random();
+      flashes.push({ x, y, life: 1, color: primary });
+
+      if (kind < 0.5) {
+        const count = small ? 30 : 52;
+        for (let i = 0; i < count; i++) {
+          const angle = (i / count) * Math.PI * 2 + Math.random() * 0.1;
+          const speed = power * (0.32 + Math.random() * 0.68);
+          sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, decay: 0.62 + Math.random() * 0.45, color: i % 3 === 0 ? secondary : primary, gravity: 58, drag: 0.18, tail: 0.032 });
+        }
+      } else if (kind < 0.78) {
+        const count = small ? 22 : 36;
+        for (let i = 0; i < count; i++) {
+          const angle = (i / count) * Math.PI * 2;
+          sparks.push({ x, y, vx: Math.cos(angle) * power, vy: Math.sin(angle) * power, life: 1, decay: 0.72, color: primary, gravity: 56, drag: 0.18, tail: 0.032 });
+          if (i % 2 === 0) sparks.push({ x, y, vx: Math.cos(angle) * power * 0.52, vy: Math.sin(angle) * power * 0.52, life: 1, decay: 0.82, color: secondary, gravity: 56, drag: 0.18, tail: 0.032 });
+        }
+      } else {
+        const count = small ? 22 : 38;
+        for (let i = 0; i < count; i++) {
+          const angle = (i / count) * Math.PI * 2 + Math.random() * 0.16;
+          const speed = power * 0.7 * (0.4 + Math.random() * 0.6);
+          sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, decay: 0.28 + Math.random() * 0.15, color: [255, 205, 100], gravity: 98, drag: 0.42, tail: 0.065 });
+        }
+      }
+
+      const limit = small ? 220 : 360;
+      if (sparks.length > limit) sparks.splice(0, sparks.length - limit);
+      if (flashes.length > 6) flashes.splice(0, flashes.length - 6);
+    };
+
     apiRef.current = { launch };
 
-    const frame = (t) => {
-      raf = requestAnimationFrame(frame);
-      const dt = Math.min((t - last) / 1000 || 0.016, 0.05);
-      last = t;
-      ctx.clearRect(0, 0, w, h);
+    const render = (time) => {
+      rafId = requestAnimationFrame(render);
+      const dt = Math.min((time - previousTime) / 1000 || 0.016, 0.04);
+      previousTime = time;
+      elapsed += dt;
+
+      ctx.clearRect(0, 0, width, height);
       ctx.globalCompositeOperation = "lighter";
       ctx.lineCap = "round";
 
-      nextAt -= dt;
-      if (nextAt <= 0) {
+      nextLaunch -= dt;
+      if (nextLaunch <= 0) {
         launch();
-        if (Math.random() < 0.3) setTimeout(launch, 240);
-        nextAt = 0.8 + Math.random() * 1.2;
+        if (Math.random() < 0.22) secondLaunchAt = elapsed + 0.22;
+        nextLaunch = 1.05 + Math.random() * 1.35;
+      }
+      if (secondLaunchAt > 0 && elapsed >= secondLaunchAt) {
+        launch();
+        secondLaunchAt = -1;
       }
 
       for (let i = rockets.length - 1; i >= 0; i--) {
-        const rk = rockets[i];
-        rk.y -= rk.v * dt; rk.x += rk.vx * dt;
-        ctx.strokeStyle = "rgba(255,225,160,.85)";
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(rk.x - rk.vx * 0.05, rk.y + 16); ctx.lineTo(rk.x, rk.y); ctx.stroke();
+        const rocket = rockets[i];
+        rocket.y -= rocket.speed * dt;
+        rocket.x += rocket.vx * dt;
+        ctx.strokeStyle = "rgba(255,225,160,.82)";
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.moveTo(rocket.x - rocket.vx * 0.05, rocket.y + 14);
+        ctx.lineTo(rocket.x, rocket.y);
+        ctx.stroke();
         ctx.fillStyle = "rgba(255,245,210,.95)";
-        ctx.beginPath(); ctx.arc(rk.x, rk.y, 2.1, 0, 6.2832); ctx.fill();
-        if (rk.y <= rk.ty) { explode(rk.x, rk.y); rockets.splice(i, 1); }
+        ctx.beginPath();
+        ctx.arc(rocket.x, rocket.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        if (rocket.y <= rocket.targetY) {
+          explode(rocket.x, rocket.y);
+          rockets.splice(i, 1);
+        }
       }
 
       for (let i = flashes.length - 1; i >= 0; i--) {
-        const f = flashes[i];
-        f.life -= dt * 4;
-        if (f.life <= 0) { flashes.splice(i, 1); continue; }
-        const rad = 70 * (1.15 - f.life * 0.5);
-        const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, rad);
-        g.addColorStop(0, `rgba(${f.c[0]},${f.c[1]},${f.c[2]},${0.55 * f.life})`);
-        g.addColorStop(1, `rgba(${f.c[0]},${f.c[1]},${f.c[2]},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(f.x, f.y, rad, 0, 6.2832); ctx.fill();
+        const flash = flashes[i];
+        flash.life -= dt * 3.8;
+        if (flash.life <= 0) {
+          flashes.splice(i, 1);
+          continue;
+        }
+        const radius = 54 * (1.15 - flash.life * 0.45);
+        const gradient = ctx.createRadialGradient(flash.x, flash.y, 0, flash.x, flash.y, radius);
+        gradient.addColorStop(0, `rgba(${flash.color[0]},${flash.color[1]},${flash.color[2]},${0.38 * flash.life})`);
+        gradient.addColorStop(1, `rgba(${flash.color[0]},${flash.color[1]},${flash.color[2]},0)`);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(flash.x, flash.y, radius, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       for (let i = sparks.length - 1; i >= 0; i--) {
-        const s = sparks[i];
-        const drag = Math.pow(s.dr, dt);
-        s.vx *= drag; s.vy = s.vy * drag + s.g * dt;
-        s.x += s.vx * dt; s.y += s.vy * dt;
-        s.life -= s.decay * dt;
-        if (s.life <= 0) { sparks.splice(i, 1); continue; }
-        ctx.strokeStyle = `rgba(${s.c[0]},${s.c[1]},${s.c[2]},${s.life})`;
-        ctx.lineWidth = 1.1 + s.life * 1.4;
-        ctx.beginPath(); ctx.moveTo(s.x - s.vx * s.tl, s.y - s.vy * s.tl); ctx.lineTo(s.x, s.y); ctx.stroke();
+        const spark = sparks[i];
+        const drag = Math.pow(spark.drag, dt);
+        spark.vx *= drag;
+        spark.vy = spark.vy * drag + spark.gravity * dt;
+        spark.x += spark.vx * dt;
+        spark.y += spark.vy * dt;
+        spark.life -= spark.decay * dt;
+        if (spark.life <= 0) {
+          sparks.splice(i, 1);
+          continue;
+        }
+        ctx.strokeStyle = `rgba(${spark.color[0]},${spark.color[1]},${spark.color[2]},${spark.life})`;
+        ctx.lineWidth = 0.9 + spark.life * 1.2;
+        ctx.beginPath();
+        ctx.moveTo(spark.x - spark.vx * spark.tail, spark.y - spark.vy * spark.tail);
+        ctx.lineTo(spark.x, spark.y);
+        ctx.stroke();
       }
     };
 
-    const start = () => { if (!raf && visible && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); } };
-    const stop = () => { cancelAnimationFrame(raf); raf = 0; };
-    const onVis = () => (document.hidden ? stop() : start());
+    const start = () => {
+      if (!rafId && isVisible && !document.hidden) {
+        previousTime = performance.now();
+        rafId = requestAnimationFrame(render);
+      }
+    };
+    const stop = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+    };
+    const onVisibility = () => (document.hidden ? stop() : start());
 
     resize();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
-    ro && ro.observe(wrap);
-    // Section screen se bahar ho ya tab hidden ho to animation ruk jaata hai (battery + speed).
-    const io = typeof IntersectionObserver !== "undefined"
-      ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop(); })
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    if (resizeObserver) resizeObserver.observe(wrap);
+    const intersectionObserver = typeof IntersectionObserver !== "undefined"
+      ? new IntersectionObserver(([entry]) => {
+          isVisible = entry.isIntersecting;
+          if (isVisible) start();
+          else stop();
+        }, { threshold: 0.01 })
       : null;
-    io && io.observe(wrap);
-    document.addEventListener("visibilitychange", onVis);
+    if (intersectionObserver) intersectionObserver.observe(wrap);
+    document.addEventListener("visibilitychange", onVisibility);
     start();
 
     return () => {
-      stop(); ro && ro.disconnect(); io && io.disconnect();
-      document.removeEventListener("visibilitychange", onVis);
+      stop();
+      if (resizeObserver) resizeObserver.disconnect();
+      if (intersectionObserver) intersectionObserver.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
       apiRef.current = null;
     };
-  }, []); // eslint-disable-line
+  }, [wrapRef, canvasRef, apiRef]);
 }
 
-const CSS = `
-.dv-sky{background:radial-gradient(120% 70% at 50% 108%,rgba(255,140,40,.34),transparent 60%),linear-gradient(180deg,#090516 0%,#170a2b 55%,#2a1036 100%)}
-.dv-stars{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg fill='white'%3E%3Ccircle cx='18' cy='26' r='1.1'/%3E%3Ccircle cx='96' cy='60' r='.8'/%3E%3Ccircle cx='170' cy='20' r='1.3'/%3E%3Ccircle cx='220' cy='110' r='.9'/%3E%3Ccircle cx='60' cy='140' r='1'/%3E%3Ccircle cx='140' cy='180' r='.8'/%3E%3Ccircle cx='30' cy='210' r='1.2'/%3E%3Ccircle cx='200' cy='214' r='.9'/%3E%3C/g%3E%3C/svg%3E");background-size:240px 240px;animation:dv-tw 4s ease-in-out infinite alternate}
-.dv-stars.b{background-size:170px 170px;background-position:60px 40px;animation-duration:6s;animation-delay:-2s;opacity:.6}
-@keyframes dv-tw{from{opacity:.3}to{opacity:1}}
-
-.dv-lib{transform-origin:50% 70%;will-change:transform;animation:dv-kb 40s ease-in-out infinite alternate}
-@keyframes dv-kb{from{transform:scale(1)}to{transform:scale(1.05)}}
-
-.dv-lamp{position:absolute;top:18%;width:55%;height:80%;opacity:.8;animation:dv-lamp 3.8s ease-in-out infinite alternate}
-.dv-lamp.l{left:-12%;background:radial-gradient(ellipse at 35% 55%,rgba(255,160,60,.3),transparent 62%)}
-.dv-lamp.r{right:-12%;background:radial-gradient(ellipse at 65% 55%,rgba(255,160,60,.3),transparent 62%);animation-delay:-1.9s}
-@keyframes dv-lamp{from{opacity:.55}to{opacity:1}}
-
-.dv-rays{position:absolute;left:50%;top:0;width:70%;height:100%;transform:translateX(-50%);background:linear-gradient(180deg,rgba(255,196,110,.2),transparent 72%);clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);animation:dv-ray 5s ease-in-out infinite alternate}
-@keyframes dv-ray{from{opacity:.45}to{opacity:.95}}
-
-.dv-bulb{animation:dv-bt 2.4s ease-in-out infinite alternate}
-@keyframes dv-bt{from{opacity:.45}to{opacity:1}}
-
-.dv-ember,.dv-lantern{position:absolute;bottom:-30px;opacity:0;will-change:transform,opacity;animation:dv-rise linear infinite}
-.dv-ember{border-radius:50%;background:radial-gradient(circle,#ffe29a,#ff9a2e 60%,transparent 72%)}
-.dv-lantern{width:16px;height:22px;border-radius:6px 6px 9px 9px;background:linear-gradient(#ffd27a,#ff8a1f);box-shadow:0 0 18px 6px rgba(255,150,40,.45)}
-@keyframes dv-rise{0%{transform:translate3d(0,0,0) scale(1);opacity:0}15%{opacity:.9}100%{transform:translate3d(var(--dx),-380px,0) scale(.5);opacity:0}}
-
-.dv-gold{background:linear-gradient(90deg,#fde68a,#f59e0b,#fff3c4,#f59e0b,#fde68a);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:dv-shine 6s linear infinite;filter:drop-shadow(0 0 14px rgba(255,170,50,.4))}
-@keyframes dv-shine{to{background-position:200% center}}
-
-.dv-chip{background:rgba(20,8,30,.45);border:1px solid rgba(252,211,77,.28);box-shadow:0 0 24px -6px rgba(255,170,50,.45)}
-.dv-sub{text-shadow:0 2px 14px rgba(0,0,0,.7)}
-
-.dv-cta{background:linear-gradient(90deg,#fcd34d,#f59e0b,#fde68a,#f59e0b);background-size:220% auto;color:#2a1205;box-shadow:0 8px 28px -6px rgba(245,158,11,.55),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .25s ease,box-shadow .25s ease,background-position .6s ease}
-.dv-cta:hover{transform:translateY(-2px) scale(1.04);background-position:100% 0;box-shadow:0 12px 34px -6px rgba(245,158,11,.7),inset 0 1px 0 rgba(255,255,255,.6)}
-.dv-cta:active{transform:scale(.97)}
-
-.dv-hint{opacity:0;animation:dv-hint 8s ease-in-out 1.6s forwards}
-@keyframes dv-hint{0%{opacity:0;transform:translateY(6px)}12%{opacity:.85;transform:none}85%{opacity:.85}100%{opacity:0}}
-
-.dv-diya{position:relative}
-.dv-glow{position:absolute;left:50%;top:22%;width:260%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,176,64,.5),rgba(255,120,30,.15) 40%,transparent 68%);opacity:0;animation:dv-gi .9s ease-out both var(--d),dv-pu 2.4s ease-in-out infinite calc(var(--d) + .9s)}
-@keyframes dv-gi{to{opacity:.9}}
-@keyframes dv-pu{0%,100%{opacity:.7}50%{opacity:1}}
-.dv-ign,.dv-flk{transform-box:fill-box;transform-origin:50% 100%}
-.dv-ign{transform:scale(0);animation:dv-ig .7s cubic-bezier(.2,1.3,.4,1) both var(--d)}
-@keyframes dv-ig{to{transform:scale(1)}}
-.dv-flk{animation:dv-fl 1.3s ease-in-out infinite calc(var(--d) + .7s)}
-@keyframes dv-fl{0%,100%{transform:scale(1,1) skewX(0)}25%{transform:scale(.94,1.08) skewX(-3deg)}50%{transform:scale(1.05,.95) skewX(2deg)}75%{transform:scale(.97,1.05) skewX(-1.5deg)}}
-
-@media (prefers-reduced-motion:reduce){
-  .dv-stars,.dv-gold,.dv-glow,.dv-ign,.dv-flk,.dv-lib,.dv-lamp,.dv-rays,.dv-bulb,.dv-hint{animation:none!important}
-  .dv-ign{transform:none}.dv-glow{opacity:.8}.dv-ember,.dv-lantern{display:none}.dv-hint{opacity:.8}
+const HERO_CSS = `
+.dv-hero{--back-x:0px;--back-y:0px;--mid-x:0px;--mid-y:0px;--front-x:0px;--front-y:0px;position:relative;isolation:isolate;perspective:1250px;transform-style:preserve-3d;background:radial-gradient(ellipse 85% 55% at 50% 110%,rgba(255,132,34,.3),transparent 65%),linear-gradient(180deg,#080510 0%,#150824 48%,#281035 100%);}
+.dv-hero *{box-sizing:border-box}
+.dv-hero:before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse at 50% 42%,rgba(255,182,76,.11),transparent 44%),linear-gradient(180deg,rgba(4,2,11,.12),rgba(5,2,14,.18));}
+.dv-stars{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='white'%3E%3Ccircle cx='18' cy='26' r='1.1'/%3E%3Ccircle cx='96' cy='60' r='.8'/%3E%3Ccircle cx='170' cy='20' r='1.2'/%3E%3Ccircle cx='200' cy='110' r='.9'/%3E%3Ccircle cx='60' cy='140' r='1'/%3E%3Ccircle cx='140' cy='180' r='.8'/%3E%3Ccircle cx='30' cy='210' r='1.1'/%3E%3Ccircle cx='190' cy='195' r='.9'/%3E%3C/g%3E%3C/svg%3E");background-size:220px 220px;animation:dv-twinkle 4.5s ease-in-out infinite alternate;}
+.dv-stars--far{background-size:310px 310px;background-position:71px 33px;opacity:.42;animation-duration:7s;animation-delay:-2s;}
+@keyframes dv-twinkle{from{opacity:.25}to{opacity:.9}}
+.dv-parallax{position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d;will-change:transform;}
+.dv-parallax--back{transform:translate3d(var(--back-x),var(--back-y),-70px) scale(1.06);}
+.dv-parallax--mid{transform:translate3d(var(--mid-x),var(--mid-y),-20px);}
+.dv-parallax--front{transform:translate3d(var(--front-x),var(--front-y),35px);}
+.dv-library{position:absolute;inset:-1%;transform-origin:50% 65%;animation:dv-library-drift 34s ease-in-out infinite alternate;opacity:.96;}
+@keyframes dv-library-drift{from{transform:scale(1)}to{transform:scale(1.045) translate3d(0,-.4%,0)}}
+.dv-warm-lamp{position:absolute;top:14%;width:58%;height:80%;opacity:.78;filter:blur(1px);animation:dv-lamp-breathe 4.3s ease-in-out infinite alternate;}
+.dv-warm-lamp--left{left:-18%;background:radial-gradient(ellipse at 35% 55%,rgba(255,148,43,.28),transparent 64%);}
+.dv-warm-lamp--right{right:-18%;background:radial-gradient(ellipse at 65% 55%,rgba(255,148,43,.24),transparent 64%);animation-delay:-2.1s;}
+@keyframes dv-lamp-breathe{from{opacity:.52}to{opacity:.95}}
+.dv-rays{position:absolute;left:50%;top:-5%;height:110%;width:72%;transform:translateX(-50%);background:linear-gradient(180deg,rgba(255,199,112,.16),transparent 75%);clip-path:polygon(43% 0,57% 0,100% 100%,0 100%);animation:dv-rays-breathe 5.8s ease-in-out infinite alternate;}
+@keyframes dv-rays-breathe{from{opacity:.3}to{opacity:.9}}
+.dv-toran-bulb{animation:dv-bulb-flicker 2.2s ease-in-out infinite alternate;}
+@keyframes dv-bulb-flicker{from{opacity:.45}to{opacity:1}}
+.dv-ember,.dv-lantern{position:absolute;bottom:-32px;opacity:0;will-change:transform,opacity;animation:dv-rise linear infinite;}
+.dv-ember{border-radius:50%;background:radial-gradient(circle,#fff0bd,#ff9a2e 58%,transparent 75%);box-shadow:0 0 8px rgba(255,173,65,.25);}
+.dv-lantern{width:15px;height:23px;border-radius:6px 6px 9px 9px;background:linear-gradient(90deg,#e98417,#ffe29a 48%,#d86c12);box-shadow:0 0 17px 5px rgba(255,150,40,.28);}
+.dv-lantern:after{content:"";position:absolute;left:50%;top:100%;height:8px;border-left:1px solid rgba(255,204,117,.55);}
+@keyframes dv-rise{0%{transform:translate3d(0,0,0) scale(1);opacity:0}14%{opacity:.8}84%{opacity:.65}100%{transform:translate3d(var(--dx),-410px,0) scale(.48);opacity:0}}
+.dv-chip{display:inline-flex;align-items:center;gap:.5rem;border:1px solid rgba(252,211,77,.3);background:rgba(20,8,30,.48);box-shadow:0 0 30px -8px rgba(255,170,50,.32),inset 0 1px rgba(255,255,255,.07);backdrop-filter:blur(9px);}
+.dv-gold-text{background:linear-gradient(100deg,#fff0af 4%,#f8be45 28%,#fff8d8 48%,#f59e0b 68%,#ffe7a1 90%);background-size:230% auto;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(245,158,11,.18));animation:dv-gold-flow 7s linear infinite;}
+@keyframes dv-gold-flow{to{background-position:230% center}}
+.dv-subtext{text-shadow:0 2px 18px rgba(0,0,0,.92);}
+.dv-hero-copy{position:relative;z-index:20;transform:translateZ(45px);transform-style:preserve-3d;}
+.dv-entrance{animation:dv-enter .85s cubic-bezier(.16,1,.3,1) both;}
+.dv-entrance--2{animation-delay:.09s}.dv-entrance--3{animation-delay:.18s}.dv-entrance--4{animation-delay:.28s}
+@keyframes dv-enter{from{opacity:0;transform:translate3d(0,24px,38px)}to{opacity:1;transform:translate3d(0,0,45px)}}
+.dv-cta{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(100deg,#fcd34d,#f59e0b,#fff0a8,#f59e0b);background-size:220% auto;color:#2a1205;box-shadow:0 9px 32px -7px rgba(245,158,11,.58),inset 0 1px 0 rgba(255,255,255,.62);transition:transform .24s ease,box-shadow .24s ease,background-position .6s ease;}
+.dv-cta:before{content:"";position:absolute;inset:-40% auto -40% -35%;width:24%;transform:rotate(20deg);background:rgba(255,255,255,.5);filter:blur(8px);transition:left .65s ease;z-index:-1;}
+.dv-cta:hover{transform:translateY(-3px) scale(1.035);background-position:100% 0;box-shadow:0 14px 40px -8px rgba(245,158,11,.74),inset 0 1px 0 rgba(255,255,255,.7);}
+.dv-cta:hover:before{left:120%;}
+.dv-cta:active{transform:scale(.975)}
+.dv-hint{animation:dv-hint 7.5s ease-in-out 1.3s both;}
+@keyframes dv-hint{0%{opacity:0;transform:translateY(5px)}12%,76%{opacity:.78;transform:translateY(0)}100%{opacity:0;transform:translateY(-3px)}}
+.dv-diya{position:relative;transform:translateZ(30px);}
+.dv-diya-glow{position:absolute;left:50%;top:22%;width:230%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,190,80,.5),rgba(255,120,30,.14) 41%,transparent 70%);opacity:.8;animation:dv-diya-pulse 2.4s ease-in-out infinite;animation-delay:var(--delay);}
+@keyframes dv-diya-pulse{0%,100%{opacity:.58;transform:translate(-50%,-50%) scale(.93)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}}
+.dv-flame{transform-box:fill-box;transform-origin:50% 100%;animation:dv-flame-dance 1.2s ease-in-out infinite;animation-delay:var(--delay);}
+@keyframes dv-flame-dance{0%,100%{transform:scale(1,1) skewX(0)}25%{transform:scale(.94,1.09) skewX(-3deg)}50%{transform:scale(1.04,.96) skewX(2deg)}75%{transform:scale(.97,1.05) skewX(-1.5deg)}}
+.dv-floating-book{position:absolute;width:clamp(100px,11vw,150px);height:clamp(145px,16vw,202px);perspective:850px;filter:drop-shadow(0 24px 22px rgba(0,0,0,.5));animation:dv-book-hover 7.2s ease-in-out infinite;}
+.dv-floating-book--left{left:clamp(10px,7.5vw,110px);top:31%;transform:translateZ(90px) rotate(-9deg);animation-delay:-2s;}
+.dv-floating-book--right{right:clamp(10px,7.5vw,110px);top:34%;transform:translateZ(115px) rotate(8deg);animation-delay:-4.1s;}
+.dv-book-3d{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateY(-20deg) rotateX(5deg);}
+.dv-floating-book--right .dv-book-3d{transform:rotateY(20deg) rotateX(-4deg);}
+.dv-book-pages{position:absolute;top:4%;bottom:3%;right:-7px;width:12px;background:repeating-linear-gradient(180deg,#f7e4bd 0 2px,#bba27b 2px 3px);transform:translateZ(-5px) rotateY(0deg);border-radius:0 3px 3px 0;box-shadow:inset -3px 0 3px rgba(0,0,0,.25);}
+.dv-book-cover{position:absolute;inset:0;border:1px solid rgba(255,223,145,.6);border-radius:4px 8px 8px 4px;background:linear-gradient(138deg,#8a2d19,#40142c 58%,#170d24);box-shadow:inset 5px 0 7px rgba(255,220,150,.12),inset -7px 0 9px rgba(0,0,0,.23),0 0 0 1px rgba(255,190,82,.12);transform:translateZ(2px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;color:#fce7af;text-align:center;}
+.dv-floating-book--right .dv-book-cover{background:linear-gradient(140deg,#164e4a,#122d40 62%,#101426);}
+.dv-book-cover:before{content:"";position:absolute;inset:8px;border:1px solid rgba(255,220,150,.45);border-radius:2px;}
+.dv-book-mark{font-family:Georgia,serif;font-size:clamp(24px,3vw,40px);line-height:1;color:#f6d482;text-shadow:0 0 18px rgba(245,177,62,.32);margin-bottom:12px;}
+.dv-book-title{position:relative;z-index:1;white-space:pre-line;font-family:Georgia,serif;font-size:clamp(10px,1.12vw,14px);font-weight:700;line-height:1.45;letter-spacing:.07em;text-transform:uppercase;}
+.dv-book-publisher{position:absolute;bottom:16px;z-index:1;font-size:7px;letter-spacing:.22em;color:rgba(255,233,180,.72);}
+@keyframes dv-book-hover{0%,100%{margin-top:0}50%{margin-top:-13px}}
+.dv-bottom-fade{position:absolute;left:0;right:0;bottom:0;height:54px;pointer-events:none;z-index:18;}
+.dv-fireworks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:12;}
+.dv-hero:focus-within .dv-cta{outline:2px solid #fff1b8;outline-offset:4px;}
+@media(max-width:767px){.dv-floating-book{display:none}.dv-hero-copy{transform:translateZ(25px)}.dv-entrance{animation-duration:.68s}.dv-rays{width:100%}}
+@media(max-width:480px){.dv-lantern{transform:scale(.82)}.dv-hero{perspective:900px}}
+@media(prefers-reduced-motion:reduce){
+  .dv-stars,.dv-library,.dv-warm-lamp,.dv-rays,.dv-toran-bulb,.dv-ember,.dv-lantern,.dv-gold-text,.dv-entrance,.dv-hint,.dv-diya-glow,.dv-flame,.dv-floating-book{animation:none!important;transition:none!important;}
+  .dv-ember,.dv-lantern{display:none}.dv-floating-book{margin-top:0}.dv-hint{opacity:.75}.dv-hero-copy{transform:none}.dv-entrance{opacity:1;transform:none;}
 }
 `;
 
-const EASE = [0.16, 1, 0.3, 1];
-
 export default function HeroSection({ isDark = false, lang = "EN" }) {
-  const t = dict[lang] || dict.EN;
-  const wrapRef = useRef(null), canvasRef = useRef(null), apiRef = useRef(null);
+  const text = COPY[lang] || COPY.EN;
+  const wrapRef = useRef(null);
+  const canvasRef = useRef(null);
+  const apiRef = useRef(null);
   useFireworks(wrapRef, canvasRef, apiRef);
 
-  const onTap = (e) => {
-    if (e.target.closest && e.target.closest("a,button")) return; // button dabane par patakha nahi
+  const handlePointerDown = (event) => {
+    if (event.target?.closest?.("a, button")) return;
     const api = apiRef.current;
-    if (!api || !wrapRef.current) return;
-    const r = wrapRef.current.getBoundingClientRect();
-    api.launch(e.clientX - r.left, e.clientY - r.top);
+    const section = wrapRef.current;
+    if (!api || !section) return;
+    const rect = section.getBoundingClientRect();
+    api.launch(event.clientX - rect.left, event.clientY - rect.top);
   };
-  const pageBg = isDark ? "#07070d" : "#f8fafc"; // neeche ka fade aapke page ke rang me mil jaata hai
+
+  const handlePointerMove = (event) => {
+    if (event.pointerType === "touch") return;
+    const section = wrapRef.current;
+    if (!section) return;
+    const rect = section.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5;
+    const y = (event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5;
+    section.style.setProperty("--back-x", `${(-x * 4).toFixed(2)}px`);
+    section.style.setProperty("--back-y", `${(-y * 3).toFixed(2)}px`);
+    section.style.setProperty("--mid-x", `${(-x * 9).toFixed(2)}px`);
+    section.style.setProperty("--mid-y", `${(-y * 7).toFixed(2)}px`);
+    section.style.setProperty("--front-x", `${(x * 13).toFixed(2)}px`);
+    section.style.setProperty("--front-y", `${(y * 10).toFixed(2)}px`);
+  };
+
+  const resetPointer = () => {
+    const section = wrapRef.current;
+    if (!section) return;
+    ["--back-x", "--back-y", "--mid-x", "--mid-y", "--front-x", "--front-y"].forEach((name) => {
+      section.style.setProperty(name, "0px");
+    });
+  };
+
+  const pageBackground = isDark ? "#07070d" : "#f8fafc";
 
   return (
     <section
       ref={wrapRef}
-      onPointerDown={onTap}
-      style={{ touchAction: "manipulation" }}
-      className="dv-sky relative overflow-hidden flex flex-col items-center justify-center text-center px-4 pt-12 pb-20 md:pt-14 md:pb-24 min-h-[360px] md:min-h-[420px]"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetPointer}
+      style={{ touchAction: "manipulation", minHeight: "clamp(440px, 58vw, 640px)" }}
+      className="dv-hero relative flex flex-col items-center justify-center overflow-hidden px-4 pb-24 pt-16 text-center sm:pb-28 sm:pt-20"
+      aria-label={text.greet}
     >
-      <style>{CSS}</style>
+      <style>{HERO_CSS}</style>
 
-      {/* Diye ke gradients ek hi baar define (0 size svg) */}
-      <svg width="0" height="0" className="absolute" aria-hidden="true">
-        <defs>
-          <linearGradient id="dvBowl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#e2691f" /><stop offset="1" stopColor="#7c2d12" /></linearGradient>
-          <linearGradient id="dvFlame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ff7a18" /><stop offset=".6" stopColor="#ffc233" /><stop offset="1" stopColor="#fff3b0" /></linearGradient>
-        </defs>
-      </svg>
-
-      {/* Taare (khidki ke peeche se dikhte hain) */}
-      <div className="absolute inset-0 pointer-events-none z-[1]" aria-hidden="true">
+      {/* Deep star layer */}
+      <div className="dv-parallax dv-parallax--back z-[1]" aria-hidden="true">
         <div className="dv-stars" />
-        <div className="dv-stars b" />
+        <div className="dv-stars dv-stars--far" />
       </div>
 
-      {/* Book library + khidki + chaand */}
-      <div className="dv-lib absolute inset-0 pointer-events-none z-[2]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: LIBRARY_SVG }} />
-
-      {/* Garam roshni: lamp glow, khidki ki kirnein, text ke peeche halka andhera */}
-      <div className="absolute inset-0 pointer-events-none z-[3]" aria-hidden="true">
-        <div className="dv-lamp l" />
-        <div className="dv-lamp r" />
+      {/* Generated bookshelf, moonlit arch, and warm light */}
+      <div className="dv-parallax dv-parallax--mid z-[2]" aria-hidden="true">
+        <div className="dv-library" dangerouslySetInnerHTML={{ __html: LIBRARY_SVG }} />
+        <div className="dv-warm-lamp dv-warm-lamp--left" />
+        <div className="dv-warm-lamp dv-warm-lamp--right" />
         <div className="dv-rays" />
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 60% 48% at 50% 46%,rgba(9,5,22,.72),transparent 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 58% 48% at 50% 45%,rgba(8,4,20,.77),transparent 100%)" }} />
       </div>
 
-      {/* Patakhe */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-[4]" aria-hidden="true" />
+      {/* Floating book covers create the foreground / 3D pop-out illusion */}
+      <div className="dv-parallax dv-parallax--front z-[8]" aria-hidden="true">
+        <div className="dv-floating-book dv-floating-book--left">
+          <div className="dv-book-3d">
+            <div className="dv-book-pages" />
+            <div className="dv-book-cover">
+              <span className="dv-book-mark">V</span>
+              <span className="dv-book-title">{text.bookLeft}</span>
+              <span className="dv-book-publisher">VEDOXA • ORIGINALS</span>
+            </div>
+          </div>
+        </div>
+        <div className="dv-floating-book dv-floating-book--right">
+          <div className="dv-book-3d">
+            <div className="dv-book-pages" />
+            <div className="dv-book-cover">
+              <span className="dv-book-mark">✦</span>
+              <span className="dv-book-title">{text.bookRight}</span>
+              <span className="dv-book-publisher">VEDOXA • ORIGINALS</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Toran: jagmagati diwali lights */}
-      <div className="absolute top-0 inset-x-0 h-10 md:h-16 pointer-events-none z-[5]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: TORAN_SVG }} />
+      {/* Lightweight canvas: no video file or external effects package */}
+      <canvas ref={canvasRef} className="dv-fireworks" aria-hidden="true" />
 
-      {/* Urte angaare + aakash kandil */}
-      <div className="absolute inset-0 pointer-events-none z-[5]" aria-hidden="true">
-        {EMBERS.map((p, k) => (
-          <span key={k} className="dv-ember" style={{ left: p.l, width: p.s, height: p.s, animationDuration: p.t, animationDelay: p.d, "--dx": p.x }} />
+      {/* Diwali toran */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[14] h-12 sm:h-16" aria-hidden="true" dangerouslySetInnerHTML={{ __html: TORAN_SVG }} />
+
+      {/* Rising embers and lanterns */}
+      <div className="pointer-events-none absolute inset-0 z-[14] overflow-hidden" aria-hidden="true">
+        {EMBERS.map((ember, index) => (
+          <span
+            key={`ember-${index}`}
+            className="dv-ember"
+            style={{ left: ember.left, width: ember.size, height: ember.size, animationDuration: ember.duration, animationDelay: ember.delay, "--dx": ember.dx }}
+          />
         ))}
-        {LANTERNS.map((p, k) => (
-          <span key={k} className={`dv-lantern ${p.m ? "hidden md:block" : ""}`} style={{ left: p.l, animationDuration: p.t, animationDelay: p.d, "--dx": p.x }} />
+        {LANTERNS.map((lantern, index) => (
+          <span
+            key={`lantern-${index}`}
+            className={`dv-lantern ${lantern.hideMobile ? "hidden md:block" : ""}`}
+            style={{ left: lantern.left, animationDuration: lantern.duration, animationDelay: lantern.delay, "--dx": lantern.dx }}
+          />
         ))}
       </div>
 
-      {/* Neeche page ke rang me fade */}
-      <div className="absolute bottom-0 inset-x-0 h-10 pointer-events-none z-[6]" style={{ background: `linear-gradient(to bottom, transparent, ${pageBg})` }} />
-
-      {/* Diye */}
-      <div className="absolute bottom-3 md:bottom-5 inset-x-0 px-3 md:px-10 flex justify-around items-end pointer-events-none z-[7]" aria-hidden="true">
-        {DIYAS.map((d) => (
-          <div key={d.i} className={`dv-diya w-8 sm:w-10 md:w-12 lg:w-14 ${d.mobileHidden ? "hidden md:block" : ""}`} style={{ "--d": `${d.delay}s` }}>
-            <span className="dv-glow" />
-            <svg viewBox="0 0 64 56" className="relative block w-full h-auto">
-              <path d="M4 24C8 46 22 52 32 52S56 46 60 24C48 30 16 30 4 24Z" fill="url(#dvBowl)" />
+      {/* Foreground diyas */}
+      <div className="dv-parallax dv-parallax--front absolute inset-x-0 bottom-2 z-[16] flex items-end justify-around px-3 md:bottom-4 md:px-10" style={{ top: "auto", height: "auto", bottom: "0.5rem" }} aria-hidden="true">
+        {DIYAS.map((diya) => (
+          <div key={diya.id} className={`dv-diya w-8 sm:w-10 md:w-12 lg:w-14 ${diya.hideMobile ? "hidden md:block" : ""}`} style={{ "--delay": `${diya.delay}s` }}>
+            <span className="dv-diya-glow" />
+            <svg viewBox="0 0 64 56" className="relative block h-auto w-full">
+              <path d="M4 24C8 46 22 52 32 52S56 46 60 24C48 30 16 30 4 24Z" fill="#a44818" />
+              <path d="M7 26C15 32 49 32 57 26" fill="none" stroke="#f7b85d" strokeWidth="2" opacity=".8" />
               <path d="M12 34Q32 44 52 34" fill="none" stroke="#ffd48a" strokeWidth="1.2" opacity=".55" strokeLinecap="round" />
-              <circle cx="22" cy="40" r="1.2" fill="#ffd48a" opacity=".55" /><circle cx="32" cy="44" r="1.2" fill="#ffd48a" opacity=".55" /><circle cx="42" cy="40" r="1.2" fill="#ffd48a" opacity=".55" />
+              <circle cx="22" cy="40" r="1.2" fill="#ffd48a" opacity=".55" />
+              <circle cx="32" cy="44" r="1.2" fill="#ffd48a" opacity=".55" />
+              <circle cx="42" cy="40" r="1.2" fill="#ffd48a" opacity=".55" />
               <ellipse cx="32" cy="24" rx="27" ry="4.5" fill="#ffb347" />
               <rect x="30.8" y="17" width="2.4" height="8" rx="1" fill="#3b1d0e" />
-              <g className="dv-ign">
-                <g className="dv-flk">
-                  <path d="M32 2C39 11 41 17 32 22C23 17 25 11 32 2Z" fill="url(#dvFlame)" />
-                  <path d="M32 11C35 15 36 18 32 21C28 18 29 15 32 11Z" fill="#fff8dc" opacity=".9" />
-                </g>
+              <g className="dv-flame" style={{ "--delay": `${diya.delay}s` }}>
+                <path d="M32 2C39 11 41 17 32 22C23 17 25 11 32 2Z" fill="#ffb52e" />
+                <path d="M32 11C35 15 36 18 32 21C28 18 29 15 32 11Z" fill="#fff8dc" opacity=".94" />
               </g>
             </svg>
           </div>
         ))}
       </div>
 
-      {/* Text */}
-      <motion.p
-        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: EASE }}
-        className="dv-chip relative z-10 mb-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm md:text-base tracking-wide text-amber-200"
-      >
-        🪔 {t.greet} 🪔
-      </motion.p>
+      {/* Main message sits forward of the background to enhance depth */}
+      <div className="dv-hero-copy mx-auto flex w-full max-w-5xl flex-col items-center">
+        <p className="dv-chip dv-entrance relative z-20 mb-4 rounded-full px-4 py-2 text-xs font-semibold tracking-[.12em] text-amber-100 sm:text-sm">
+          <span aria-hidden="true">🪔</span>
+          <span>{text.greet}</span>
+          <span aria-hidden="true">🪔</span>
+        </p>
 
-      <motion.h1
-        initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
-        className="relative z-10 font-cinzel text-[1.75rem] leading-tight sm:text-4xl md:text-5xl lg:text-6xl font-black mb-3 max-w-5xl mx-auto"
-      >
-        <span className="dv-gold">{t.title}</span>
-      </motion.h1>
+        <h1 className="dv-entrance dv-entrance--2 relative z-20 mb-4 max-w-5xl font-serif text-[clamp(2rem,5.3vw,4.8rem)] font-black leading-[1.08] tracking-[-.035em]">
+          <span className="dv-gold-text">{text.title}</span>
+        </h1>
 
-      <motion.p
-        initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
-        className="dv-sub relative z-10 max-w-xl mx-auto text-sm md:text-base px-2 leading-relaxed font-medium text-amber-50/90"
-      >
-        {t.sub}
-      </motion.p>
+        <p className="dv-subtext dv-entrance dv-entrance--3 relative z-20 mx-auto max-w-2xl px-3 text-sm font-medium leading-7 text-amber-50/90 sm:text-base sm:leading-8">
+          {text.sub}
+        </p>
 
-      <motion.div
-        initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.35, ease: EASE }}
-        className="relative z-10 mt-5 flex flex-col items-center gap-2"
-      >
-        <Link href="/explore" className="dv-cta inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm md:text-base font-bold">
-          📚 {t.cta}
-        </Link>
-        <span className="dv-hint text-[11px] md:text-xs text-amber-100/70 tracking-wide">{t.hint}</span>
-      </motion.div>
+        <div className="dv-entrance dv-entrance--4 relative z-20 mt-7 flex flex-col items-center gap-3">
+          <Link href="/explore" className="dv-cta inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-extrabold sm:px-8 sm:py-3.5 sm:text-base">
+            <span aria-hidden="true">📚</span>
+            <span>{text.cta}</span>
+            <span aria-hidden="true">↗</span>
+          </Link>
+          <span className="dv-hint text-[11px] tracking-wide text-amber-100/75 sm:text-xs">{text.hint}</span>
+        </div>
+      </div>
+
+      <div className="dv-bottom-fade" style={{ background: `linear-gradient(to bottom, transparent, ${pageBackground})` }} aria-hidden="true" />
     </section>
   );
-}
+      }
