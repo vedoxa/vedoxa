@@ -33,20 +33,10 @@ const LEGAL_LINKS = [
 ];
 
 // ---------------------------------------------------------------------------
-// SUPPORT BOT (Veda)
-// Floating bot button in pages par NAHI dikhega (jo page yahan likhe hon). Zarurat ho to aur routes add karein,
-// jaise '/reader'. Baaki sab pages par chhota sa chalta-phirta bot dikhega jo /support page kholta hai.
+// SUPPORT BOT (Veda): sirf footer ke andar rehta hai. Page ke upar / side me koi floating bot nahi hai.
+// User scroll karke footer tak aata hai tabhi bot uchhal kar aata hai aur haath hilata hai.
 // ---------------------------------------------------------------------------
-const BOT_HIDDEN_ON = ['/support'];
 const BOT_ROUTE = '/support';
-
-// Bubble me ghoomti hui lines (English / हिंदी / Hinglish)
-const BUBBLES = [
-  'Need help? Ask me! 👋',
-  'मदद चाहिए? मैं यहाँ हूँ!',
-  'Help chahiye? Main yahin hoon 😊',
-  'Payment, books, rewards — sab ka jawab 💛',
-];
 
 // ---------------------------------------------------------------------------
 // PERFORMANCE RULES used in all animations below:
@@ -183,7 +173,8 @@ const FOOTER_CSS = `
 @keyframes vb-spin  { to { transform: rotate(360deg); } }
 @keyframes vb-ring  { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.75); opacity: 0; } }
 @keyframes vb-ping  { 0% { transform: scale(1); opacity: .7; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
-@keyframes vb-pop   { from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes vb-enter { from { opacity: 0; transform: translate3d(0, 40%, 0) scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes vb-hi    { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(40deg); } 40%, 80% { transform: rotate(8deg); } }
 @keyframes vb-shine { 0%, 55% { transform: translate3d(-130%, 0, 0) skewX(-20deg); } 100% { transform: translate3d(360%, 0, 0) skewX(-20deg); } }
 
 /* the robot itself (inline SVG) */
@@ -199,100 +190,66 @@ const FOOTER_CSS = `
 .vb-live { position: relative; flex: none; width: 8px; height: 8px; border-radius: 9999px; background: #34d399; }
 .vb-live::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: #34d399; animation: vb-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite; }
 
-/* ---------- Floating launcher ---------- */
-.vb-fab-wrap {
-  position: fixed; z-index: 45; display: flex; flex-direction: column; align-items: flex-end; gap: .7rem;
-  right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom));
-  visibility: hidden; opacity: 0; pointer-events: none; transform: translate3d(0, 18px, 0) scale(.85); transform-origin: 100% 100%;
-  transition: opacity .4s ease, transform .55s cubic-bezier(.34, 1.56, .64, 1), visibility 0s linear .55s;
-}
-.vb-fab-wrap.is-in { visibility: visible; opacity: 1; pointer-events: auto; transform: none; transition-delay: 0s; }
-
-.vb-bubble {
-  position: relative; display: flex; align-items: center; gap: .5rem;
-  max-width: min(270px, calc(100vw - 2.5rem)); padding: .6rem .5rem .6rem .95rem;
-  border-radius: 1.1rem 1.1rem .3rem 1.1rem; font-size: 13px; font-weight: 500; line-height: 1.35; color: #f4f4f5;
-  border: 1px solid rgba(251,191,36,.35); background: #14110a; box-shadow: 0 14px 34px -14px rgba(0,0,0,.85);
-  animation: vb-pop .35s cubic-bezier(.22, 1, .36, 1) both;
-}
-.vb-bubble button {
-  flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 9999px;
-  font-size: 14px; line-height: 1; color: #a1a1a6; background: rgba(255,255,255,.07); cursor: pointer;
-}
-.vb-bubble button:hover { color: #fff; }
-
-.vb-fab {
-  position: relative; isolation: isolate; display: grid; place-items: center; width: 62px; height: 62px; border-radius: 9999px;
-  border: 1px solid rgba(251,191,36,.5); background: radial-gradient(circle at 30% 25%, #2a2210, #0b0b0e 70%);
-  box-shadow: 0 16px 36px -12px rgba(251,191,36,.6), inset 0 1px 0 rgba(255,255,255,.12);
-  -webkit-tap-highlight-color: transparent;
-  transition: transform .3s cubic-bezier(.22, 1, .36, 1);
-}
-@media (min-width: 768px) { .vb-fab { width: 68px; height: 68px; } }
-.vb-fab .vb-face { width: 42px; height: 42px; }
-.vb-fab-ring { position: absolute; inset: 0; z-index: -1; border-radius: 9999px; border: 1px solid rgba(251,191,36,.55); pointer-events: none; animation: vb-ring 3s ease-out infinite; }
-.vb-fab-ring2 { animation-delay: 1.5s; }
-.vb-fab-live { position: absolute; top: 1px; right: 1px; width: 14px; height: 14px; border-radius: 9999px; background: #34d399; border: 2px solid #0b0b0e; }
-.vb-fab-live::after { content: ''; position: absolute; inset: -2px; border-radius: 9999px; background: #34d399; z-index: -1; animation: vb-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite; }
-.vb-fab:active { transform: scale(.94); }
-.vb-fab:focus-visible { outline: 2px solid #fbbf24; outline-offset: 4px; }
-@media (hover: hover) {
-  .vb-fab:hover { transform: translate3d(0, -3px, 0) scale(1.06); }
-  .vb-fab:hover .vb-bot, .vb-support:hover .vb-bot { animation: vb-hop .6s ease-in-out infinite; }
-}
-
-/* ---------- Footer support card ---------- */
-.vb-support { overflow: hidden; margin-bottom: 1.25rem; }
+/* ---------- Footer support card (compact, mobile-first) ---------- */
+.vx-panel.vb-support { overflow: hidden; margin-bottom: 1rem; padding: 1.1rem 1rem; }
+@media (min-width: 768px) { .vx-panel.vb-support { margin-bottom: 1.25rem; padding: 1.5rem 2rem; } }
 .vb-support::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(560px 240px at 10% 0%, rgba(251,191,36,.14), transparent 70%);
-  background: radial-gradient(560px 240px at 10% 0%, color-mix(in srgb, var(--vx-b) 24%, transparent), transparent 70%);
+  background: radial-gradient(420px 180px at 8% 0%, rgba(251,191,36,.12), transparent 70%);
+  background: radial-gradient(420px 180px at 8% 0%, color-mix(in srgb, var(--vx-b) 22%, transparent), transparent 70%);
 }
 .vb-support > * { position: relative; }
-.vb-inner { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; text-align: center; }
-@media (min-width: 768px) { .vb-inner { flex-direction: row; gap: 2rem; text-align: left; } }
 
-.vb-mascot { position: relative; flex: none; display: grid; place-items: center; width: 108px; height: 108px; }
-@media (min-width: 768px) { .vb-mascot { width: 128px; height: 128px; } }
-.vb-mascot .vb-face { width: 60%; height: 60%; position: relative; z-index: 1; }
+/* mobile: [bot | text] then full-width button;  desktop: [bot | text | button] */
+.vb-inner { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .9rem 1rem; }
+@media (min-width: 768px) { .vb-inner { grid-template-columns: auto 1fr auto; gap: 1.5rem; } }
+
+.vb-mascot { position: relative; display: grid; place-items: center; width: 76px; height: 76px; }
+@media (min-width: 768px) { .vb-mascot { width: 104px; height: 104px; } }
+.vb-mascot .vb-face { position: relative; z-index: 1; width: 62%; height: 62%; opacity: 0; transform: translate3d(0, 40%, 0) scale(.6); }
+.vb-mascot.is-seen .vb-face { animation: vb-enter .8s cubic-bezier(.34, 1.56, .64, 1) both; }
+.vb-mascot.is-seen .vb-arm { animation: vb-hi 1.4s ease-in-out .7s 1 both, vb-wave 6s ease-in-out 3.5s infinite; }
 .vb-orbit { position: absolute; inset: 0; border-radius: 9999px; border: 1px dashed rgba(255,255,255,.1); animation: vb-spin 18s linear infinite; }
 .vb-orbit i { position: absolute; border-radius: 9999px; background: #fbbf24; }
-.vb-orbit i:nth-child(1) { top: -3px; left: 50%; width: 7px; height: 7px; margin-left: -3px; }
-.vb-orbit i:nth-child(2) { bottom: 12%; right: 2%; width: 5px; height: 5px; opacity: .7; background: #fde68a; }
-.vb-orbit i:nth-child(3) { bottom: 18%; left: -1%; width: 5px; height: 5px; opacity: .55; }
+.vb-orbit i:nth-child(1) { top: -3px; left: 50%; width: 6px; height: 6px; margin-left: -3px; }
+.vb-orbit i:nth-child(2) { bottom: 12%; right: 2%; width: 4px; height: 4px; opacity: .7; background: #fde68a; }
+.vb-orbit i:nth-child(3) { bottom: 18%; left: -1%; width: 4px; height: 4px; opacity: .55; }
 .vb-halo { position: absolute; inset: 12%; border-radius: 9999px; border: 1px solid rgba(251,191,36,.35); background: radial-gradient(closest-side, rgba(251,191,36,.2), transparent); }
 .vb-halo::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; border: 1px solid rgba(251,191,36,.5); animation: vb-ring 3.2s ease-out infinite; }
 
-.vb-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: .55rem; }
-@media (min-width: 768px) { .vb-copy { align-items: flex-start; } }
+.vb-copy { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; text-align: left; }
 .vb-chip {
-  display: inline-flex; align-items: center; gap: .5rem; width: fit-content; padding: .28rem .75rem; border-radius: 9999px;
-  font-size: 12px; color: #a1a1a6; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03);
+  display: inline-flex; align-items: center; gap: .45rem; width: fit-content; padding: .22rem .65rem; border-radius: 9999px;
+  font-size: 11px; color: #a1a1a6; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03);
 }
 
 .vb-cta {
-  position: relative; isolation: isolate; overflow: hidden; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: .6rem;
-  min-height: 48px; padding: .85rem 1.5rem; border-radius: 9999px; font-size: 14px; font-weight: 600; color: #0a0a0c;
+  position: relative; isolation: isolate; overflow: hidden; grid-column: 1 / -1; display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  width: 100%; min-height: 46px; padding: .75rem 1.25rem; border-radius: 9999px; font-size: 14px; font-weight: 600; color: #0a0a0c;
   background: linear-gradient(135deg, #fde68a, #fbbf24 45%, #d4921a);
-  box-shadow: 0 14px 34px -14px rgba(251,191,36,.75), inset 0 1px 0 rgba(255,255,255,.5);
+  box-shadow: 0 12px 28px -14px rgba(251,191,36,.7), inset 0 1px 0 rgba(255,255,255,.5);
   -webkit-tap-highlight-color: transparent;
   transition: transform .25s cubic-bezier(.22, 1, .36, 1), box-shadow .3s ease;
 }
+@media (min-width: 768px) { .vb-cta { grid-column: auto; width: auto; padding: .8rem 1.5rem; } }
 .vb-cta::after {
   content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 38%; pointer-events: none; will-change: transform;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
   transform: translate3d(-130%, 0, 0) skewX(-20deg); animation: vb-shine 4.5s ease-in-out infinite;
 }
-.vb-cta:active { transform: scale(.96); }
+.vb-cta:active { transform: scale(.97); }
 .vb-cta:focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; }
-@media (hover: hover) { .vb-cta:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 18px 40px -14px rgba(251,191,36,.9), inset 0 1px 0 rgba(255,255,255,.5); } }
+@media (hover: hover) {
+  .vb-cta:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 16px 36px -14px rgba(251,191,36,.9), inset 0 1px 0 rgba(255,255,255,.5); }
+  .vb-support:hover .vb-bot { animation: vb-hop .6s ease-in-out infinite; }
+}
 
-.vb-trust { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin: 1.5rem 0 0; padding: 1.25rem 0 0; list-style: none; border-top: 1px solid rgba(255,255,255,.06); }
-@media (min-width: 768px) { .vb-trust { justify-content: flex-start; } }
-.vb-trust li { display: inline-flex; align-items: center; gap: .45rem; padding: .4rem .8rem; border-radius: 9999px; font-size: 12px; color: #a1a1a6; border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.03); }
-.vb-trust svg { flex: none; color: #fbbf24; }
-
-@media print { .vb-fab-wrap { display: none; } }
+/* trust points: 2 x 2 grid on mobile, one row on desktop */
+.vb-trust { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; margin: 1rem 0 0; padding: .9rem 0 0; list-style: none; border-top: 1px solid rgba(255,255,255,.06); }
+@media (min-width: 768px) { .vb-trust { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.25rem; padding-top: 1.1rem; } }
+.vb-trust li { display: flex; align-items: center; justify-content: center; gap: .4rem; padding: .35rem .5rem; border-radius: 9999px; font-size: 11px; line-height: 1.2; color: #a1a1a6; border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.03); }
+@media (min-width: 768px) { .vb-trust li { display: inline-flex; padding: .4rem .8rem; font-size: 12px; } }
+.vb-trust svg { flex: none; width: 13px; height: 13px; color: #fbbf24; }
 
 /* ---------- Performance & accessibility ---------- */
 .vx-footer[data-active=false] *,
@@ -300,8 +257,8 @@ const FOOTER_CSS = `
 .vx-footer[data-active=false] *::after { animation-play-state: paused !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .vx-footer *, .vx-footer *::before, .vx-footer *::after,
-  .vb-fab-wrap, .vb-fab-wrap *, .vb-fab-wrap *::before, .vb-fab-wrap *::after { animation: none !important; transition-duration: .01ms !important; }
+  .vx-footer *, .vx-footer *::before, .vx-footer *::after { animation: none !important; transition-duration: .01ms !important; }
+  .vb-mascot .vb-face { opacity: 1; transform: none; }
 }
 `;
 
@@ -358,86 +315,17 @@ const BotMark = ({ id }) => {
   );
 };
 
-// ---------------------------------------------------------------------------
-// Floating launcher: har page par neeche-right me chhota bot, kabhi-kabhi bubble me "I'm here!" bolta hai
-// ---------------------------------------------------------------------------
-const SupportLauncher = ({ hidden }) => {
-  const [ready, setReady] = useState(false);
-  const [closed, setClosed] = useState(false);
-  const [bubble, setBubble] = useState(null);
-
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem('vb_bubble_closed') === '1') setClosed(true);
-    } catch (e) {
-      /* storage blocked — ignore */
-    }
-    const id = setTimeout(() => setReady(true), 1200);
-    return () => clearTimeout(id);
-  }, []);
-
-  useEffect(() => {
-    if (!ready || closed) return undefined;
-    let i = 0;
-    let hideTimer = null;
-    const show = () => {
-      setBubble(i % BUBBLES.length);
-      i += 1;
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => setBubble(null), 4200);
-    };
-    const first = setTimeout(show, 1500);
-    const loop = setInterval(show, 12000);
-    return () => {
-      clearTimeout(first);
-      clearTimeout(hideTimer);
-      clearInterval(loop);
-    };
-  }, [ready, closed]);
-
-  const dismiss = () => {
-    setClosed(true);
-    setBubble(null);
-    try {
-      sessionStorage.setItem('vb_bubble_closed', '1');
-    } catch (e) {
-      /* ignore */
-    }
-  };
-
-  const visible = ready && !hidden;
-
-  return (
-    <div className={`vb-fab-wrap${visible ? ' is-in' : ''}`}>
-      {visible && bubble !== null && !closed && (
-        <div className="vb-bubble" role="status">
-          <span>{BUBBLES[bubble]}</span>
-          <button type="button" onClick={dismiss} aria-label="Dismiss message">×</button>
-        </div>
-      )}
-      <Link href={BOT_ROUTE} className="vb-fab" aria-label="Chat with Veda, the Vedoxa support assistant">
-        <span className="vb-fab-ring" aria-hidden="true" />
-        <span className="vb-fab-ring vb-fab-ring2" aria-hidden="true" />
-        <BotMark id="fab" />
-        <span className="vb-fab-live" aria-hidden="true" />
-      </Link>
-    </div>
-  );
-};
-
 const Footer = () => {
   const pathname = usePathname();
   const footerRef = useRef(null);
   const cardRef = useRef(null);
   // null = abhi time check nahi hua (server render), uske baad subah/din/shaam/raat
   const [phase, setPhase] = useState(null);
-  // footer ka support card screen par ho to floating bot chhup jata hai (do-do bot ek saath nahi dikhenge)
-  const [cardInView, setCardInView] = useState(false);
+  // footer tak scroll hone par hi bot "entry" leta hai
+  const [seen, setSeen] = useState(false);
 
   // Condition: Sirf Main page ('/') aur About page ('/about') par pura footer dikhega
   const showFullFooter = pathname === '/' || pathname === '/about';
-  const path = pathname || '';
-  const showLauncher = !BOT_HIDDEN_ON.some((p) => path === p || path.startsWith(`${p}/`));
 
   // Time of day check — sirf phase badalne par hi re-render hota hai
   useEffect(() => {
@@ -461,78 +349,87 @@ const Footer = () => {
     return () => observer.disconnect();
   }, [showFullFooter]);
 
-  // Support card dikhe to floating bot hide
+  // Jab user scroll karke support card tak pahunche, tab bot uchhal kar aaye aur haath hilaye
   useEffect(() => {
     const el = cardRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setCardInView(false);
+    if (!el) return undefined;
+    if (typeof IntersectionObserver === 'undefined') {
+      setSeen(true);
       return undefined;
     }
-    const observer = new IntersectionObserver(([entry]) => setCardInView(entry.isIntersecting), { threshold: 0.35 });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setSeen(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.25 }
+    );
     observer.observe(el);
     return () => observer.disconnect();
   }, [showFullFooter]);
 
+  // Agar user kisi dusre page par hai, toh footer nahi dikhega
+  if (!showFullFooter) return null;
+
+  // Pura Footer - Home aur About page ke liye
   return (
-    <>
+    <footer
+      ref={footerRef}
+      data-phase={phase || 'night'}
+      className="vx-footer relative isolate overflow-hidden w-full bg-black border-t border-white/10 py-14 mt-20"
+    >
       <style dangerouslySetInnerHTML={{ __html: FOOTER_CSS }} />
 
-      {showLauncher && <SupportLauncher hidden={cardInView} />}
+      {/* Animated background (decorative only) */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <div className="vx-dots" />
+        <div className="vx-glow vx-glow-a" />
+        <div className="vx-glow vx-glow-b" />
+        <div className="vx-glow vx-glow-c" />
+        <span className="vx-sweep" />
+      </div>
 
-      {/* Pura Footer - sirf Home aur About page ke liye */}
-      {showFullFooter && (
-        <footer
-          ref={footerRef}
-          data-phase={phase || 'night'}
-          className="vx-footer relative isolate overflow-hidden w-full bg-black border-t border-white/10 pt-14 pb-28 md:pb-14 mt-20"
-        >
-          {/* Animated background (decorative only) */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-            <div className="vx-dots" />
-            <div className="vx-glow vx-glow-a" />
-            <div className="vx-glow vx-glow-b" />
-            <div className="vx-glow vx-glow-c" />
-            <span className="vx-sweep" />
+      <div className="max-w-6xl mx-auto px-6">
+        {/* ============ SUPPORT BOT CARD (compact) ============ */}
+        <section ref={cardRef} className="vx-panel vb-support" aria-labelledby="vb-support-title">
+          <div className="vb-inner">
+            <div className={`vb-mascot${seen ? ' is-seen' : ''}`} aria-hidden="true">
+              <span className="vb-orbit"><i /><i /><i /></span>
+              <span className="vb-halo" />
+              <BotMark id="card" />
+            </div>
+
+            <div className="vb-copy">
+              <span className="vb-chip">
+                <span className="vb-live" aria-hidden="true" />
+                <span>Veda<span className="hidden md:inline"> · Support assistant</span> · Online</span>
+              </span>
+              <h3 id="vb-support-title" className="text-[15px] md:text-xl font-semibold leading-snug text-gray-100 tracking-tight">
+                Got a question? Veda answers in seconds.
+              </h3>
+              <p className="text-[12.5px] md:text-[14px] leading-relaxed text-[#a1a1a6] font-light">
+                Ask in English, हिंदी or Hinglish — payments, books, rewards, login.
+                <span className="hidden md:inline"> Not solved? Raise a ticket right from the chat.</span>
+              </p>
+            </div>
+
+            <Link href={BOT_ROUTE} className="vb-cta">
+              <Icon name="chat" />
+              <span>Chat with Veda</span>
+            </Link>
           </div>
 
-          <div className="max-w-6xl mx-auto px-6">
-            {/* ============ SUPPORT BOT CARD ============ */}
-            <section ref={cardRef} className="vx-panel vb-support" aria-labelledby="vb-support-title">
-              <div className="vb-inner">
-                <div className="vb-mascot" aria-hidden="true">
-                  <span className="vb-orbit"><i /><i /><i /></span>
-                  <span className="vb-halo" />
-                  <BotMark id="card" />
-                </div>
+          <ul className="vb-trust">
+            <li><Icon name="bolt" /> Instant answers</li>
+            <li><Icon name="clock" /> 48-hour ticket reply</li>
+            <li><Icon name="globe" /> 3 languages</li>
+            <li><Icon name="shield" /> Secure Web Reader</li>
+          </ul>
+        </section>
 
-                <div className="vb-copy">
-                  <span className="vb-chip">
-                    <span className="vb-live" aria-hidden="true" />
-                    Veda · Support assistant · Online
-                  </span>
-                  <h3 id="vb-support-title" className="text-xl md:text-2xl font-semibold text-gray-100 tracking-tight">
-                    Got a question? Veda answers in seconds.
-                  </h3>
-                  <p className="text-[14px] leading-relaxed text-[#a1a1a6] font-light max-w-xl">
-                    Ask in English, हिंदी or Hinglish — payments, book access, rewards or login. Not solved? Raise a ticket right from the chat.
-                  </p>
-                </div>
-
-                <Link href={BOT_ROUTE} className="vb-cta">
-                  <Icon name="chat" />
-                  <span>Chat with Veda</span>
-                </Link>
-              </div>
-
-              <ul className="vb-trust">
-                <li><Icon name="bolt" /> Instant answers</li>
-                <li><Icon name="clock" /> Tickets answered within 48 hours</li>
-                <li><Icon name="globe" /> English · हिंदी · Hinglish</li>
-                <li><Icon name="shield" /> Secure Web Reader</li>
-              </ul>
-            </section>
-
-            {/* ============ BRAND + LEGAL ============ */}
+        {/* ============ BRAND + LEGAL ============ */}
             <div className="vx-panel">
               <div className="flex flex-col md:flex-row justify-between items-center gap-10">
                 {/* Brand Name & Copyright */}
@@ -595,8 +492,6 @@ const Footer = () => {
             </div>
           </div>
         </footer>
-      )}
-    </>
   );
 };
 
