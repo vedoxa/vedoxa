@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
-import ArticleContent, { CopyLinkButton } from '@/components/blog/ArticleContent'
+import ArticleContent, { CopyLinkButton } from '../../../components/blog/ArticleContent'
 
 const SITE_URL = 'https://vedoxa.shop'
 const SITE_NAME = 'Vedoxa Premium Library'
