@@ -3,8 +3,9 @@ import { cache } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Baloo_2, Hind } from 'next/font/google'
 import { createClient } from '@supabase/supabase-js'
-import ArticleContent, { CopyLinkButton } from '../../../components/blog/ArticleContent'
+import ArticleContent, { CopyLinkButton } from '@/components/blog/ArticleContent'
 
 const SITE_URL = 'https://vedoxa.shop'
 const SITE_NAME = 'Vedoxa Premium Library'
@@ -39,6 +40,23 @@ type PostLink = { slug: string; title: string }
 
 const BOOK_COLS = 'id, slug, title, cover_path, final_price'
 const RELATED_COLS = 'slug, title, description, cover_image, category, published_at'
+
+/* ───────────────────────────── Fonts (Hindi + Latin dono support) ───────────────────────────── */
+
+// Soft, rounded display face for headings; calm reading face for body
+const fontDisplay = Baloo_2({
+  subsets: ['latin', 'devanagari'],
+  weight: ['600', '700', '800'],
+  display: 'swap',
+  variable: '--font-vx-display',
+})
+
+const fontBody = Hind({
+  subsets: ['latin', 'devanagari'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-vx-body',
+})
 
 /* ───────────────────────────── Data helpers ───────────────────────────── */
 
@@ -256,49 +274,129 @@ function ShareBar({ url, title }: { url: string; title: string }) {
   const u = encodeURIComponent(url)
   const t = encodeURIComponent(title)
   const links = [
-    { name: 'WhatsApp', href: `https://wa.me/?text=${t}%20${u}`, cls: 'hover:border-green-400/60 hover:bg-green-500/10 hover:text-green-300' },
-    { name: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}`, cls: 'hover:border-sky-400/60 hover:bg-sky-500/10 hover:text-sky-300' },
-    { name: 'X', href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, cls: 'hover:border-white/60 hover:bg-white/10 hover:text-white' },
-    { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, cls: 'hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-blue-300' },
+    { name: 'WhatsApp', href: `https://wa.me/?text=${t}%20${u}` },
+    { name: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}` },
+    { name: 'X', href: `https://twitter.com/intent/tweet?url=${u}&text=${t}` },
+    { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
   ]
 
   return (
-    <section
-      aria-label="Article share karein"
-      className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-    >
-      <p className="text-sm font-bold text-white">📢 Article pasand aaya? Doston ke saath share karein</p>
-      <div className="mt-3.5 flex flex-wrap gap-2.5">
-        {links.map((l) => (
+    <section aria-label="Article share karein" className="vx-glass mt-10 rounded-3xl p-5 sm:p-6">
+      <p className="vx-ink vx-emboss text-sm font-bold sm:text-base">
+        📢 Article pasand aaya? Doston ke saath share karein
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        {links.map((l, i) => (
           <a
             key={l.name}
             href={l.href}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${l.name} par share karo`}
-            className={`rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-gray-200 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 ${l.cls}`}
+            className={`vx-pill ${i % 2 ? 'vx-pill-sky' : 'vx-pill-pink'}`}
           >
             {l.name}
           </a>
         ))}
-        <CopyLinkButton url={url} />
+        <span className="vx-copy contents">
+          <CopyLinkButton url={url} />
+        </span>
       </div>
     </section>
   )
 }
 
+/*
+  Design tokens
+  Pearl  #fff8fc / #f3f9ff   (page wash)      Ink   #232a4a / #414a70 / #5b6488 (text)
+  Blush  #ffd6e8 / #f9a8d4   (light pink)     Deep  #c2306f (pink text accent)
+  Sky    #cfe9ff / #8fd0ff   (light sky blue) Deep  #1f6fb5 (sky text accent)
+  "Ubhre hue" text = layered text-shadow (white top light + coloured soft drop) -> .vx-emboss / .vx-title
+*/
 const PAGE_CSS = `
+.vx-root{--ink:#232a4a;--ink-2:#414a70;--ink-3:#5b6488;--pink:#f9a8d4;--pink-deep:#c2306f;--sky:#8fd0ff;--sky-deep:#1f6fb5;--shadow:0 22px 50px -24px rgba(110,130,220,.45),0 8px 22px -12px rgba(244,114,182,.28);font-family:var(--font-vx-body),'Noto Sans Devanagari',ui-sans-serif,system-ui,sans-serif;color:var(--ink-2);background:linear-gradient(165deg,#fff8fc 0%,#f3f9ff 48%,#fff4fa 100%);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.vx-root ::selection{background:rgba(249,168,212,.5);color:var(--ink)}
+.vx-root :is(a,button):focus-visible{outline:2px solid var(--sky-deep);outline-offset:3px}
+.vx-ink{color:var(--ink)}
+.vx-ink-3{color:var(--ink-3)}
+.vx-title,.vx-h2,.vx-btn,.vx-avatar,.vx-prose :is(h1,h2,h3,h4){font-family:var(--font-vx-display),var(--font-vx-body),sans-serif}
+
+/* reading progress */
 .vx-progress{display:none}
-@supports (animation-timeline: scroll()){
-  .vx-progress{display:block;position:fixed;top:0;left:0;right:0;height:3px;z-index:60;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#f59e0b,#ec4899,#8b5cf6);animation:vx-grow linear both;animation-timeline:scroll(root block)}
+@supports (animation-timeline:scroll()){
+  .vx-progress{display:block;position:fixed;top:0;left:0;right:0;height:4px;z-index:60;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#ffa3cd,#c9b8ff,#8fd0ff);box-shadow:0 0 14px rgba(255,150,200,.65);animation:vx-grow linear both;animation-timeline:scroll(root block)}
 }
 @keyframes vx-grow{to{transform:scaleX(1)}}
-@keyframes vx-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.vx-fade{animation:vx-fade .6s cubic-bezier(.22,1,.36,1) both}
-.vx-card{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
-.vx-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px -18px rgba(245,158,11,.35)}
+
+/* pastel backdrop (glass ko blur karne ke liye rang chahiye) */
+.vx-bg{position:sticky;top:0;z-index:0;height:100vh;height:100lvh;margin-bottom:-100vh;margin-bottom:-100lvh;overflow:hidden;pointer-events:none}
+.vx-blob{position:absolute;border-radius:50%;will-change:transform}
+.vx-b1{width:70vmax;height:70vmax;left:-26vmax;top:-30vmax;background:radial-gradient(circle,rgba(255,176,214,.78),transparent 62%);animation:vx-f1 36s ease-in-out infinite alternate}
+.vx-b2{width:64vmax;height:64vmax;right:-28vmax;top:-8vmax;background:radial-gradient(circle,rgba(150,210,255,.82),transparent 62%);animation:vx-f2 44s ease-in-out infinite alternate}
+.vx-b3{width:60vmax;height:60vmax;left:6vmax;bottom:-34vmax;background:radial-gradient(circle,rgba(255,214,232,.85),transparent 62%);animation:vx-f3 40s ease-in-out infinite alternate}
+.vx-b4{width:50vmax;height:50vmax;right:-14vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(190,228,255,.8),transparent 62%);animation:vx-f1 52s ease-in-out infinite alternate-reverse}
+@keyframes vx-f1{to{transform:translate3d(6vmax,5vmax,0) scale(1.08)}}
+@keyframes vx-f2{to{transform:translate3d(-7vmax,6vmax,0) scale(1.1)}}
+@keyframes vx-f3{to{transform:translate3d(5vmax,-6vmax,0) scale(1.06)}}
+
+/* glass panel */
+.vx-glass{position:relative;background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,255,255,.44));-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:var(--shadow),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(255,255,255,.5),inset 0 0 26px rgba(255,255,255,.35)}
+.vx-glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(135deg,#fff,rgba(255,176,214,.45) 38%,rgba(143,208,255,.5) 68%,rgba(255,255,255,.95));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+.vx-card{transition:transform .4s cubic-bezier(.22,1,.36,1),box-shadow .4s ease}
+.vx-card:hover{transform:translateY(-4px);box-shadow:0 28px 54px -24px rgba(236,120,180,.5),0 12px 26px -14px rgba(100,170,240,.5),inset 0 1px 0 #fff}
+.vx-orb{position:absolute;border-radius:50%;pointer-events:none}
+.vx-orb-a{width:15rem;height:15rem;right:-4rem;top:-6rem;background:radial-gradient(circle,rgba(255,170,212,.55),transparent 68%)}
+.vx-orb-b{width:13rem;height:13rem;left:-4rem;bottom:-6rem;background:radial-gradient(circle,rgba(150,210,255,.55),transparent 68%)}
+.vx-rule{height:1px;background:linear-gradient(90deg,transparent,rgba(244,114,182,.4),rgba(143,208,255,.5),transparent)}
+
+/* pills, buttons */
+.vx-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:999px;font-size:.8125rem;font-weight:600;line-height:1.2;color:var(--ink-2);border:1px solid rgba(255,255,255,.95);background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,255,255,.55));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 8px 18px -10px rgba(120,140,220,.5),inset 0 1px 0 #fff;text-shadow:0 1px 0 #fff;transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s ease}
+.vx-pill-sm{padding:.35rem .8rem;font-size:.75rem}
+.vx-pill-pink{color:var(--pink-deep);background:linear-gradient(135deg,rgba(255,238,247,.96),rgba(255,206,228,.62))}
+.vx-pill-sky{color:var(--sky-deep);background:linear-gradient(135deg,rgba(238,248,255,.96),rgba(196,228,255,.62))}
+a.vx-pill:hover{transform:translateY(-2px);box-shadow:0 14px 24px -12px rgba(236,120,180,.55),inset 0 1px 0 #fff}
+.vx-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.7rem;border-radius:999px;font-size:1rem;font-weight:700;color:var(--ink);border:1px solid #fff;background:linear-gradient(135deg,rgba(255,214,232,.95),rgba(255,255,255,.92) 50%,rgba(196,228,255,.95));box-shadow:0 14px 28px -14px rgba(236,120,180,.6),0 6px 16px -8px rgba(100,170,240,.5),inset 0 1px 0 #fff;text-shadow:0 1px 0 #fff,0 3px 8px rgba(236,120,180,.25);transition:transform .4s cubic-bezier(.22,1,.36,1),box-shadow .4s ease}
+.vx-btn:hover{transform:translateY(-3px);box-shadow:0 24px 36px -16px rgba(236,120,180,.7),0 10px 22px -10px rgba(100,170,240,.6),inset 0 1px 0 #fff}
+.vx-avatar{display:grid;place-items:center;width:2.7rem;height:2.7rem;border-radius:50%;font-size:1.2rem;font-weight:800;color:var(--ink);border:2px solid #fff;background:linear-gradient(135deg,#ffb3d6,#a9dcff);box-shadow:0 10px 20px -8px rgba(236,120,180,.6),inset 0 2px 4px rgba(255,255,255,.8);text-shadow:0 1px 0 rgba(255,255,255,.9)}
+.vx-cover{border-radius:1.1rem;padding:.6rem;border:1px solid #fff;background:linear-gradient(160deg,#fff0f7,#eaf6ff);box-shadow:inset 0 2px 8px rgba(120,140,220,.12)}
+.vx-cover img{display:block;width:100%;height:11rem;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(110,120,200,.35));transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.vx-card:hover .vx-cover img{transform:scale(1.05) translateY(-2px)}
+
+/* raised ("ubhre hue") text */
+.vx-emboss{text-shadow:0 1px 0 rgba(255,255,255,.95),0 2px 7px rgba(120,130,200,.22)}
+.vx-title{color:var(--ink);letter-spacing:-.01em;text-shadow:0 1px 0 #fff,0 3px 8px rgba(236,120,180,.22),0 10px 22px rgba(110,170,240,.3)}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .vx-title{text-shadow:none;color:transparent;-webkit-text-fill-color:transparent;background:linear-gradient(120deg,#232a4a 0%,#4b3fa6 46%,#c2306f 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(-1px -1px 0 rgba(255,255,255,.95)) drop-shadow(0 8px 10px rgba(130,110,220,.32))}
+}
+.vx-h2{position:relative;display:inline-block;margin-bottom:1.25rem;padding-bottom:.6rem;font-size:1.45rem;font-weight:800;line-height:1.3;color:var(--ink);text-shadow:0 1px 0 #fff,0 4px 10px rgba(236,120,180,.22),0 10px 22px rgba(110,170,240,.28)}
+.vx-h2::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:58%;border-radius:99px;background:linear-gradient(90deg,#ffa3cd,#8fd0ff);box-shadow:0 4px 10px -2px rgba(255,150,200,.6)}
+
+/* article body (ArticleContent ke andar ka text) */
+.vx-prose{font-size:1.125rem;line-height:1.95;color:var(--ink-2);overflow-wrap:break-word;text-shadow:0 1px 0 rgba(255,255,255,.95),0 2px 10px rgba(110,130,200,.15)}
+.vx-prose :is(p,li,span,div,td,th,em,i,small,figcaption,cite){color:inherit}
+.vx-prose :is(h1,h2,h3,h4){color:var(--ink);font-weight:800;line-height:1.35;text-shadow:0 1px 0 #fff,0 4px 10px rgba(236,120,180,.22),0 12px 24px rgba(110,170,240,.28)}
+.vx-prose :is(strong,b){color:var(--ink);font-weight:700}
+.vx-prose a{color:var(--pink-deep);text-decoration:underline;text-decoration-color:rgba(194,48,111,.3);text-underline-offset:4px;transition:color .25s ease}
+.vx-prose a:hover{color:var(--sky-deep)}
+.vx-prose blockquote{padding:1rem 1.25rem;border:1px solid rgba(255,255,255,.95);border-left:4px solid var(--pink);border-radius:1.1rem;background:linear-gradient(135deg,rgba(255,240,247,.85),rgba(238,248,255,.75));box-shadow:0 14px 30px -20px rgba(236,120,180,.55),inset 0 1px 0 #fff}
+.vx-prose img{border-radius:1.25rem;border:1px solid #fff;box-shadow:0 20px 40px -24px rgba(100,130,220,.55)}
+.vx-prose hr{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--pink),var(--sky),transparent)}
+.vx-prose li::marker{color:#ec6aa8}
+.vx-prose :not(pre)>code{padding:.1em .4em;border-radius:.45em;color:var(--pink-deep);background:rgba(249,168,212,.22)}
+.vx-prose :is(pre,code){text-shadow:none}
+.vx-copy :is(button,a){display:inline-flex!important;align-items:center;gap:.4rem;padding:.5rem 1rem!important;border-radius:999px!important;font-size:.8125rem!important;font-weight:600!important;color:var(--ink-2)!important;border:1px solid rgba(255,255,255,.95)!important;background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,255,255,.55))!important;box-shadow:0 8px 18px -10px rgba(120,140,220,.5),inset 0 1px 0 #fff!important;text-shadow:0 1px 0 #fff;transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.vx-copy :is(button,a):hover{transform:translateY(-2px)}
+
+/* page-load: ek hi soft entrance */
+@keyframes vx-fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.vx-fade{animation:vx-fade .9s cubic-bezier(.22,1,.36,1) var(--d,0s) both}
+
+/* fallbacks */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.vx-glass{background:rgba(255,255,255,.9)}}
+@media (max-width:640px){.vx-glass{-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4)}}
+@media (prefers-reduced-transparency:reduce){.vx-glass,.vx-pill{background:rgba(255,255,255,.96);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-@media (prefers-reduced-motion:reduce){.vx-fade{animation:none}.vx-card{transition:none}.vx-card:hover{transform:none}.vx-progress{display:none!important}}
+@media (prefers-reduced-motion:reduce){.vx-fade,.vx-blob,.vx-progress{animation:none!important}.vx-progress{display:none!important}.vx-card,.vx-pill,.vx-btn,.vx-cover img{transition:none!important}.vx-card:hover,.vx-btn:hover,a.vx-pill:hover{transform:none!important}}
 `
 
 /* ───────────────────────────── Metadata ───────────────────────────── */
@@ -419,7 +517,7 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   return (
-    <div id="top" className="relative min-h-screen bg-[#07070d] text-gray-200 selection:bg-amber-500/30">
+    <div id="top" className={`${fontDisplay.variable} ${fontBody.variable} vx-root relative isolate min-h-screen`}>
       <style dangerouslySetInnerHTML={{ __html: PAGE_CSS }} />
       <div className="vx-progress" aria-hidden="true" />
 
@@ -430,28 +528,30 @@ export default async function BlogPostPage({ params }: Props) {
         }}
       />
 
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-96"
-        style={{ background: 'radial-gradient(70% 60% at 50% 0%, rgba(245,158,11,0.12), rgba(236,72,153,0.04), transparent)' }}
-        aria-hidden="true"
-      />
+      {/* soft pastel backdrop — glass panels isi par blur hote hain */}
+      <div className="vx-bg" aria-hidden="true">
+        <span className="vx-blob vx-b1" />
+        <span className="vx-blob vx-b2" />
+        <span className="vx-blob vx-b3" />
+        <span className="vx-blob vx-b4" />
+      </div>
 
-      <div className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 md:py-10">
-        <nav aria-label="Breadcrumb" className="mb-6">
-          <ol className="flex min-w-0 items-center gap-2 text-xs text-gray-400 sm:text-sm">
+      <div className="relative z-10 mx-auto max-w-3xl px-4 pb-16 pt-6 sm:px-6 md:pt-12">
+        <nav aria-label="Breadcrumb" className="vx-fade mb-6">
+          <ol className="flex min-w-0 items-center gap-2 text-xs sm:text-sm">
             <li className="shrink-0">
-              <Link href="/" className="rounded-lg bg-white/5 px-2.5 py-1 transition-colors hover:text-amber-400">
+              <Link href="/" className="vx-pill vx-pill-sm">
                 🏠 Vedoxa
               </Link>
             </li>
-            <li aria-hidden="true" className="text-gray-600">/</li>
+            <li aria-hidden="true" className="vx-ink-3">/</li>
             <li className="shrink-0">
-              <Link href="/blog" className="rounded-lg bg-white/5 px-2.5 py-1 transition-colors hover:text-amber-400">
+              <Link href="/blog" className="vx-pill vx-pill-sm">
                 📚 Blog
               </Link>
             </li>
-            <li aria-hidden="true" className="text-gray-600">/</li>
-            <li className="min-w-0 flex-1 truncate text-gray-500" aria-current="page">
+            <li aria-hidden="true" className="vx-ink-3">/</li>
+            <li className="vx-ink-3 vx-emboss min-w-0 flex-1 truncate font-medium" aria-current="page">
               {post.title}
             </li>
           </ol>
@@ -459,61 +559,64 @@ export default async function BlogPostPage({ params }: Props) {
 
         <article>
           {/* Article header */}
-          <header className="vx-fade relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-5 shadow-2xl sm:p-8">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-extrabold text-amber-300">
-                ✨ {post.category || 'Vedoxa Special'}
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300">
-                ⏱️ ~{readMins} min read
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-400">
-                📝 {words.toLocaleString('en-IN')} shabd
-              </span>
-            </div>
+          <header className="vx-glass vx-fade overflow-hidden rounded-[2rem] p-6 [--d:.05s] sm:p-10">
+            <span className="vx-orb vx-orb-a" aria-hidden="true" />
+            <span className="vx-orb vx-orb-b" aria-hidden="true" />
 
-            <h1 className="font-serif text-2xl font-extrabold leading-[1.3] text-white [text-wrap:balance] sm:text-4xl sm:leading-[1.25]">
-              {post.title}
-            </h1>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-gray-400 sm:text-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 font-black text-slate-950">
-                  V
-                </div>
-                <div>
-                  <p className="font-bold leading-none text-white">Vedoxa Editorial</p>
-                  {publishedAt && (
-                    <time dateTime={publishedAt} className="mt-1 block text-[11px] text-gray-400">
-                      {formatDate(publishedAt)}
-                    </time>
-                  )}
-                </div>
+            <div className="relative">
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <span className="vx-pill vx-pill-pink vx-pill-sm">✨ {post.category || 'Vedoxa Special'}</span>
+                <span className="vx-pill vx-pill-sky vx-pill-sm">⏱️ ~{readMins} min read</span>
+                <span className="vx-pill vx-pill-sm">📝 {words.toLocaleString('en-IN')} shabd</span>
               </div>
-              {updated && (
-                <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
-                  ✓ Updated: {formatDate(post.updated_at)}
-                </span>
-              )}
+
+              <h1 className="vx-title text-[1.85rem] font-extrabold leading-[1.3] [text-wrap:balance] sm:text-[2.8rem] sm:leading-[1.25]">
+                {post.title}
+              </h1>
+
+              <div className="vx-rule my-6" />
+
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="vx-avatar">V</div>
+                  <div>
+                    <p className="vx-ink vx-emboss font-bold leading-none">Vedoxa Editorial</p>
+                    {publishedAt && (
+                      <time dateTime={publishedAt} className="vx-ink-3 mt-1.5 block text-[11px] sm:text-xs">
+                        {formatDate(publishedAt)}
+                      </time>
+                    )}
+                  </div>
+                </div>
+                {updated && (
+                  <span className="vx-pill vx-pill-sky vx-pill-sm">✓ Updated: {formatDate(post.updated_at)}</span>
+                )}
+              </div>
             </div>
           </header>
 
           {cover && (
-            <img
-              src={cover}
-              alt={post.title}
-              decoding="async"
-              className="vx-fade mt-6 aspect-[16/9] w-full rounded-3xl border border-white/10 object-cover shadow-2xl"
-            />
+            <div className="vx-glass vx-fade mt-6 rounded-[2rem] p-2 [--d:.15s] sm:p-3">
+              <img
+                src={cover}
+                alt={post.title}
+                decoding="async"
+                className="aspect-[16/9] w-full rounded-[1.4rem] object-cover"
+              />
+            </div>
           )}
 
-          <ArticleContent content={content} />
+          <div className="vx-glass vx-fade mt-6 rounded-[2rem] p-5 [--d:.25s] sm:p-10">
+            <div className="vx-prose">
+              <ArticleContent content={content} />
+            </div>
+          </div>
         </article>
 
         {tags.length > 0 && (
           <ul className="mt-8 flex flex-wrap gap-2" aria-label="Tags">
-            {tags.map((t) => (
-              <li key={t} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
+            {tags.map((t, i) => (
+              <li key={t} className={`vx-pill vx-pill-sm ${i % 2 ? 'vx-pill-sky' : 'vx-pill-pink'}`}>
                 #{t}
               </li>
             ))}
@@ -523,10 +626,9 @@ export default async function BlogPostPage({ params }: Props) {
         <ShareBar url={url} title={post.title} />
 
         {books.length > 0 && (
-          <section className="mt-14 border-t border-white/10 pt-10">
-            <h2 className="mb-5 font-serif text-xl font-bold text-white">
-              Is vishay par padhne ke liye books
-            </h2>
+          <section className="mt-14">
+            <div className="vx-rule mb-10" />
+            <h2 className="vx-h2">Is vishay par padhne ke liye books</h2>
             <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {books.map((b) => {
                 const c = bookCoverUrl(b.cover_path)
@@ -535,33 +637,31 @@ export default async function BlogPostPage({ params }: Props) {
                   <li key={b.id}>
                     <Link
                       href={`/book/${b.slug || b.id}`}
-                      className="vx-card block h-full rounded-2xl border border-white/10 bg-white/[0.03] p-3 hover:border-amber-500/40"
+                      className="vx-card vx-glass block h-full rounded-3xl p-3"
                     >
-                      {c ? (
-                        <img
-                          src={c}
-                          alt={`${b.title} book cover`}
-                          className="h-44 w-full rounded-lg bg-black/20 object-contain"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div className="grid h-44 w-full place-items-center rounded-lg bg-white/5 text-4xl" aria-hidden="true">
-                          📘
-                        </div>
-                      )}
-                      <p className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{b.title}</p>
-                      {price && <p className="mt-1 text-sm font-bold text-amber-400">{price}</p>}
+                      <div className="vx-cover">
+                        {c ? (
+                          <img
+                            src={c}
+                            alt={`${b.title} book cover`}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="grid h-44 w-full place-items-center text-4xl" aria-hidden="true">
+                            📘
+                          </div>
+                        )}
+                      </div>
+                      <p className="vx-ink vx-emboss mt-3 line-clamp-2 text-sm font-bold leading-snug">{b.title}</p>
+                      {price && <span className="vx-pill vx-pill-pink vx-pill-sm mt-2">{price}</span>}
                     </Link>
                   </li>
                 )
               })}
             </ul>
-            <div className="mt-6 text-center">
-              <Link
-                href="/explore"
-                className="inline-block rounded-full border border-amber-500/40 px-5 py-2.5 text-sm font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
-              >
+            <div className="mt-8 text-center">
+              <Link href="/explore" className="vx-btn">
                 Saari books dekho →
               </Link>
             </div>
@@ -569,9 +669,9 @@ export default async function BlogPostPage({ params }: Props) {
         )}
 
         {related.length > 0 && (
-          <section className="mt-12">
-            <h2 className="mb-4 font-serif text-xl font-bold text-white">Ye bhi padhein</h2>
-            <ul className="grid gap-3">
+          <section className="mt-14">
+            <h2 className="vx-h2">Ye bhi padhein</h2>
+            <ul className="grid gap-3.5">
               {related.map((r) => {
                 const rc = mediaUrl(r.cover_image)
                 const snippet = r.description ? shorten(r.description, 110) : ''
@@ -580,7 +680,7 @@ export default async function BlogPostPage({ params }: Props) {
                   <li key={r.slug}>
                     <Link
                       href={`/blog/${r.slug}`}
-                      className="vx-card flex gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-amber-500/40"
+                      className="vx-card vx-glass flex gap-4 rounded-3xl p-4"
                     >
                       {rc && (
                         <img
@@ -588,17 +688,17 @@ export default async function BlogPostPage({ params }: Props) {
                           alt=""
                           loading="lazy"
                           decoding="async"
-                          className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                          className="h-20 w-20 shrink-0 rounded-2xl border border-white object-cover shadow-md"
                         />
                       )}
                       <span className="min-w-0">
-                        <span className="line-clamp-2 block font-serif text-base font-bold leading-snug text-white">
+                        <span className="vx-ink vx-emboss line-clamp-2 block text-base font-bold leading-snug">
                           {r.title}
                         </span>
                         {snippet && (
-                          <span className="mt-1 line-clamp-2 block text-sm text-gray-400">{snippet}</span>
+                          <span className="vx-ink-3 mt-1 line-clamp-2 block text-sm">{snippet}</span>
                         )}
-                        {date && <span className="mt-2 block text-xs text-gray-500">{date}</span>}
+                        {date && <span className="vx-ink-3 mt-2 block text-xs">{date}</span>}
                       </span>
                     </Link>
                   </li>
@@ -609,35 +709,29 @@ export default async function BlogPostPage({ params }: Props) {
         )}
 
         {(prev || next) && (
-          <nav aria-label="Pichhla aur agla article" className="mt-12 grid gap-3 sm:grid-cols-2">
+          <nav aria-label="Pichhla aur agla article" className="mt-12 grid gap-3.5 sm:grid-cols-2">
             {prev ? (
-              <Link
-                href={`/blog/${prev.slug}`}
-                className="vx-card rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-amber-500/40"
-              >
-                <span className="text-xs text-gray-500">← Pichhla article</span>
-                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-white">{prev.title}</span>
+              <Link href={`/blog/${prev.slug}`} className="vx-card vx-glass rounded-3xl p-4">
+                <span className="vx-pill vx-pill-pink vx-pill-sm">← Pichhla article</span>
+                <span className="vx-ink vx-emboss mt-2.5 line-clamp-2 block font-bold leading-snug">{prev.title}</span>
               </Link>
             ) : (
               <span className="hidden sm:block" />
             )}
             {next && (
-              <Link
-                href={`/blog/${next.slug}`}
-                className="vx-card rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-amber-500/40 sm:text-right"
-              >
-                <span className="text-xs text-gray-500">Agla article →</span>
-                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-white">{next.title}</span>
+              <Link href={`/blog/${next.slug}`} className="vx-card vx-glass rounded-3xl p-4 sm:text-right">
+                <span className="vx-pill vx-pill-sky vx-pill-sm">Agla article →</span>
+                <span className="vx-ink vx-emboss mt-2.5 line-clamp-2 block font-bold leading-snug">{next.title}</span>
               </Link>
             )}
           </nav>
         )}
 
-        <div className="mt-12 flex items-center justify-between border-t border-white/10 pt-6 text-sm">
-          <Link href="/blog" className="text-gray-400 transition-colors hover:text-amber-400">
+        <div className="mt-12 flex items-center justify-between">
+          <Link href="/blog" className="vx-pill">
             ← Saare articles
           </Link>
-          <a href="#top" className="text-gray-400 transition-colors hover:text-amber-400">
+          <a href="#top" className="vx-pill vx-pill-sky">
             ↑ Upar jao
           </a>
         </div>
@@ -645,5 +739,3 @@ export default async function BlogPostPage({ params }: Props) {
     </div>
   )
 }
-
-
