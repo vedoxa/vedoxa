@@ -4,27 +4,59 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import ArticleContent from '@/components/blog/ArticleContent'
+import ArticleContent, { CopyLinkButton } from '@/components/blog/ArticleContent'
 
 const SITE_URL = 'https://vedoxa.shop'
 const SITE_NAME = 'Vedoxa Premium Library'
 
 export const revalidate = 600
 
-type Props = { params: any }
+type Props = { params: Promise<{ slug: string }> }
+
+type Post = {
+  id?: string | number
+  slug: string
+  title: string
+  description?: string | null
+  content?: string | null
+  category?: string | null
+  tags?: string[] | string | null
+  cover_image?: string | null
+  published_at?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+type Book = {
+  id: string | number
+  slug?: string | null
+  title: string
+  cover_path?: string | null
+  final_price?: number | string | null
+}
+
+type PostLink = { slug: string; title: string }
 
 const BOOK_COLS = 'id, slug, title, cover_path, final_price'
+const RELATED_COLS = 'slug, title, description, cover_image, category, published_at'
+
+/* ───────────────────────────── Data helpers ───────────────────────────── */
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return null
+  if (!url || !key) {
+    console.error('[blog] Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)')
+    return null
+  }
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
-function onlyLive(q: any) {
-  return q.eq('published', true).or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
+type Supa = NonNullable<ReturnType<typeof getSupabase>>
+
+// PostgREST "or" filter: post is live when it has no publish date or the date has passed
+function liveOr() {
+  return `published_at.is.null,published_at.lte.${new Date().toISOString()}`
 }
 
 function bookCoverUrl(coverPath?: string | null) {
@@ -38,6 +70,10 @@ function mediaUrl(value?: string | null) {
   return /^https?:\/\//i.test(value) || value.startsWith('/') ? value : null
 }
 
+function absoluteUrl(value: string) {
+  return value.startsWith('/') ? `${SITE_URL}${value}` : value
+}
+
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value)
@@ -48,21 +84,19 @@ function safeDecode(value: string) {
 
 function formatDate(value?: string | null) {
   if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
   try {
-    return new Date(value).toLocaleDateString('hi-IN', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
+    return d.toLocaleDateString('hi-IN', { day: 'numeric', month: 'long', year: 'numeric' })
   } catch {
     return ''
   }
 }
 
-function formatPrice(value: any) {
+function formatPrice(value: unknown) {
   if (value === null || value === undefined || value === '') return ''
   const n = Number(value)
-  return Number.isNaN(n) ? `₹${value}` : `₹${n.toLocaleString('en-IN')}`
+  return Number.isNaN(n) ? `₹${String(value)}` : `₹${n.toLocaleString('en-IN')}`
 }
 
 function shorten(text: string, max: number) {
@@ -74,9 +108,10 @@ function plainText(md: string) {
   return String(md || '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/^#{1,3}\s+/gm, '')
+    .replace(/^#{1,6}\s+/gm, '')
     .replace(/^>\s?/gm, '')
-    .replace(/^(-|\d+\.)\s+/gm, '')
+    .replace(/^(💬|👉)\s*/gm, '')
+    .replace(/^([-•*]|\d+[.)])\s+/gm, '')
     .replace(/^---+$/gm, '')
     .replace(/[*_`]/g, '')
     .replace(/\s+/g, ' ')
@@ -87,9 +122,9 @@ function countWords(text: string) {
   return String(text || '').trim().split(/\s+/).filter(Boolean).length
 }
 
-function parseTags(value: any): string[] {
+function parseTags(value: unknown): string[] {
   const list = Array.isArray(value) ? value : String(value || '').split(',')
-  return list.map((t: any) => String(t).trim()).filter(Boolean).slice(0, 12)
+  return list.map((t) => String(t).trim()).filter(Boolean).slice(0, 12)
 }
 
 function extractBookKeys(content: string): string[] {
@@ -102,22 +137,26 @@ function extractBookKeys(content: string): string[] {
   return keys
 }
 
-const getPost = cache(async (param: string) => {
+const getPost = cache(async (param: string): Promise<Post | null> => {
   const supabase = getSupabase()
   if (!supabase) return null
 
-  try {
-    const { data } = await onlyLive(supabase.from('posts').select('*'))
-      .eq('slug', safeDecode(param))
-      .maybeSingle()
-    return data ?? null
-  } catch {
-    return null
-  }
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('published', true)
+    .or(liveOr())
+    .eq('slug', safeDecode(param))
+    .limit(1)
+    .maybeSingle()
+
+  // Real DB / network failure => throw, so a temporary outage is never cached as a 404
+  if (error) throw new Error(`[blog] failed to load post "${param}": ${error.message}`)
+  return (data as Post | null) ?? null
 })
 
-function pickBooks(all: any[], content: string) {
-  const linked: any[] = []
+function pickBooks(all: Book[], content: string): Book[] {
+  const linked: Book[] = []
   for (const key of extractBookKeys(content)) {
     const b = all.find((x) => String(x.slug) === key || String(x.id) === key)
     if (b && !linked.includes(b)) linked.push(b)
@@ -130,69 +169,88 @@ function pickBooks(all: any[], content: string) {
   return picked.slice(0, Math.max(3, Math.min(linked.length, 6)))
 }
 
-async function loadExtras(supabase: SupabaseClient, post: any) {
-  const out: { related: any[]; books: any[]; prev: any; next: any } = {
-    related: [],
-    books: [],
-    prev: null,
-    next: null,
-  }
-
+async function adjacentPost(supabase: Supa, post: Post, dir: 'prev' | 'next'): Promise<PostLink | null> {
+  if (!post.published_at) return null
   try {
-    const hasDate = !!post.published_at
-    const [relRes, bookRes, prevRes, nextRes]: any[] = await Promise.all([
-      onlyLive(supabase.from('posts').select('*'))
-        .neq('id', post.id)
-        .order('published_at', { ascending: false })
-        .limit(12),
-      supabase.from('books').select(BOOK_COLS).order('created_at', { ascending: false }).limit(100),
-      hasDate
-        ? onlyLive(supabase.from('posts').select('slug, title'))
-            .lt('published_at', post.published_at)
-            .order('published_at', { ascending: false })
-            .limit(1)
-        : Promise.resolve({ data: [] }),
-      hasDate
-        ? onlyLive(supabase.from('posts').select('slug, title'))
-            .gt('published_at', post.published_at)
-            .order('published_at', { ascending: true })
-            .limit(1)
-        : Promise.resolve({ data: [] }),
-    ])
-
-    out.prev = (prevRes && prevRes.data && prevRes.data[0]) || null
-    out.next = (nextRes && nextRes.data && nextRes.data[0]) || null
-
-    const skip = new Set<string>([out.prev && out.prev.slug, out.next && out.next.slug].filter(Boolean))
-    let pool: any[] = ((relRes && relRes.data) || []).filter((r: any) => !skip.has(r.slug))
-    if (post.category) {
-      pool = [
-        ...pool.filter((r) => r.category === post.category),
-        ...pool.filter((r) => r.category !== post.category),
-      ]
-    }
-    out.related = pool.slice(0, 3)
-
-    out.books = pickBooks((bookRes && bookRes.data) || [], post.content || '')
+    const base = supabase.from('posts').select('slug, title').eq('published', true).or(liveOr())
+    const { data } =
+      dir === 'prev'
+        ? await base.lt('published_at', post.published_at).order('published_at', { ascending: false }).limit(1)
+        : await base.gt('published_at', post.published_at).order('published_at', { ascending: true }).limit(1)
+    return data && data[0] ? (data[0] as PostLink) : null
   } catch {
-    // ignore errors
+    return null
+  }
+}
+
+async function loadRelated(supabase: Supa, post: Post): Promise<Post[]> {
+  try {
+    const { data } = await supabase
+      .from('posts')
+      .select(RELATED_COLS)
+      .eq('published', true)
+      .or(liveOr())
+      .neq('slug', post.slug)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .limit(12)
+    return (data as Post[] | null) ?? []
+  } catch {
+    return []
+  }
+}
+
+async function loadBooks(supabase: Supa, post: Post): Promise<Book[]> {
+  try {
+    const { data } = await supabase
+      .from('books')
+      .select(BOOK_COLS)
+      .order('created_at', { ascending: false })
+      .limit(100)
+    return pickBooks((data as Book[] | null) ?? [], post.content || '')
+  } catch {
+    return []
+  }
+}
+
+async function loadExtras(supabase: Supa, post: Post) {
+  const [relatedAll, books, prev, next] = await Promise.all([
+    loadRelated(supabase, post),
+    loadBooks(supabase, post),
+    adjacentPost(supabase, post, 'prev'),
+    adjacentPost(supabase, post, 'next'),
+  ])
+
+  const skip = new Set<string>([prev?.slug, next?.slug].filter((s): s is string => Boolean(s)))
+  let pool = relatedAll.filter((r) => !skip.has(r.slug))
+  if (post.category) {
+    pool = [
+      ...pool.filter((r) => r.category === post.category),
+      ...pool.filter((r) => r.category !== post.category),
+    ]
   }
 
-  return out
+  return { related: pool.slice(0, 3), books, prev, next }
 }
 
 export async function generateStaticParams() {
   const supabase = getSupabase()
   if (!supabase) return []
   try {
-    const { data } = await onlyLive(supabase.from('posts').select('slug'))
-      .order('published_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('posts')
+      .select('slug')
+      .eq('published', true)
+      .or(liveOr())
+      .order('published_at', { ascending: false, nullsFirst: false })
       .limit(100)
-    return (data ?? []).map((p: any) => ({ slug: p.slug }))
+    if (error || !data) return []
+    return data.map((p: { slug: string }) => ({ slug: p.slug }))
   } catch {
     return []
   }
 }
+
+/* ───────────────────────────── UI pieces ───────────────────────────── */
 
 function ShareBar({ url, title }: { url: string; title: string }) {
   const u = encodeURIComponent(url)
@@ -205,8 +263,11 @@ function ShareBar({ url, title }: { url: string; title: string }) {
   ]
 
   return (
-    <div className="mt-10 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.04] to-transparent p-5">
-      <p className="text-sm font-bold text-white">📢 Article pasand aaya? Doston ke saath share karein:</p>
+    <section
+      aria-label="Article share karein"
+      className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+    >
+      <p className="text-sm font-bold text-white">📢 Article pasand aaya? Doston ke saath share karein</p>
       <div className="mt-3.5 flex flex-wrap gap-2.5">
         {links.map((l) => (
           <a
@@ -215,33 +276,36 @@ function ShareBar({ url, title }: { url: string; title: string }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${l.name} par share karo`}
-            className={`rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-gray-200 transition-all ${l.cls}`}
+            className={`rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-gray-200 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 ${l.cls}`}
           >
             {l.name}
           </a>
         ))}
+        <CopyLinkButton url={url} />
       </div>
-    </div>
+    </section>
   )
 }
 
 const PAGE_CSS = `
 .vx-progress{display:none}
 @supports (animation-timeline: scroll()){
-  .vx-progress{display:block;position:fixed;top:0;left:0;right:0;height:3.5px;z-index:60;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#f59e0b,#ec4899,#8b5cf6);animation:vx-grow linear both;animation-timeline:scroll(root block)}
+  .vx-progress{display:block;position:fixed;top:0;left:0;right:0;height:3px;z-index:60;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#f59e0b,#ec4899,#8b5cf6);animation:vx-grow linear both;animation-timeline:scroll(root block)}
 }
 @keyframes vx-grow{to{transform:scaleX(1)}}
-@keyframes vx-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes vx-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .vx-fade{animation:vx-fade .6s cubic-bezier(.22,1,.36,1) both}
 .vx-card{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
-.vx-card:hover{transform:translateY(-3px);box-shadow:0 16px 40px -18px rgba(245,158,11,.35)}
+.vx-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px -18px rgba(245,158,11,.35)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-@media (prefers-reduced-motion:reduce){.vx-fade{animation:none}.vx-card{transition:none}.vx-progress{display:none!important}}
+@media (prefers-reduced-motion:reduce){.vx-fade{animation:none}.vx-card{transition:none}.vx-card:hover{transform:none}.vx-progress{display:none!important}}
 `
+
+/* ───────────────────────────── Metadata ───────────────────────────── */
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const post: any = await getPost(slug)
+  const post = await getPost(slug)
 
   if (!post) {
     return { title: 'Article not found', robots: { index: false, follow: false } }
@@ -250,9 +314,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const url = `${SITE_URL}/blog/${post.slug}`
   const description = post.description
     ? shorten(post.description, 155)
-    : shorten(plainText(post.content), 155)
+    : shorten(plainText(post.content || ''), 155)
   const cover = mediaUrl(post.cover_image)
+  const coverAbs = cover ? absoluteUrl(cover) : null
   const tags = parseTags(post.tags)
+  const publishedAt = post.published_at || post.created_at || undefined
 
   return {
     title: post.title,
@@ -271,45 +337,51 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: SITE_NAME,
       type: 'article',
       locale: 'hi_IN',
-      publishedTime: post.published_at,
-      modifiedTime: post.updated_at || post.published_at,
+      publishedTime: publishedAt,
+      modifiedTime: post.updated_at || publishedAt,
       section: post.category || undefined,
       tags: tags.length ? tags : undefined,
-      images: cover ? [{ url: cover, alt: post.title }] : undefined,
+      images: coverAbs ? [{ url: coverAbs, alt: post.title }] : undefined,
     },
     twitter: {
-      card: cover ? 'summary_large_image' : 'summary',
+      card: coverAbs ? 'summary_large_image' : 'summary',
       title: post.title,
       description,
-      images: cover ? [cover] : undefined,
+      images: coverAbs ? [coverAbs] : undefined,
     },
   }
 }
 
+/* ───────────────────────────── Page ───────────────────────────── */
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params
-  const post: any = await getPost(slug)
+  const post = await getPost(slug)
 
   if (!post) notFound()
 
   const url = `${SITE_URL}/blog/${post.slug}`
-  const content: string = post.content || ''
+  const content = post.content || ''
 
   const supabase = getSupabase()
   const { related, books, prev, next } = supabase
     ? await loadExtras(supabase, post)
-    : { related: [] as any[], books: [] as any[], prev: null as any, next: null as any }
+    : { related: [] as Post[], books: [] as Book[], prev: null as PostLink | null, next: null as PostLink | null }
 
-  const words = countWords(content)
+  const text = plainText(content)
+  const words = countWords(text)
   const readMins = Math.max(1, Math.ceil(words / 200))
   const cover = mediaUrl(post.cover_image)
+  const coverAbs = cover ? absoluteUrl(cover) : null
   const tags = parseTags(post.tags)
-  const description = post.description || shorten(plainText(content), 155)
+  const description = post.description || shorten(text, 155)
+  const publishedAt = post.published_at || post.created_at || null
 
-  const updated =
+  const updated = Boolean(
     post.updated_at &&
-    post.published_at &&
-    new Date(post.updated_at).getTime() - new Date(post.published_at).getTime() > 24 * 60 * 60 * 1000
+      publishedAt &&
+      new Date(post.updated_at).getTime() - new Date(publishedAt).getTime() > 24 * 60 * 60 * 1000
+  )
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -319,13 +391,14 @@ export default async function BlogPostPage({ params }: Props) {
         headline: post.title,
         description,
         inLanguage: 'hi-IN',
-        datePublished: post.published_at,
-        dateModified: post.updated_at || post.published_at,
+        datePublished: publishedAt || undefined,
+        dateModified: post.updated_at || publishedAt || undefined,
         mainEntityOfPage: { '@type': 'WebPage', '@id': url },
-        image: cover ? [cover] : undefined,
+        image: coverAbs ? [coverAbs] : undefined,
         wordCount: words,
         articleSection: post.category || undefined,
         keywords: tags.length ? tags.join(', ') : undefined,
+        isAccessibleForFree: true,
         author: { '@type': 'Organization', name: 'Vedoxa', url: SITE_URL },
         publisher: {
           '@type': 'Organization',
@@ -359,24 +432,34 @@ export default async function BlogPostPage({ params }: Props) {
 
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-96"
-        style={{ background: 'radial-gradient(70% 60% at 50% 0%, rgba(245,158,11,0.14), rgba(236,72,153,0.05), transparent)' }}
+        style={{ background: 'radial-gradient(70% 60% at 50% 0%, rgba(245,158,11,0.12), rgba(236,72,153,0.04), transparent)' }}
         aria-hidden="true"
       />
 
-      <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-10">
-        <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-xs sm:text-sm text-gray-400">
-          <Link href="/" className="rounded-lg bg-white/5 px-2.5 py-1 hover:text-amber-400 transition-colors">
-            🏠 Vedoxa
-          </Link>
-          <span className="text-gray-600">/</span>
-          <Link href="/blog" className="rounded-lg bg-white/5 px-2.5 py-1 hover:text-amber-400 transition-colors">
-            📚 Blog
-          </Link>
+      <div className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 md:py-10">
+        <nav aria-label="Breadcrumb" className="mb-6">
+          <ol className="flex min-w-0 items-center gap-2 text-xs text-gray-400 sm:text-sm">
+            <li className="shrink-0">
+              <Link href="/" className="rounded-lg bg-white/5 px-2.5 py-1 transition-colors hover:text-amber-400">
+                🏠 Vedoxa
+              </Link>
+            </li>
+            <li aria-hidden="true" className="text-gray-600">/</li>
+            <li className="shrink-0">
+              <Link href="/blog" className="rounded-lg bg-white/5 px-2.5 py-1 transition-colors hover:text-amber-400">
+                📚 Blog
+              </Link>
+            </li>
+            <li aria-hidden="true" className="text-gray-600">/</li>
+            <li className="min-w-0 flex-1 truncate text-gray-500" aria-current="page">
+              {post.title}
+            </li>
+          </ol>
         </nav>
 
         <article>
-          {/* Premium Hero Article Header Card */}
-          <header className="vx-fade relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-5 sm:p-8 shadow-2xl">
+          {/* Article header */}
+          <header className="vx-fade relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-5 shadow-2xl sm:p-8">
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-extrabold text-amber-300">
                 ✨ {post.category || 'Vedoxa Special'}
@@ -385,28 +468,30 @@ export default async function BlogPostPage({ params }: Props) {
                 ⏱️ ~{readMins} min read
               </span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-400">
-                📝 {words} shabd
+                📝 {words.toLocaleString('en-IN')} shabd
               </span>
             </div>
 
-            <h1 className="font-serif text-2xl sm:text-4xl font-extrabold leading-tight text-white">
+            <h1 className="font-serif text-2xl font-extrabold leading-[1.3] text-white [text-wrap:balance] sm:text-4xl sm:leading-[1.25]">
               {post.title}
             </h1>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs sm:text-sm text-gray-400">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-gray-400 sm:text-sm">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 font-black text-slate-950">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 font-black text-slate-950">
                   V
                 </div>
                 <div>
-                  <p className="font-bold text-white leading-none">Vedoxa Editorial</p>
-                  <time dateTime={post.published_at} className="text-[11px] text-gray-400">
-                    {formatDate(post.published_at)}
-                  </time>
+                  <p className="font-bold leading-none text-white">Vedoxa Editorial</p>
+                  {publishedAt && (
+                    <time dateTime={publishedAt} className="mt-1 block text-[11px] text-gray-400">
+                      {formatDate(publishedAt)}
+                    </time>
+                  )}
                 </div>
               </div>
               {updated && (
-                <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-medium text-emerald-300">
+                <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
                   ✓ Updated: {formatDate(post.updated_at)}
                 </span>
               )}
@@ -418,32 +503,31 @@ export default async function BlogPostPage({ params }: Props) {
               src={cover}
               alt={post.title}
               decoding="async"
-              className="vx-fade mt-6 h-auto w-full rounded-3xl border border-white/10 object-cover shadow-2xl"
+              className="vx-fade mt-6 aspect-[16/9] w-full rounded-3xl border border-white/10 object-cover shadow-2xl"
             />
           )}
 
-          {/* Yahan ab aapka upgraded ArticleContent.tsx component kaam karega */}
           <ArticleContent content={content} />
         </article>
 
         {tags.length > 0 && (
-          <div className="mt-8 flex flex-wrap gap-2">
+          <ul className="mt-8 flex flex-wrap gap-2" aria-label="Tags">
             {tags.map((t) => (
-              <span key={t} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
+              <li key={t} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
                 #{t}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
         <ShareBar url={url} title={post.title} />
 
         {books.length > 0 && (
           <section className="mt-14 border-t border-white/10 pt-10">
-            <h2 className="font-serif text-xl font-bold text-white mb-5">
+            <h2 className="mb-5 font-serif text-xl font-bold text-white">
               Is vishay par padhne ke liye books
             </h2>
-            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {books.map((b) => {
                 const c = bookCoverUrl(b.cover_path)
                 const price = formatPrice(b.final_price)
@@ -457,21 +541,23 @@ export default async function BlogPostPage({ params }: Props) {
                         <img
                           src={c}
                           alt={`${b.title} book cover`}
-                          className="w-full h-44 object-contain rounded-lg"
+                          className="h-44 w-full rounded-lg bg-black/20 object-contain"
                           loading="lazy"
                           decoding="async"
                         />
                       ) : (
-                        <div className="grid h-44 w-full place-items-center rounded-lg bg-white/5 text-4xl">📘</div>
+                        <div className="grid h-44 w-full place-items-center rounded-lg bg-white/5 text-4xl" aria-hidden="true">
+                          📘
+                        </div>
                       )}
-                      <p className="mt-3 text-sm font-bold text-white line-clamp-2">{b.title}</p>
-                      {price && <p className="mt-1 text-sm text-amber-400 font-bold">{price}</p>}
+                      <p className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{b.title}</p>
+                      {price && <p className="mt-1 text-sm font-bold text-amber-400">{price}</p>}
                     </Link>
                   </li>
                 )
               })}
             </ul>
-            <div className="mt-5 text-center">
+            <div className="mt-6 text-center">
               <Link
                 href="/explore"
                 className="inline-block rounded-full border border-amber-500/40 px-5 py-2.5 text-sm font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
@@ -484,13 +570,12 @@ export default async function BlogPostPage({ params }: Props) {
 
         {related.length > 0 && (
           <section className="mt-12">
-            <h2 className="font-serif text-xl font-bold text-white mb-4">Ye bhi padhein</h2>
+            <h2 className="mb-4 font-serif text-xl font-bold text-white">Ye bhi padhein</h2>
             <ul className="grid gap-3">
               {related.map((r) => {
                 const rc = mediaUrl(r.cover_image)
-                const snippet = r.description
-                  ? shorten(r.description, 110)
-                  : shorten(plainText(r.content || ''), 110)
+                const snippet = r.description ? shorten(r.description, 110) : ''
+                const date = formatDate(r.published_at)
                 return (
                   <li key={r.slug}>
                     <Link
@@ -507,9 +592,13 @@ export default async function BlogPostPage({ params }: Props) {
                         />
                       )}
                       <span className="min-w-0">
-                        <span className="block font-serif text-base font-bold text-white line-clamp-2">{r.title}</span>
-                        {snippet && <span className="mt-1 block text-sm text-gray-400 line-clamp-2">{snippet}</span>}
-                        <span className="mt-2 block text-xs text-gray-500">{formatDate(r.published_at)}</span>
+                        <span className="line-clamp-2 block font-serif text-base font-bold leading-snug text-white">
+                          {r.title}
+                        </span>
+                        {snippet && (
+                          <span className="mt-1 line-clamp-2 block text-sm text-gray-400">{snippet}</span>
+                        )}
+                        {date && <span className="mt-2 block text-xs text-gray-500">{date}</span>}
                       </span>
                     </Link>
                   </li>
@@ -524,10 +613,10 @@ export default async function BlogPostPage({ params }: Props) {
             {prev ? (
               <Link
                 href={`/blog/${prev.slug}`}
-                className="vx-card rounded-2xl border border-white/10 p-4 hover:border-amber-500/40"
+                className="vx-card rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-amber-500/40"
               >
                 <span className="text-xs text-gray-500">← Pichhla article</span>
-                <span className="mt-1 block font-bold text-white line-clamp-2">{prev.title}</span>
+                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-white">{prev.title}</span>
               </Link>
             ) : (
               <span className="hidden sm:block" />
@@ -535,10 +624,10 @@ export default async function BlogPostPage({ params }: Props) {
             {next && (
               <Link
                 href={`/blog/${next.slug}`}
-                className="vx-card rounded-2xl border border-white/10 p-4 hover:border-amber-500/40 sm:text-right"
+                className="vx-card rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-amber-500/40 sm:text-right"
               >
                 <span className="text-xs text-gray-500">Agla article →</span>
-                <span className="mt-1 block font-bold text-white line-clamp-2">{next.title}</span>
+                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-white">{next.title}</span>
               </Link>
             )}
           </nav>
