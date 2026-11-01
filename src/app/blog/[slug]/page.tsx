@@ -29,7 +29,6 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
-// Sirf live articles: published ho aur uska time aa chuka ho (schedule wale future me chhupe rehte hain)
 function onlyLive(q: any) {
   return q.eq('published', true).or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
 }
@@ -40,7 +39,6 @@ function bookCoverUrl(coverPath?: string | null) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${coverPath}`
 }
 
-// Article ki cover image (BlogManager se poora URL save hota hai)
 function mediaUrl(value?: string | null) {
   if (!value) return null
   return /^https?:\/\//i.test(value) || value.startsWith('/') ? value : null
@@ -78,7 +76,6 @@ function shorten(text: string, max: number) {
   return clean.length > max ? clean.slice(0, max - 1).trimEnd() + '…' : clean
 }
 
-// Markdown hata kar saaf text (description / snippets ke liye)
 function plainText(md: string) {
   return String(md || '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
@@ -105,7 +102,6 @@ function parseTags(value: any): string[] {
   return list.map((t: any) => String(t).trim()).filter(Boolean).slice(0, 12)
 }
 
-// Article /book/<slug> ke jitne links hain, unki keys (order me)
 function extractBookKeys(content: string): string[] {
   const keys: string[] = []
   const re = /\/book\/([A-Za-z0-9_-]+)/g
@@ -120,7 +116,6 @@ function extractBookKeys(content: string): string[] {
 /*  Data                                                               */
 /* ------------------------------------------------------------------ */
 
-// Ek hi request me generateMetadata aur page dono ko wahi article milta hai
 const getPost = cache(async (param: string) => {
   const supabase = getSupabase()
   if (!supabase) return null
@@ -135,7 +130,6 @@ const getPost = cache(async (param: string) => {
   }
 })
 
-// Books: pehle wo jo article me link hain, phir sabse nayi books (kul 3, link zyada hon to 6 tak)
 function pickBooks(all: any[], content: string) {
   const linked: any[] = []
   for (const key of extractBookKeys(content)) {
@@ -215,94 +209,187 @@ export async function generateStaticParams() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Article text -> blocks                                             */
-/*  ## heading, ### chhota heading, **bold**, *italic*, `code`,       */
-/*  [text](link), - bullets, 1. numbered, > quote, ---, ![alt](url)   */
+/*  UPGRADED Smart Article Parser & Modern UI Renderer                 */
 /* ------------------------------------------------------------------ */
 
 type Block =
-  | { t: 'h2'; text: string; id: string }
-  | { t: 'h3'; text: string }
+  | { t: 'h2'; text: string; num?: string; id: string }
+  | { t: 'h3'; text: string; id: string }
   | { t: 'p'; text: string }
   | { t: 'ul'; items: string[] }
   | { t: 'ol'; items: string[] }
   | { t: 'quote'; text: string }
+  | { t: 'chat'; text: string }
+  | { t: 'cta'; text: string }
+  | { t: 'labelCard'; label: string; body: string }
   | { t: 'img'; alt: string; src: string }
   | { t: 'hr' }
 
 const IMG_BLOCK_RE = /^!\[([^\]]*)\]\((https?:\/\/[^)\s]+|\/[^)\s]*)\)$/
+
+// Check karta hai ki kya line "1. स्टोरी रिप्लाई का जादू..." jaisi numbered heading hai
+function isSmartNumberedHeading(line: string): boolean {
+  if (!/^\d+\.\s+\S/.test(line)) return false
+  if (line.length > 95) return false
+  return !/[।.]$/.test(line.trim())
+}
 
 function parseBlocks(content: string) {
   const blocks: Block[] = []
   const toc: { id: string; text: string }[] = []
   let h = 0
 
-  const push = (chunk: string): void => {
-    const text = chunk.trim()
-    if (!text) return
+  const rawLines = String(content || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
 
-    const img = text.match(IMG_BLOCK_RE)
+  let i = 0
+  while (i < rawLines.length) {
+    const line = rawLines[i].trim()
+
+    if (!line) {
+      i++
+      continue
+    }
+
+    // 1. Standalone Image
+    const img = line.match(IMG_BLOCK_RE)
     if (img) {
       blocks.push({ t: 'img', alt: img[1], src: img[2] })
-      return
+      i++
+      continue
     }
 
-    if (/^---+$/.test(text)) {
+    // 2. Divider (---)
+    if (/^---+$/.test(line)) {
       blocks.push({ t: 'hr' })
-      return
+      i++
+      continue
     }
 
-    const lines = text.split('\n')
-    const first = lines[0].trim()
-
-    if (first.startsWith('### ')) {
-      const label = first.slice(4).trim()
-      if (label) blocks.push({ t: 'h3', text: label })
-      push(lines.slice(1).join('\n'))
-      return
+    // 3. Markdown H3 (### Heading)
+    if (line.startsWith('### ')) {
+      const label = line.slice(4).trim()
+      if (label) {
+        h += 1
+        blocks.push({ t: 'h3', text: label, id: `sub-${h}` })
+      }
+      i++
+      continue
     }
 
-    if (first.startsWith('## ')) {
-      const label = first.slice(3).trim()
+    // 4. Markdown H2 (## Heading)
+    if (line.startsWith('## ')) {
+      const label = line.slice(3).trim()
       if (label) {
         h += 1
         const id = `section-${h}`
         toc.push({ id, text: plainInline(label) })
         blocks.push({ t: 'h2', text: label, id })
       }
-      push(lines.slice(1).join('\n'))
-      return
+      i++
+      continue
     }
 
-    if (lines.every((l) => l.trim().startsWith('> '))) {
-      blocks.push({ t: 'quote', text: lines.map((l) => l.trim().slice(2)).join(' ') })
-      return
+    // 5. Smart Auto-Heading (jaise "1. स्टोरी रिप्लाई का जादू: रोहन बनाम सिद्धार्थ 📲✨")
+    if (isSmartNumberedHeading(line)) {
+      const numMatch = line.match(/^(\d+)\.\s+(.*)$/)
+      const num = numMatch ? numMatch[1] : undefined
+      const label = numMatch ? numMatch[2].trim() : line
+      h += 1
+      const id = `section-${h}`
+      toc.push({ id, text: `${num ? num + '. ' : ''}${plainInline(label)}` })
+      blocks.push({ t: 'h2', text: label, num, id })
+      i++
+      continue
     }
 
-    if (lines.every((l) => l.trim().startsWith('- '))) {
-      blocks.push({ t: 'ul', items: lines.map((l) => l.trim().slice(2)) })
-      return
+    // 6. Chat Bubble Line (💬 se shuru hone wali line)
+    if (line.startsWith('💬')) {
+      blocks.push({ t: 'chat', text: line.replace(/^💬\s*/, '').trim() })
+      i++
+      continue
     }
 
-    if (lines.every((l) => /^\d+\.\s/.test(l.trim()))) {
-      blocks.push({ t: 'ol', items: lines.map((l) => l.trim().replace(/^\d+\.\s/, '')) })
-      return
+    // 7. Call-To-Action Line (👉 se shuru hone wali line)
+    if (line.startsWith('👉')) {
+      blocks.push({ t: 'cta', text: line.replace(/^👉\s*/, '').trim() })
+      i++
+      continue
     }
 
-    blocks.push({ t: 'p', text: lines.join('\n') })
+    // 8. Blockquote (> quote)
+    if (line.startsWith('> ')) {
+      const qLines: string[] = []
+      while (i < rawLines.length && rawLines[i].trim().startsWith('> ')) {
+        qLines.push(rawLines[i].trim().slice(2))
+        i++
+      }
+      blocks.push({ t: 'quote', text: qLines.join(' ') })
+      continue
+    }
+
+    // 9. Bullet List (- item ya • item)
+    if (/^[-•]\s+/.test(line)) {
+      const items: string[] = []
+      while (i < rawLines.length && /^[-•]\s+/.test(rawLines[i].trim())) {
+        items.push(rawLines[i].trim().replace(/^[-•]\s+/, ''))
+        i++
+      }
+      blocks.push({ t: 'ul', items })
+      continue
+    }
+
+    // 10. Numbered List (agar heading nahi hai)
+    if (/^\d+\.\s+/.test(line) && !isSmartNumberedHeading(line)) {
+      const items: string[] = []
+      while (
+        i < rawLines.length &&
+        /^\d+\.\s+/.test(rawLines[i].trim()) &&
+        !isSmartNumberedHeading(rawLines[i].trim())
+      ) {
+        items.push(rawLines[i].trim().replace(/^\d+\.\s+/, ''))
+        i++
+      }
+      blocks.push({ t: 'ol', items })
+      continue
+    }
+
+    // 11. Smart Subheading (Choti line jo ! ya 🚀🔥✨ par khatam ho, jaise "अब फैसला आपके हाथ में है! 🚀")
+    if (line.length < 55 && !/[।.]$/.test(line) && /[!🚀🔥✨💓🎯⚡]$/.test(line)) {
+      h += 1
+      blocks.push({ t: 'h3', text: line, id: `sub-${h}` })
+      i++
+      continue
+    }
+
+    // 12. Smart Label Card (jaise "आम लड़का (रोहन): तुरंत..." ya "निकनेम और रोलप्ले: ...")
+    const labelMatch = line.match(/^([^:\n]{2,40}):\s+(.+)$/)
+    if (
+      labelMatch &&
+      !labelMatch[1].includes('http') &&
+      !labelMatch[1].startsWith('[')
+    ) {
+      blocks.push({
+        t: 'labelCard',
+        label: labelMatch[1].trim(),
+        body: labelMatch[2].trim(),
+      })
+      i++
+      continue
+    }
+
+    // 13. Normal Paragraph
+    blocks.push({ t: 'p', text: line })
+    i++
   }
-
-  String(content || '')
-    .replace(/\r\n/g, '\n')
-    .split(/\n{2,}/)
-    .forEach((chunk) => push(chunk))
 
   return { blocks, toc }
 }
 
-const LINK_CLS = 'text-amber-400 underline underline-offset-4 hover:text-amber-300'
+const LINK_CLS =
+  'font-semibold text-amber-400 underline decoration-amber-400/50 underline-offset-4 transition-colors hover:text-amber-300 hover:decoration-amber-300'
 
-// Sirf "/" ya http(s) wale links aur images chalte hain
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const parts: ReactNode[] = []
   const re =
@@ -336,10 +423,14 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
         </strong>
       )
     } else if (m[6]) {
-      parts.push(<em key={key}>{m[7]}</em>)
+      parts.push(
+        <em key={key} className="italic text-amber-200/90">
+          {m[7]}
+        </em>
+      )
     } else if (m[8]) {
       parts.push(
-        <code key={key} className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-pink-300">
+        <code key={key} className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-amber-300">
           {m[9]}
         </code>
       )
@@ -351,7 +442,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
           alt={m[11]}
           loading="lazy"
           decoding="async"
-          className="my-2 inline-block max-w-full rounded-lg"
+          className="my-3 inline-block max-w-full rounded-xl border border-white/10"
         />
       )
     }
@@ -364,9 +455,25 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   return parts
 }
 
+// "नतीजा? ..." jaisi lines ke shuruati shabd ko highlight karne ke liye
+function renderSmartParagraph(text: string, keyPrefix: string): ReactNode {
+  const qMatch = text.match(/^(नतीजा\?|सच्चाई\?|क्यों\?|कैसे\?|याद रखें:|ध्यान दें:)\s+(.+)$/)
+  if (qMatch) {
+    return (
+      <>
+        <strong className="mr-1.5 inline-block rounded-md bg-amber-500/15 px-2 py-0.5 font-bold text-amber-300 ring-1 ring-amber-500/30">
+          {qMatch[1]}
+        </strong>
+        {renderInline(qMatch[2], keyPrefix)}
+      </>
+    )
+  }
+  return renderInline(text, keyPrefix)
+}
+
 function Body({ blocks }: { blocks: Block[] }) {
   return (
-    <>
+    <div className="space-y-5">
       {blocks.map((b, idx) => {
         const k = `b${idx}`
 
@@ -375,26 +482,87 @@ function Body({ blocks }: { blocks: Block[] }) {
             <h2
               key={k}
               id={b.id}
-              className="scroll-mt-24 font-serif text-2xl font-bold text-white mt-12 mb-4 border-l-4 border-amber-500/70 pl-3"
+              className="scroll-mt-24 mt-12 mb-4 border-b border-white/10 pb-3 font-serif text-xl sm:text-2xl font-bold text-white"
             >
-              {renderInline(b.text, k)}
+              <span className="flex items-center gap-3">
+                {b.num ? (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 font-sans text-base font-extrabold text-amber-400 ring-1 ring-amber-500/30">
+                    {b.num}
+                  </span>
+                ) : (
+                  <span className="h-6 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                )}
+                <span>{renderInline(b.text, k)}</span>
+              </span>
             </h2>
           )
         }
 
         if (b.t === 'h3') {
           return (
-            <h3 key={k} className="font-serif text-xl font-bold text-white mt-8 mb-3">
+            <h3
+              key={k}
+              id={b.id}
+              className="scroll-mt-24 mt-9 mb-3 font-serif text-lg sm:text-xl font-bold text-amber-300"
+            >
               {renderInline(b.text, k)}
             </h3>
           )
         }
 
+        if (b.t === 'chat') {
+          return (
+            <div
+              key={k}
+              className="my-5 flex items-start gap-3.5 rounded-2xl rounded-tl-sm border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-white/[0.03] to-transparent p-4 shadow-md"
+            >
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-base">
+                💬
+              </span>
+              <p className="italic leading-relaxed text-amber-100">
+                {renderInline(b.text, k)}
+              </p>
+            </div>
+          )
+        }
+
+        if (b.t === 'labelCard') {
+          return (
+            <div
+              key={k}
+              className="my-3.5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-amber-500/30"
+            >
+              <span className="mr-2 inline-block font-bold text-amber-400">
+                ✦ {renderInline(b.label, `${k}-lbl`)}:
+              </span>
+              <span className="leading-8 text-gray-200">
+                {renderInline(b.body, `${k}-body`)}
+              </span>
+            </div>
+          )
+        }
+
+        if (b.t === 'cta') {
+          return (
+            <div
+              key={k}
+              className="my-8 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-pink-500/10 to-amber-500/15 p-5 text-center shadow-lg ring-1 ring-amber-500/20"
+            >
+              <p className="text-base sm:text-lg font-bold text-white">
+                👉 {renderInline(b.text, k)}
+              </p>
+            </div>
+          )
+        }
+
         if (b.t === 'ul') {
           return (
-            <ul key={k} className="list-disc pl-6 my-5 space-y-2 leading-8 text-gray-300 marker:text-amber-500">
+            <ul key={k} className="my-5 space-y-2.5 pl-2 leading-8 text-gray-300">
               {b.items.map((item, j) => (
-                <li key={j}>{renderInline(item, `${k}-${j}`)}</li>
+                <li key={j} className="flex items-start gap-3">
+                  <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+                  <span>{renderInline(item, `${k}-${j}`)}</span>
+                </li>
               ))}
             </ul>
           )
@@ -402,7 +570,7 @@ function Body({ blocks }: { blocks: Block[] }) {
 
         if (b.t === 'ol') {
           return (
-            <ol key={k} className="list-decimal pl-6 my-5 space-y-2 leading-8 text-gray-300 marker:text-amber-500">
+            <ol key={k} className="list-decimal pl-6 my-5 space-y-2.5 leading-8 text-gray-300 marker:font-bold marker:text-amber-400">
               {b.items.map((item, j) => (
                 <li key={j}>{renderInline(item, `${k}-${j}`)}</li>
               ))}
@@ -414,7 +582,7 @@ function Body({ blocks }: { blocks: Block[] }) {
           return (
             <blockquote
               key={k}
-              className="my-6 rounded-r-2xl border-l-4 border-amber-500/60 bg-white/[0.03] py-3 pl-5 pr-4 italic leading-8 text-gray-300"
+              className="my-6 rounded-r-2xl border-l-4 border-amber-500/70 bg-white/[0.03] py-3.5 pl-5 pr-4 italic leading-8 text-gray-200"
             >
               {renderInline(b.text, k)}
             </blockquote>
@@ -423,15 +591,15 @@ function Body({ blocks }: { blocks: Block[] }) {
 
         if (b.t === 'img') {
           return (
-            <figure key={k} className="my-8">
+            <figure key={k} className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
               <img
                 src={b.src}
                 alt={b.alt}
                 loading="lazy"
                 decoding="async"
-                className="h-auto w-full rounded-2xl border border-white/10"
+                className="h-auto w-full object-cover"
               />
-              {b.alt && <figcaption className="mt-2 text-center text-sm text-gray-500">{b.alt}</figcaption>}
+              {b.alt && <figcaption className="border-t border-white/5 px-4 py-2.5 text-center text-sm text-gray-400">{b.alt}</figcaption>}
             </figure>
           )
         }
@@ -441,12 +609,12 @@ function Body({ blocks }: { blocks: Block[] }) {
         }
 
         return (
-          <p key={k} className="my-5 whitespace-pre-line leading-8 text-gray-300">
-            {renderInline(b.text, k)}
+          <p key={k} className="whitespace-pre-line leading-8 text-gray-300">
+            {renderSmartParagraph(b.text, k)}
           </p>
         )
       })}
-    </>
+    </div>
   )
 }
 
@@ -535,6 +703,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       siteName: SITE_NAME,
       type: 'article',
+      locale: 'hi_IN',
       publishedTime: post.published_at,
       modifiedTime: post.updated_at || post.published_at,
       section: post.category || undefined,
@@ -587,6 +756,7 @@ export default async function BlogPostPage({ params }: Props) {
         '@type': 'Article',
         headline: post.title,
         description,
+        inLanguage: 'hi-IN',
         datePublished: post.published_at,
         dateModified: post.updated_at || post.published_at,
         mainEntityOfPage: { '@type': 'WebPage', '@id': url },
@@ -594,8 +764,13 @@ export default async function BlogPostPage({ params }: Props) {
         wordCount: words,
         articleSection: post.category || undefined,
         keywords: tags.length ? tags.join(', ') : undefined,
-        author: { '@type': 'Organization', name: 'Vedoxa' },
-        publisher: { '@type': 'Organization', name: 'Vedoxa' },
+        author: { '@type': 'Organization', name: 'Vedoxa', url: SITE_URL },
+        publisher: {
+          '@type': 'Organization',
+          name: 'Vedoxa',
+          url: SITE_URL,
+          logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.svg` },
+        },
       },
       {
         '@type': 'BreadcrumbList',
@@ -667,23 +842,26 @@ export default async function BlogPostPage({ params }: Props) {
               src={cover}
               alt={post.title}
               decoding="async"
-              className="vx-fade mt-8 h-auto w-full rounded-2xl border border-white/10 object-cover"
+              className="vx-fade mt-8 h-auto w-full rounded-2xl border border-white/10 object-cover shadow-xl"
             />
           )}
 
-          {toc.length >= 3 && (
-            <details className="vx-toc group mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-white">
-                Is article me
+          {toc.length >= 2 && (
+            <details
+              open
+              className="vx-toc group mt-8 rounded-2xl border border-amber-500/20 bg-gradient-to-br from-white/[0.04] to-amber-500/[0.03] p-4 sm:p-5"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-amber-300">
+                <span>📌 Is article me kya hai</span>
                 <span aria-hidden="true" className="text-amber-400 transition-transform group-open:rotate-180">
                   ▾
                 </span>
               </summary>
-              <ol className="mt-4 space-y-2 text-sm text-gray-400">
-                {toc.map((item, i) => (
-                  <li key={item.id} className="flex gap-3">
-                    <span className="text-amber-500/80">{i + 1}.</span>
-                    <a href={`#${item.id}`} className="hover:text-amber-300 transition-colors">
+              <ol className="mt-3.5 space-y-2 text-sm text-gray-300">
+                {toc.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2.5">
+                    <span className="text-amber-500/80">→</span>
+                    <a href={`#${item.id}`} className="hover:text-amber-300 hover:underline underline-offset-4 transition-colors">
                       {item.text}
                     </a>
                   </li>
@@ -692,7 +870,7 @@ export default async function BlogPostPage({ params }: Props) {
             </details>
           )}
 
-          <div className="mt-6 max-w-prose">
+          <div className="mt-8 max-w-prose">
             <Body blocks={blocks} />
           </div>
         </article>
