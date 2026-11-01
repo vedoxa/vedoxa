@@ -87,7 +87,7 @@ function formatDate(value?: string | null) {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ''
   try {
-    return d.toLocaleDateString('hi-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
   } catch {
     return ''
   }
@@ -252,53 +252,54 @@ export async function generateStaticParams() {
 
 /* ───────────────────────────── UI pieces ───────────────────────────── */
 
+const PILL =
+  'inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-sky-400 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400'
+
+const SURFACE =
+  'rounded-3xl border border-sky-100 bg-white shadow-[0_20px_50px_-32px_rgba(2,132,199,0.45)]'
+
 function ShareBar({ url, title }: { url: string; title: string }) {
   const u = encodeURIComponent(url)
   const t = encodeURIComponent(title)
   const links = [
-    { name: 'WhatsApp', href: `https://wa.me/?text=${t}%20${u}`, cls: 'hover:border-green-400/60 hover:bg-green-500/10 hover:text-green-300' },
-    { name: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}`, cls: 'hover:border-sky-400/60 hover:bg-sky-500/10 hover:text-sky-300' },
-    { name: 'X', href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, cls: 'hover:border-white/60 hover:bg-white/10 hover:text-white' },
-    { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, cls: 'hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-blue-300' },
+    { name: 'WhatsApp', href: `https://wa.me/?text=${t}%20${u}` },
+    { name: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}` },
+    { name: 'X', href: `https://twitter.com/intent/tweet?url=${u}&text=${t}` },
+    { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
   ]
 
   return (
-    <section
-      aria-label="Article share karein"
-      className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-    >
-      <p className="text-sm font-bold text-white">📢 Article pasand aaya? Doston ke saath share karein</p>
-      <div className="mt-3.5 flex flex-wrap gap-2.5">
+    <section aria-label="Share this article" className={`vx-noprint mt-10 p-5 sm:p-6 ${SURFACE}`}>
+      <p className="text-base font-bold text-slate-900">Enjoyed this article? Share it with your friends</p>
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        <NativeShareButton url={url} title={title} className={PILL} />
         {links.map((l) => (
           <a
             key={l.name}
             href={l.href}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`${l.name} par share karo`}
-            className={`rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-gray-200 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 ${l.cls}`}
+            aria-label={`Share on ${l.name}`}
+            className={PILL}
           >
             {l.name}
           </a>
         ))}
-        <CopyLinkButton url={url} />
+        <CopyLinkButton url={url} className={PILL} />
       </div>
     </section>
   )
 }
 
 const PAGE_CSS = `
-.vx-progress{display:none}
-@supports (animation-timeline: scroll()){
-  .vx-progress{display:block;position:fixed;top:0;left:0;right:0;height:3px;z-index:60;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#f59e0b,#ec4899,#8b5cf6);animation:vx-grow linear both;animation-timeline:scroll(root block)}
-}
-@keyframes vx-grow{to{transform:scaleX(1)}}
+.vx-display{font-family:var(--font-vx-display,var(--font-vx-body,ui-sans-serif)),'Noto Sans Devanagari',ui-sans-serif,system-ui,sans-serif}
 @keyframes vx-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .vx-fade{animation:vx-fade .6s cubic-bezier(.22,1,.36,1) both}
-.vx-card{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
-.vx-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px -18px rgba(245,158,11,.35)}
+.vx-card{transition:border-color .2s ease,box-shadow .25s ease}
+.vx-card:hover{box-shadow:0 16px 36px -22px rgba(2,132,199,.5)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-@media (prefers-reduced-motion:reduce){.vx-fade{animation:none}.vx-card{transition:none}.vx-card:hover{transform:none}.vx-progress{display:none!important}}
+@media (prefers-reduced-motion:reduce){.vx-fade{animation:none}.vx-card{transition:none}}
+@media print{.vx-noprint{display:none!important}}
 `
 
 /* ───────────────────────────── Metadata ───────────────────────────── */
@@ -419,9 +420,12 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   return (
-    <div id="top" className="relative min-h-screen bg-[#07070d] text-gray-200 selection:bg-amber-500/30">
+    <div
+      id="top"
+      className="relative min-h-screen text-slate-700 selection:bg-sky-200"
+      style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f4faff 38%,#e4f3fd 100%)' }}
+    >
       <style dangerouslySetInnerHTML={{ __html: PAGE_CSS }} />
-      <div className="vx-progress" aria-hidden="true" />
 
       <script
         type="application/ld+json"
@@ -431,27 +435,35 @@ export default async function BlogPostPage({ params }: Props) {
       />
 
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-96"
-        style={{ background: 'radial-gradient(70% 60% at 50% 0%, rgba(245,158,11,0.12), rgba(236,72,153,0.04), transparent)' }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-[28rem]"
+        style={{ background: 'radial-gradient(60% 60% at 50% 0%, rgba(125,211,252,0.35), transparent)' }}
         aria-hidden="true"
       />
 
       <div className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 md:py-10">
-        <nav aria-label="Breadcrumb" className="mb-6">
-          <ol className="flex min-w-0 items-center gap-2 text-xs text-gray-400 sm:text-sm">
+        <nav aria-label="Breadcrumb" className="vx-noprint mb-6">
+          <ol className="flex min-w-0 items-center gap-2 text-xs text-slate-500 sm:text-sm">
             <li className="shrink-0">
-              <Link href="/" className="rounded-lg bg-white/5 px-2.5 py-1 transition-colors hover:text-amber-400">
-                🏠 Vedoxa
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-white px-3 py-1 font-medium transition-colors hover:text-sky-700"
+              >
+                <Icon name="home" size={14} />
+                Vedoxa
               </Link>
             </li>
-            <li aria-hidden="true" className="text-gray-600">/</li>
+            <li aria-hidden="true" className="text-slate-300">/</li>
             <li className="shrink-0">
-              <Link href="/blog" className="rounded-lg bg-white/5 px-2.5 py-1 transition-colors hover:text-amber-400">
-                📚 Blog
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-white px-3 py-1 font-medium transition-colors hover:text-sky-700"
+              >
+                <Icon name="book" size={14} />
+                Blog
               </Link>
             </li>
-            <li aria-hidden="true" className="text-gray-600">/</li>
-            <li className="min-w-0 flex-1 truncate text-gray-500" aria-current="page">
+            <li aria-hidden="true" className="text-slate-300">/</li>
+            <li className="min-w-0 flex-1 truncate text-slate-400" aria-current="page">
               {post.title}
             </li>
           </ol>
@@ -459,42 +471,58 @@ export default async function BlogPostPage({ params }: Props) {
 
         <article>
           {/* Article header */}
-          <header className="vx-fade relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-5 shadow-2xl sm:p-8">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-extrabold text-amber-300">
-                ✨ {post.category || 'Vedoxa Special'}
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300">
-                ⏱️ ~{readMins} min read
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-400">
-                📝 {words.toLocaleString('en-IN')} shabd
-              </span>
-            </div>
+          <header className={`vx-fade relative overflow-hidden p-5 sm:p-8 ${SURFACE}`}>
+            <div
+              className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-sky-100/80 blur-2xl"
+              aria-hidden="true"
+            />
 
-            <h1 className="font-serif text-2xl font-extrabold leading-[1.3] text-white [text-wrap:balance] sm:text-4xl sm:leading-[1.25]">
-              {post.title}
-            </h1>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-gray-400 sm:text-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 font-black text-slate-950">
-                  V
-                </div>
-                <div>
-                  <p className="font-bold leading-none text-white">Vedoxa Editorial</p>
-                  {publishedAt && (
-                    <time dateTime={publishedAt} className="mt-1 block text-[11px] text-gray-400">
-                      {formatDate(publishedAt)}
-                    </time>
-                  )}
-                </div>
-              </div>
-              {updated && (
-                <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
-                  ✓ Updated: {formatDate(post.updated_at)}
+            <div className="relative">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
+                  {post.category || 'Vedoxa Special'}
                 </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50/70 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <Icon name="clock" size={13} />
+                  {readMins} min read
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50/70 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <Icon name="file" size={13} />
+                  {words.toLocaleString('en-IN')} words
+                </span>
+              </div>
+
+              <h1 className="vx-display text-2xl font-extrabold leading-[1.3] text-slate-900 [text-wrap:balance] sm:text-4xl sm:leading-[1.25]">
+                {post.title}
+              </h1>
+
+              {post.description && (
+                <p className="mt-3 line-clamp-3 text-base leading-relaxed text-slate-600 sm:text-lg">
+                  {post.description}
+                </p>
               )}
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-sky-100 pt-4 text-xs text-slate-500 sm:text-sm">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-sky-600 font-black text-white">
+                    V
+                  </div>
+                  <div>
+                    <p className="font-bold leading-none text-slate-900">Vedoxa Editorial</p>
+                    {publishedAt && (
+                      <time dateTime={publishedAt} className="mt-1 block text-[11px] text-slate-500">
+                        {formatDate(publishedAt)}
+                      </time>
+                    )}
+                  </div>
+                </div>
+                {updated && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    <Icon name="check" size={13} />
+                    Updated {formatDate(post.updated_at)}
+                  </span>
+                )}
+              </div>
             </div>
           </header>
 
@@ -503,17 +531,22 @@ export default async function BlogPostPage({ params }: Props) {
               src={cover}
               alt={post.title}
               decoding="async"
-              className="vx-fade mt-6 aspect-[16/9] w-full rounded-3xl border border-white/10 object-cover shadow-2xl"
+              className="vx-fade mt-6 aspect-[16/9] w-full rounded-3xl border border-sky-100 object-cover shadow-[0_20px_50px_-30px_rgba(2,132,199,0.5)]"
             />
           )}
 
-          <ArticleContent content={content} />
+          <div className="mt-6">
+            <ArticleContent content={content} articleId={post.slug} />
+          </div>
         </article>
 
         {tags.length > 0 && (
-          <ul className="mt-8 flex flex-wrap gap-2" aria-label="Tags">
+          <ul className="vx-noprint mt-8 flex flex-wrap gap-2" aria-label="Tags">
             {tags.map((t) => (
-              <li key={t} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
+              <li
+                key={t}
+                className="rounded-full border border-sky-100 bg-white px-3 py-1 text-xs font-medium text-slate-600"
+              >
                 #{t}
               </li>
             ))}
@@ -522,10 +555,31 @@ export default async function BlogPostPage({ params }: Props) {
 
         <ShareBar url={url} title={post.title} />
 
+        {/* Author card */}
+        <section
+          aria-label="About the author"
+          className={`vx-noprint mt-6 flex items-center gap-4 p-5 sm:p-6 ${SURFACE}`}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-sky-600 text-lg font-black text-white">
+            V
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-slate-900">Written by Vedoxa Editorial</p>
+            <p className="mt-0.5 text-sm text-slate-500">Discover more guides, stories and books from the Vedoxa library.</p>
+          </div>
+          <Link
+            href="/explore"
+            className="hidden shrink-0 items-center gap-1.5 rounded-full bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-800 sm:inline-flex"
+          >
+            Explore
+            <Icon name="arrowRight" size={15} />
+          </Link>
+        </section>
+
         {books.length > 0 && (
-          <section className="mt-14 border-t border-white/10 pt-10">
-            <h2 className="mb-5 font-serif text-xl font-bold text-white">
-              Is vishay par padhne ke liye books
+          <section className="vx-noprint mt-14 border-t border-sky-100 pt-10">
+            <h2 className="vx-display mb-5 text-xl font-extrabold text-slate-900">
+              Recommended books on this topic
             </h2>
             <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {books.map((b) => {
@@ -535,23 +589,23 @@ export default async function BlogPostPage({ params }: Props) {
                   <li key={b.id}>
                     <Link
                       href={`/book/${b.slug || b.id}`}
-                      className="vx-card block h-full rounded-2xl border border-white/10 bg-white/[0.03] p-3 hover:border-amber-500/40"
+                      className="vx-card block h-full rounded-2xl border border-sky-100 bg-white p-3 hover:border-sky-300"
                     >
                       {c ? (
                         <img
                           src={c}
                           alt={`${b.title} book cover`}
-                          className="h-44 w-full rounded-lg bg-black/20 object-contain"
+                          className="h-44 w-full rounded-xl bg-sky-50 object-contain p-2"
                           loading="lazy"
                           decoding="async"
                         />
                       ) : (
-                        <div className="grid h-44 w-full place-items-center rounded-lg bg-white/5 text-4xl" aria-hidden="true">
-                          📘
+                        <div className="grid h-44 w-full place-items-center rounded-xl bg-sky-50 text-sky-600" aria-hidden="true">
+                          <Icon name="book" size={36} />
                         </div>
                       )}
-                      <p className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{b.title}</p>
-                      {price && <p className="mt-1 text-sm font-bold text-amber-400">{price}</p>}
+                      <p className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-slate-900">{b.title}</p>
+                      {price && <p className="mt-1 text-sm font-bold text-sky-700">{price}</p>}
                     </Link>
                   </li>
                 )
@@ -560,17 +614,18 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="mt-6 text-center">
               <Link
                 href="/explore"
-                className="inline-block rounded-full border border-amber-500/40 px-5 py-2.5 text-sm font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white px-5 py-2.5 text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50"
               >
-                Saari books dekho →
+                Browse all books
+                <Icon name="arrowRight" size={15} />
               </Link>
             </div>
           </section>
         )}
 
         {related.length > 0 && (
-          <section className="mt-12">
-            <h2 className="mb-4 font-serif text-xl font-bold text-white">Ye bhi padhein</h2>
+          <section className="vx-noprint mt-12">
+            <h2 className="vx-display mb-4 text-xl font-extrabold text-slate-900">You might also like</h2>
             <ul className="grid gap-3">
               {related.map((r) => {
                 const rc = mediaUrl(r.cover_image)
@@ -580,7 +635,7 @@ export default async function BlogPostPage({ params }: Props) {
                   <li key={r.slug}>
                     <Link
                       href={`/blog/${r.slug}`}
-                      className="vx-card flex gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-amber-500/40"
+                      className="vx-card flex gap-4 rounded-2xl border border-sky-100 bg-white p-4 hover:border-sky-300"
                     >
                       {rc && (
                         <img
@@ -588,17 +643,22 @@ export default async function BlogPostPage({ params }: Props) {
                           alt=""
                           loading="lazy"
                           decoding="async"
-                          className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                          className="h-24 w-24 shrink-0 rounded-xl object-cover sm:h-28 sm:w-28"
                         />
                       )}
-                      <span className="min-w-0">
-                        <span className="line-clamp-2 block font-serif text-base font-bold leading-snug text-white">
+                      <span className="min-w-0 flex-1">
+                        {r.category && (
+                          <span className="inline-block rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-bold text-sky-800">
+                            {r.category}
+                          </span>
+                        )}
+                        <span className="vx-display mt-1.5 line-clamp-2 block text-base font-bold leading-snug text-slate-900">
                           {r.title}
                         </span>
                         {snippet && (
-                          <span className="mt-1 line-clamp-2 block text-sm text-gray-400">{snippet}</span>
+                          <span className="mt-1 line-clamp-2 block text-sm text-slate-600">{snippet}</span>
                         )}
-                        {date && <span className="mt-2 block text-xs text-gray-500">{date}</span>}
+                        {date && <span className="mt-2 block text-xs text-slate-500">{date}</span>}
                       </span>
                     </Link>
                   </li>
@@ -609,14 +669,17 @@ export default async function BlogPostPage({ params }: Props) {
         )}
 
         {(prev || next) && (
-          <nav aria-label="Pichhla aur agla article" className="mt-12 grid gap-3 sm:grid-cols-2">
+          <nav aria-label="Previous and next articles" className="vx-noprint mt-12 grid gap-3 sm:grid-cols-2">
             {prev ? (
               <Link
                 href={`/blog/${prev.slug}`}
-                className="vx-card rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-amber-500/40"
+                className="vx-card rounded-2xl border border-sky-100 bg-white p-4 hover:border-sky-300"
               >
-                <span className="text-xs text-gray-500">← Pichhla article</span>
-                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-white">{prev.title}</span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Icon name="arrowLeft" size={13} />
+                  Previous article
+                </span>
+                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-slate-900">{prev.title}</span>
               </Link>
             ) : (
               <span className="hidden sm:block" />
@@ -624,21 +687,26 @@ export default async function BlogPostPage({ params }: Props) {
             {next && (
               <Link
                 href={`/blog/${next.slug}`}
-                className="vx-card rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-amber-500/40 sm:text-right"
+                className="vx-card rounded-2xl border border-sky-100 bg-white p-4 hover:border-sky-300 sm:text-right"
               >
-                <span className="text-xs text-gray-500">Agla article →</span>
-                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-white">{next.title}</span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  Next article
+                  <Icon name="arrowRight" size={13} />
+                </span>
+                <span className="mt-1 line-clamp-2 block font-bold leading-snug text-slate-900">{next.title}</span>
               </Link>
             )}
           </nav>
         )}
 
-        <div className="mt-12 flex items-center justify-between border-t border-white/10 pt-6 text-sm">
-          <Link href="/blog" className="text-gray-400 transition-colors hover:text-amber-400">
-            ← Saare articles
+        <div className="vx-noprint mt-12 flex items-center justify-between border-t border-sky-100 pt-6 text-sm">
+          <Link href="/blog" className="inline-flex items-center gap-1.5 text-slate-600 transition-colors hover:text-sky-700">
+            <Icon name="arrowLeft" size={14} />
+            All articles
           </Link>
-          <a href="#top" className="text-gray-400 transition-colors hover:text-amber-400">
-            ↑ Upar jao
+          <a href="#top" className="inline-flex items-center gap-1.5 text-slate-600 transition-colors hover:text-sky-700">
+            Back to top
+            <Icon name="up" size={14} />
           </a>
         </div>
       </div>
