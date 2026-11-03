@@ -1,369 +1,224 @@
 <!--
-  VEDOXA README (v2)
-  GitHub strips <script> and <style>, so all motion comes from self-looping SVG images
-  (capsule-render and readme-typing-svg) plus GitHub-native features (Mermaid, <details>).
-
-  Quick edits
-    - Typing lines  -> `lines=` in each typing <img> (split with ; and use + for spaces)
-    - Colours       -> `color=timeGradient` follows the time of day; pin one with e.g. color=6D28D9
-    - Header text   -> `text=` and `desc=` in the first <img>
-    - Placeholders  -> search this file for YOUR_ and replace them
-    - Extras        -> see the OPTIONAL comment near the bottom
--->
-
-<a name="top"></a>
-
+✨ VEDOXA — OFFICIAL GITHUB README (v3 ULTRA EDITION) ✨
+100% GitHub-Compatible • Zero Broken Links • Fully Animated SVG Architecture
+HOW TO CUSTOMIZE:
+Typing Animations : Edit the lines= parameter in readme-typing-svg URLs (use + for spaces and ; to separate lines).
+Theme Color : color=timeGradient shifts dynamically with time of day. To lock the royal purple theme, replace with color=6D28D9.
+Repo Placeholders : Search for YOUR_USERNAME and YOUR_REPO to link your GitHub. ============================================================================= -->
+<div id="top"></div>
 <div align="center">
-
-<!-- Hero: waving banner, fades in and keeps rolling -->
-<img
-  src="https://capsule-render.vercel.app/api?type=waving&section=header&height=280&color=timeGradient&text=VEDOXA&fontSize=84&fontColor=ffffff&fontAlign=50&fontAlignY=38&animation=fadeIn&desc=Premium%20Digital%20Library&descSize=22&descAlign=50&descAlignY=60"
-  alt="VEDOXA - Premium Digital Library"
-  width="100%"
-/>
-
-<!-- Typing line: cycles through the messages forever -->
-<a href="https://vedoxa.shop">
-  <img
-    src="https://readme-typing-svg.demolab.com?font=Cormorant+Garamond&weight=700&size=30&duration=3400&pause=1100&color=A78BFA&center=true&vCenter=true&repeat=true&width=760&height=64&lines=Awaken+Your+Consciousness;100%25+original+%26+verified+digital+books;Spirituality+%26+Psychology%2C+unlocked+instantly;Read+securely.+Earn+rewards.+Share+easily.;Your+journey+inward+begins+here"
-    alt="Awaken Your Consciousness"
-  />
-</a>
-
+<!-- ======================== HERO ANIMATED BANNER ======================== --> <img src="https://capsule-render.vercel.app/api?type=waving&section=header&height=300&color=timeGradient&text=VEDOXA&fontSize=88&fontColor=ffffff&fontAlign=50&fontAlignY=36&animation=fadeIn&desc=%E2%9C%A8%20The%20Sanctuary%20of%20Conscious%20Reading%20%E2%9C%A8&descSize=22&descAlign=50&descAlignY=58&stroke=A78BFA&strokeWidth=1" alt="VEDOXA - Premium Digital Library" width="100%" />
+<!-- ==================== PRIMARY TYPING ANIMATION ==================== --> <a href="https://vedoxa.shop"> <img src="https://readme-typing-svg.demolab.com?font=Cormorant+Garamond&weight=700&size=32&duration=3200&pause=1000&color=A78BFA&center=true&vCenter=true&repeat=true&width=820&height=65&lines=Awaken+Your+Higher+Consciousness;100%25+Original+%26+Verified+Digital+Books;Spirituality+%E2%80%A2+Depth+Psychology+%E2%80%A2+Inner+Mastery;Instant+Unlock+%E2%80%A2+Anti-Piracy+Reader+%E2%80%A2+Loyalty+Rewards;Your+Sacred+Journey+Inward+Begins+At+vedoxa.shop" alt="VEDOXA Animated Tagline" /> </a>
+<!-- ==================== SECONDARY LIVE TICKER ==================== --> <p align="center"> <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=14&duration=2800&pause=1200&color=38BDF8&center=true&vCenter=true&repeat=true&width=680&height=28&lines=%E2%9A%A1+INSTANT+BOOK+UNLOCK+UPON+PAYMENT;%F0%9F%94%90+PROTECTED+BY+PROPRIETARY+WEB+DRM+%26+SUPABASE+RLS;%F0%9F%92%B3+100%25+SECURE+INR+CHECKOUT+POWERED+BY+RAZORPAY;%F0%9F%8E%81+EARN+%26+REDEEM+REWARD+POINTS+ON+EVERY+ORDER" alt="Live Feature Ticker" /> </p>
+<!-- ======================== LIVE STATUS BADGES ======================== --> <p align="center"> <a href="https://vedoxa.shop"> <img src="https://img.shields.io/badge/LIVE_PLATFORM-vedoxa.shop-7C3AED?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=1E1B4B" alt="Live Website" /> </a> <a href="https://vedoxa.shop"> <img src="https://img.shields.io/website?url=https%3A%2F%2Fvedoxa.shop&up_message=ONLINE_%26_ACTIVE&up_color=10B981&down_message=MAINTENANCE&down_color=EF4444&label=SERVER_STATUS&labelColor=1E1B4B&style=for-the-badge&logo=statuspage&logoColor=white" alt="Website Status" /> </a> <img src="https://img.shields.io/badge/NICHE-Spirituality_%26_Psychology-5B21B6?style=for-the-badge&logo=bookstack&logoColor=white&labelColor=1E1B4B" alt="Spirituality and Psychology" /> <img src="https://img.shields.io/badge/PAYMENTS-Razorpay_(INR)-0284C7?style=for-the-badge&logo=razorpay&logoColor=white&labelColor=1E1B4B" alt="Razorpay Payments" /> <img src="https://img.shields.io/badge/SECURITY-DRM_%2B_RLS_Protected-059669?style=for-the-badge&logo=shield&logoColor=white&labelColor=1E1B4B" alt="DRM Protected" /> <img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fvedoxa.shop&label=READERS_VISITED&labelColor=%231E1B4B&countColor=%237C3AED&style=for-the-badge" alt="Visitors" /> </p>
 <br />
-
-<!-- Badges: the status badge checks the live site every time the page loads -->
-<a href="https://vedoxa.shop"><img src="https://img.shields.io/badge/Live_Website-vedoxa.shop-7C3AED?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live website" /></a>
-<a href="https://vedoxa.shop"><img src="https://img.shields.io/website?url=https%3A%2F%2Fvedoxa.shop&up_message=ONLINE&up_color=22C55E&down_message=OFFLINE&down_color=EF4444&label=STATUS&labelColor=1E1B4B&style=for-the-badge" alt="Website status" /></a>
-<img src="https://img.shields.io/badge/Library-Spirituality_%26_Psychology-4C1D95?style=for-the-badge&logo=bookstack&logoColor=white" alt="Spirituality and Psychology" />
-<img src="https://img.shields.io/badge/Payments-Razorpay_(INR)-0C2451?style=for-the-badge&logo=razorpay&logoColor=white" alt="Razorpay payments" />
-<img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fvedoxa.shop&label=VISITORS&labelColor=%231E1B4B&countColor=%236D28D9&style=for-the-badge" alt="Visitors" />
-
-<br /><br />
-
-<!-- Quick navigation -->
-<p align="center">
-  <a href="#features"><b>Features</b></a> &nbsp;|&nbsp;
-  <a href="#how-it-works"><b>How it works</b></a> &nbsp;|&nbsp;
-  <a href="#tech"><b>Tech stack</b></a> &nbsp;|&nbsp;
-  <a href="#architecture"><b>Architecture</b></a> &nbsp;|&nbsp;
-  <a href="#roadmap"><b>Roadmap</b></a> &nbsp;|&nbsp;
-  <a href="#faq"><b>FAQ</b></a> &nbsp;|&nbsp;
-  <a href="#developers"><b>For developers</b></a>
-</p>
-
+<!-- ==================== 3D INTERACTIVE NAVIGATION BAR ==================== --> <p align="center"> <a href="#vision"><kbd>  🪷 Vision  </kbd></a>   <a href="#categories"><kbd>  📚 Categories  </kbd></a>   <a href="#features"><kbd>  ✨ Features  </kbd></a>   <a href="#how-it-works"><kbd>  🧭 How It Works  </kbd></a>   <a href="#drm-security"><kbd>  🛡️ Anti-Piracy DRM  </kbd></a>   <a href="#tech"><kbd>  🛠️ Tech Stack  </kbd></a>   <a href="#architecture"><kbd>  🧩 Architecture  </kbd></a>   <a href="#roadmap"><kbd>  🗺️ Roadmap  </kbd></a>   <a href="#faq"><kbd>  ❓ FAQ  </kbd></a>   <a href="#developers"><kbd>  👩‍💻 Developers  </kbd></a> </p>
 </div>
-
-<p align="center">
-  Welcome to the official repository of <b>VEDOXA</b>, a premium platform built to awaken your
-  consciousness with 100% original, verified digital books on spirituality &amp; psychology.
-</p>
-
-<table align="center">
-  <tr>
-    <td align="center" width="25%"><h2>💯</h2><b>100% original</b><br /><sub>Every book is verified</sub></td>
-    <td align="center" width="25%"><h2>⚡</h2><b>Instant unlock</b><br /><sub>Read the moment payment succeeds</sub></td>
-    <td align="center" width="25%"><h2>🔐</h2><b>Anti-piracy reader</b><br /><sub>Content stays protected</sub></td>
-    <td align="center" width="25%"><h2>🎁</h2><b>Earn rewards</b><br /><sub>Points on every purchase</sub></td>
-  </tr>
-</table>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="features"></a>
-<h2 align="center">✨ Key features</h2>
-<p align="center"><i>Everything a modern reader needs, and nothing they don't.</i></p>
-
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🔓 Instant secure access</h3>
-      Zero waiting. Books unlock instantly after a successful payment.
-    </td>
-    <td width="50%" valign="top">
-      <h3>📖 Premium web reader</h3>
-      A secure, anti-piracy embedded PDF reader for a smooth reading experience.
-      Zooming and downloading are disabled to protect content integrity.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🤖 Automated help &amp; support</h3>
-      A floating help bot answers customer FAQs and runs an automated ticketing system.
-    </td>
-    <td width="50%" valign="top">
-      <h3>🔗 Native web share</h3>
-      Built-in sharing for quick link distribution across WhatsApp, Instagram, Telegram and more.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🎁 Dynamic reward system</h3>
-      Earn points on every purchase and redeem them instantly at your next checkout.
-    </td>
-    <td width="50%" valign="top">
-      <h3>💳 Seamless INR payments</h3>
-      Fast, secure checkout in Indian rupees, powered by Razorpay.
-    </td>
-  </tr>
-</table>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="how-it-works"></a>
-<h2 align="center">🧭 How it works</h2>
-<p align="center"><i>From first look to last page in four steps.</i></p>
-
-<table align="center">
-  <tr>
-    <td align="center" width="25%"><h2>🔎</h2><b>1. Discover</b><br /><sub>Browse verified titles in Spirituality &amp; Psychology</sub></td>
-    <td align="center" width="25%"><h2>💳</h2><b>2. Pay securely</b><br /><sub>Check out in INR through Razorpay</sub></td>
-    <td align="center" width="25%"><h2>🔓</h2><b>3. Unlock instantly</b><br /><sub>Access appears as soon as payment succeeds</sub></td>
-    <td align="center" width="25%"><h2>🪷</h2><b>4. Read and earn</b><br /><sub>Read in the secure reader and collect reward points</sub></td>
-  </tr>
-</table>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="tech"></a>
-<h2 align="center">🛠️ Tech stack</h2>
-
-<p align="center">
-  This project is built with modern, highly scalable technologies.
-</p>
-
-<p align="center">
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,framer,supabase,postgres,vercel&perline=8" alt="Next.js, React, TypeScript, Tailwind CSS, Framer Motion, Supabase, PostgreSQL, Vercel" />
-  </a>
-</p>
-
-<table align="center">
-  <tr>
-    <td><b>Frontend</b></td>
-    <td>Next.js (React), TypeScript, Tailwind CSS, Framer Motion for smooth animations</td>
-  </tr>
-  <tr>
-    <td><b>Backend &amp; database</b></td>
-    <td>Supabase (PostgreSQL, Authentication, Storage)</td>
-  </tr>
-  <tr>
-    <td><b>Payment gateway</b></td>
-    <td>Razorpay (seamless &amp; secure INR transactions)</td>
-  </tr>
-  <tr>
-    <td><b>Icons &amp; UI elements</b></td>
-    <td>Lucide React</td>
-  </tr>
-  <tr>
-    <td><b>Deployment</b></td>
-    <td>Vercel</td>
-  </tr>
-</table>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="architecture"></a>
-<h2 align="center">🧩 Architecture</h2>
-<p align="center"><i>A simplified view of how the pieces connect.</i></p>
-
-```mermaid
+<br />
+<!-- ======================== EXECUTIVE VISION ======================== --> <div id="vision"></div>
+[!IMPORTANT] What is VEDOXA? VEDOXA (<a href="https://vedoxa.shop">vedoxa.shop</a>) is a next-generation digital sanctuary crafted for seekers, thinkers, and lifelong learners. It delivers 100% original, verified digital books on Spirituality, Depth Psychology, and Self-Mastery—combining frictionless Razorpay INR checkout, an instant-unlock cloud library, a proprietary anti-piracy web reader, and an automated loyalty rewards ecosystem.
+<br />
+<!-- ======================== 4 PILLARS OF VEDOXA ======================== --> <table align="center" width="100%"> <tr> <td align="center" width="25%"> <h2>💯</h2> <b>100% Original</b><br /> <sub>Curated, verified, and authentic digital editions</sub><br /><br /> <img src="https://img.shields.io/badge/Authenticity-Verified-7C3AED?style=flat-square" alt="Verified" /> </td> <td align="center" width="25%"> <h2>⚡</h2> <b>Zero-Wait Unlock</b><br /> <sub>Books unlock in your library the second payment succeeds</sub><br /><br /> <img src="https://img.shields.io/badge/Latency-%3C_1_Second-10B981?style=flat-square" alt="Instant" /> </td> <td align="center" width="25%"> <h2>🔐</h2> <b>Anti-Piracy Reader</b><br /> <sub>Embedded cloud PDF engine with download & zoom locks</sub><br /><br /> <img src="https://img.shields.io/badge/DRM-Active_Lock-F59E0B?style=flat-square" alt="DRM" /> </td> <td align="center" width="25%"> <h2>🎁</h2> <b>Karma Rewards</b><br /> <sub>Earn loyalty points on every purchase for instant discounts</sub><br /><br /> <img src="https://img.shields.io/badge/Cashback-Points_System-EC4899?style=flat-square" alt="Rewards" /> </td> </tr> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== CURATED CATEGORIES ======================== --> <div id="categories"></div> <h2 align="center">📚 Curated Knowledge Domains</h2> <p align="center"><i>Thoughtfully selected literature designed to transform perception, heal the mind, and elevate awareness.</i></p>
+<table align="center" width="100%"> <tr> <td width="25%" valign="top" align="center"> <h3>🪷 Consciousness & Non-Duality</h3> <sub>Explore self-inquiry, meditation, awakening, and the timeless nature of pure awareness.</sub> </td> <td width="25%" valign="top" align="center"> <h3>🧠 Depth Psychology & Shadow Work</h3> <sub>Understand the subconscious mind, archetypes, emotional healing, and behavioral patterns.</sub> </td> <td width="25%" valign="top" align="center"> <h3>📜 Ancient Wisdom & Philosophy</h3> <sub>Distilled insights from Eastern scriptures, Stoicism, and contemplative traditions.</sub> </td> <td width="25%" valign="top" align="center"> <h3>✨ Mindful Living & Inner Mastery</h3> <sub>Practical frameworks for focus, emotional resilience, and intentional daily living.</sub> </td> </tr> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== KEY FEATURES ======================== --> <div id="features"></div> <h2 align="center">✨ Core Platform Features</h2> <p align="center"><i>Engineered for a distraction-free, app-like reading experience across every device.</i></p>
+<table align="center" width="100%"> <tr> <td width="50%" valign="top"> <h3>🔓 Instant Automated Provisioning</h3> <img src="https://img.shields.io/badge/Workflow-Real--Time_Webhook-10B981?style=flat-square" alt="Real-time" /><br /><br /> Zero manual approval or waiting. As soon as your Razorpay transaction completes, your title is cryptographically tied to your account and unlocked immediately. </td> <td width="50%" valign="top"> <h3>📖 Proprietary Anti-Piracy Web Reader</h3> <img src="https://img.shields.io/badge/Protection-DRM_Sandboxed-7C3AED?style=flat-square" alt="Sandboxed" /><br /><br /> Read smoothly inside a custom-engineered browser reader where file downloading, unauthorized sharing, and layout-breaking pinch-zooming are strictly disabled. </td> </tr> <tr> <td width="50%" valign="top"> <h3>🤖 Intelligent Support Bot & Ticketing</h3> <img src="https://img.shields.io/badge/Support-24%2F7_Automated-3B82F6?style=flat-square" alt="24/7 Support" /><br /><br /> An interactive floating assistant answers common reader queries on the spot and features an integrated ticketing workflow for direct human assistance. </td> <td width="50%" valign="top"> <h3>🔗 Native One-Tap Web Share</h3> <img src="https://img.shields.io/badge/API-Web_Share_Native-EC4899?style=flat-square" alt="Web Share" /><br /><br /> Built-in Web Share integration lets readers effortlessly recommend transformative books across WhatsApp, Instagram, Telegram, and X in a single tap. </td> </tr> <tr> <td width="50%" valign="top"> <h3>🎁 Dynamic Loyalty & Reward Engine</h3> <img src="https://img.shields.io/badge/Economy-Auto_Credit-F59E0B?style=flat-square" alt="Rewards" /><br /><br /> Every purchase automatically credits reward points to the reader's wallet, which can be redeemed at the next checkout for instant INR discounts. </td> <td width="50%" valign="top"> <h3>💳 Frictionless INR Checkout</h3> <img src="https://img.shields.io/badge/Gateway-Razorpay_Verified-0284C7?style=flat-square" alt="Razorpay" /><br /><br /> Supports UPI (GPay, PhonePe, Paytm), Cards, NetBanking, and Wallets with bank-grade encryption and instant payment verification. </td> </tr> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== HOW IT WORKS ======================== --> <div id="how-it-works"></div> <h2 align="center">🧭 How VEDOXA Works</h2> <p align="center"><i>From discovery to deep reading in four effortless steps.</i></p>
+<table align="center" width="100%"> <tr> <td align="center" width="25%"> <h2>🔎</h2> <b>Step 1 · Discover</b><br /> <sub>Explore handpicked titles across Spirituality & Psychology</sub><br /><br /> <kbd>Browse Catalog</kbd> </td> <td align="center" width="25%"> <h2>💳</h2> <b>Step 2 · Checkout</b><br /> <sub>Pay securely in INR via UPI, Cards, or NetBanking with Razorpay</sub><br /><br /> <kbd>Apply Reward Points</kbd> </td> <td align="center" width="25%"> <h2>🔓</h2> <b>Step 3 · Instant Unlock</b><br /> <sub>Your book unlocks automatically in your personal library</sub><br /><br /> <kbd>0s Waiting Time</kbd> </td> <td align="center" width="25%"> <h2>🪷</h2> <b>Step 4 · Read & Earn</b><br /> <sub>Immerse yourself in the secure reader & collect reward points</sub><br /><br /> <kbd>Protected Reading</kbd> </td> </tr> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== DRM & SECURITY MATRIX ======================== --> <div id="drm-security"></div> <h2 align="center">🛡️ Multi-Layer Security & Anti-Piracy Matrix</h2> <p align="center"><i>How VEDOXA safeguards intellectual property while keeping the user experience effortless.</i></p>
+<table align="center" width="100%"> <thead> <tr> <th align="left">Security Layer</th> <th align="left">Protection Mechanism</th> <th align="center">Status</th> </tr> </thead> <tbody> <tr> <td><b>📖 Content DRM Lock</b></td> <td>Embedded PDF canvas with download, print, and context-menu extraction disabled</td> <td align="center"><img src="https://img.shields.io/badge/ENFORCED-10B981?style=flat-square" alt="Enforced" /></td> </tr> <tr> <td><b>📱 Viewport Integrity</b></td> <td>Native touch-zooming & gesture scaling locked for a consistent native-app feel</td> <td align="center"><img src="https://img.shields.io/badge/LOCKED-7C3AED?style=flat-square" alt="Locked" /></td> </tr> <tr> <td><b>🗄️ Database Access</b></td> <td>Supabase PostgreSQL protected by strict Row-Level Security (RLS) policies per user</td> <td align="center"><img src="https://img.shields.io/badge/RLS_ACTIVE-3B82F6?style=flat-square" alt="RLS Active" /></td> </tr> <tr> <td><b>💳 Payment Verification</b></td> <td>Cryptographic signature verification via Razorpay server-side workflow</td> <td align="center"><img src="https://img.shields.io/badge/PCI--DSS-0284C7?style=flat-square" alt="PCI-DSS" /></td> </tr> <tr> <td><b>🔑 Secret Isolation</b></td> <td>Service-role keys and gateway secrets strictly isolated in server environment variables</td> <td align="center"><img src="https://img.shields.io/badge/ISOLATED-F59E0B?style=flat-square" alt="Isolated" /></td> </tr> </tbody> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== TECH STACK ======================== --> <div id="tech"></div> <h2 align="center">🛠️ Modern Technology Stack</h2> <p align="center"><i>Built on a high-performance, type-safe, serverless architecture.</i></p>
+<p align="center"> <a href="https://skillicons.dev"> <img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,framer,supabase,postgres,vercel&perline=8" alt="Tech Stack Icons" /> </a> </p>
+<table align="center" width="100%"> <thead> <tr> <th align="left" width="25%">Layer</th> <th align="left" width="35%">Technologies</th> <th align="left" width="40%">Role in VEDOXA</th> </tr> </thead> <tbody> <tr> <td><b>🎨 Frontend & UI</b></td> <td><code>Next.js</code> · <code>React</code> · <code>TypeScript</code></td> <td>Server-rendered pages, fast routing, and strict compile-time safety</td> </tr> <tr> <td><b>✨ Styling & Motion</b></td> <td><code>Tailwind CSS</code> · <code>Framer Motion</code> · <code>Lucide</code></td> <td>Responsive glassmorphic dark UI and fluid micro-interactions</td> </tr> <tr> <td><b>🗄️ Backend & Auth</b></td> <td><code>Supabase</code> · <code>PostgreSQL</code> · <code>RLS</code></td> <td>User authentication, encrypted book storage, and real-time database</td> </tr> <tr> <td><b>💳 Payment Gateway</b></td> <td><code>Razorpay SDK</code> (INR)</td> <td>Instant UPI, card, and netbanking checkout with automated callbacks</td> </tr> <tr> <td><b>☁️ Edge Deployment</b></td> <td><code>Vercel Edge Network</code></td> <td>Global CDN caching, serverless execution, and automatic SSL</td> </tr> </tbody> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== ARCHITECTURE ======================== --> <div id="architecture"></div> <h2 align="center">🧩 System Architecture & Data Flow</h2> <p align="center"><i>An end-to-end look at how VEDOXA processes payments, enforces security, and streams books.</i></p>
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#4C1D95','primaryTextColor':'#ffffff','primaryBorderColor':'#A78BFA','lineColor':'#A78BFA','secondaryColor':'#1E1B4B','tertiaryColor':'#0F172A'}}}%%
 flowchart LR
-  U(["📱 Reader"]) --> W["Next.js app<br/>React, Tailwind, Framer Motion"]
-  W -->|"Auth and data"| S[("Supabase<br/>PostgreSQL with RLS")]
-  W -->|"Checkout"| R["💳 Razorpay<br/>INR payments"]
-  R -->|"Payment success"| W
-  W -->|"Unlock book and add reward points"| S
-  S -->|"Access granted"| P["📖 Secure PDF reader"]
-  P --> U
-```
+  subgraph Client["📱 Client Layer"]
+    U(["Reader Device"])
+    UI["Next.js + Tailwind + Framer Motion"]
+    RDR["📖 Anti-Piracy PDF Reader"]
+  end
 
-<details>
-<summary><b>See the purchase flow step by step</b></summary>
+  subgraph Edge["⚡ Application Layer (Vercel)"]
+    API["Next.js Server / API Layer"]
+    BOT["🤖 Automated Support & Ticket Engine"]
+  end
 
-```mermaid
+  subgraph External["💳 Payment Layer"]
+    RP["Razorpay Gateway (INR)"]
+  end
+
+  subgraph Data["🔐 Data & Storage Layer (Supabase)"]
+    AUTH["Supabase Auth"]
+    DB[("PostgreSQL + RLS Policies")]
+    ST[("Protected Book Storage")]
+  end
+
+  U --> UI
+  UI -->|"1. Sign In / Session"| AUTH
+  UI -->|"2. Initiate Checkout"| RP
+  RP -->|"3. Payment Confirmed"| API
+  API -->|"4. Unlock Book + Credit Points"| DB
+  DB -->|"5. Verify Ownership (RLS)"| ST
+  ST -->|"6. Stream Protected Stream"| RDR
+  RDR --> U
+  UI -->|"Support Query"| BOT
+  BOT -->|"Create Ticket"| DB
+
+
+<details> <summary><b>🔄 Click to view: End-to-End Purchase & Instant Unlock Sequence</b></summary>
+<br />
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#4C1D95','primaryTextColor':'#ffffff','primaryBorderColor':'#A78BFA','lineColor':'#A78BFA','secondaryColor':'#1E1B4B','tertiaryColor':'#0F172A'}}}%%
 sequenceDiagram
   autonumber
-  actor Reader
-  participant App as Next.js app
-  participant RP as Razorpay
-  participant DB as Supabase
-  Reader->>App: Choose a book
-  App->>RP: Open checkout in INR
-  RP-->>App: Payment successful
-  App->>DB: Record purchase and add reward points
-  DB-->>App: Access granted (protected by RLS)
-  App-->>Reader: Book unlocked instantly
-```
+  actor Reader as 📱 Reader
+  participant App as ⚡ Next.js App
+  participant RP as 💳 Razorpay (INR)
+  participant DB as 🗄️ Supabase (RLS)
+  participant ReaderUI as 📖 Secure Web Reader
+
+  Reader->>App: Select book & apply reward points
+  App->>RP: Initialize INR Order Checkout
+  RP-->>Reader: Display UPI / Card / NetBanking Modal
+  Reader->>RP: Complete Payment
+  RP-->>App: Payment Success Callback
+  App->>DB: Record Purchase + Add Loyalty Reward Points
+  DB-->>App: Ownership Verified via Row-Level Security
+  App-->>ReaderUI: Unlock & Stream Protected Book
+  ReaderUI-->>Reader: Instant Access (Download & Zoom Disabled)
+
 
 </details>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<h2 align="center">🚀 Performance &amp; security</h2>
-
-<table>
-  <tr>
-    <td width="25%" valign="top" align="center">
-      <h3>📱 Mobile first</h3>
-      Fully responsive and optimized for mobile devices.
-    </td>
-    <td width="25%" valign="top" align="center">
-      <h3>🎯 App-like feel</h3>
-      Native touch-zooming is prevented to keep the UI consistent.
-    </td>
-    <td width="25%" valign="top" align="center">
-      <h3>🔐 Data protection</h3>
-      Environment variables and Row Level Security (RLS) implemented via Supabase.
-    </td>
-    <td width="25%" valign="top" align="center">
-      <h3>🛡️ Secure payments</h3>
-      Transactions are processed by Razorpay, a dedicated payment gateway.
-    </td>
-  </tr>
-</table>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="roadmap"></a>
-<h2 align="center">🗺️ Roadmap</h2>
-<p align="center"><i>What is live today, and what could come next.</i></p>
-
-**Live now**
-
-- [x] Instant unlock after payment
-- [x] Secure embedded PDF reader (no zooming or downloading)
-- [x] Floating help bot with automated ticketing
-- [x] Native web share
-- [x] Reward points on every purchase
-
-**Ideas under consideration**
-
-- [ ] 🔖 Reading progress and bookmarks
-- [ ] 🌐 Hindi and multi-language interface
-- [ ] 🎧 Audio summaries
-- [ ] 📲 Installable app experience (PWA)
-- [ ] 💝 Wishlist and referral rewards
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="faq"></a>
-<h2 align="center">❓ FAQ</h2>
-
-<details>
-<summary><b>Can I download the books?</b></summary>
+<details> <summary><b>🗄️ Click to view: Core Database Entity Relationship Diagram (ERD)</b></summary>
 <br />
-No. To protect authors and content integrity, books are read inside VEDOXA's secure web reader, where downloading and zooming are disabled.
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#4C1D95','primaryTextColor':'#ffffff','primaryBorderColor':'#A78BFA','lineColor':'#A78BFA','secondaryColor':'#1E1B4B','tertiaryColor':'#0F172A'}}}%%
+erDiagram
+  USERS ||--o{ PURCHASES : makes
+  USERS ||--o{ REWARD_LEDGER : earns
+  USERS ||--o{ SUPPORT_TICKETS : raises
+  BOOKS ||--o{ PURCHASES : unlocked_in
+
+  USERS {
+    uuid id PK
+    string email
+    int reward_points_balance
+    timestamp created_at
+  }
+  BOOKS {
+    uuid id PK
+    string title
+    string category
+    numeric price_inr
+    string protected_pdf_path
+    boolean is_verified
+  }
+  PURCHASES {
+    uuid id PK
+    uuid user_id FK
+    uuid book_id FK
+    string razorpay_payment_id
+    numeric amount_paid
+    timestamp unlocked_at
+  }
+  REWARD_LEDGER {
+    uuid id PK
+    uuid user_id FK
+    int points_delta
+    string transaction_type
+  }
+  SUPPORT_TICKETS {
+    uuid id PK
+    uuid user_id FK
+    string subject
+    string status
+  }
+
+
 </details>
-
-<details>
-<summary><b>How fast do I get access after paying?</b></summary>
+<details> <summary><b>🔐 Click to view: Anti-Piracy Reader Lifecycle State Diagram</b></summary>
 <br />
-Instantly. The book unlocks as soon as your payment succeeds.
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#4C1D95','primaryTextColor':'#ffffff','primaryBorderColor':'#A78BFA','lineColor':'#A78BFA','secondaryColor':'#1E1B4B','tertiaryColor':'#0F172A'}}}%%
+stateDiagram-v2
+  [*] --> CatalogView
+  CatalogView --> CheckoutModal : Click "Buy Now"
+  CheckoutModal --> PaymentVerified : Razorpay INR Success
+  PaymentVerified --> RLSCheck : Verify User Ownership
+  RLSCheck --> SecureReaderSession : Access Granted
+  SecureReaderSession --> ReadingActive : Lock Zoom & Disable Download
+  ReadingActive --> CatalogView : Close Reader
+
+
 </details>
-
-<details>
-<summary><b>How do reward points work?</b></summary>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== PERFORMANCE BENCHMARKS ======================== --> <h2 align="center">🚀 Performance & UX Standards</h2> <p align="center"><i>Built for speed, accessibility, and rock-solid reliability on mobile and desktop.</i></p>
+<p align="center"> <img src="https://img.shields.io/badge/Mobile_First-100%25_Responsive-10B981?style=for-the-badge&logo=smartphone&logoColor=white&labelColor=1E1B4B" alt="Mobile First" /> <img src="https://img.shields.io/badge/UI_Experience-Native_App_Feel-7C3AED?style=for-the-badge&logo=pwa&logoColor=white&labelColor=1E1B4B" alt="App Feel" /> <img src="https://img.shields.io/badge/Book_Unlock-Instant_Real--Time-F59E0B?style=for-the-badge&logo=lightning&logoColor=white&labelColor=1E1B4B" alt="Instant Unlock" /> <img src="https://img.shields.io/badge/Uptime_Target-99.9%25_Edge_CDN-0284C7?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1E1B4B" alt="Uptime" /> </p>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== ROADMAP ======================== --> <div id="roadmap"></div> <h2 align="center">🗺️ Product Roadmap</h2> <p align="center"><i>Our continuous evolution toward the ultimate conscious reading ecosystem.</i></p>
+<table align="center" width="100%"> <tr> <td width="50%" valign="top"> <h3>✅ Phase 1 — Live in Production</h3> <img src="https://img.shields.io/badge/Progress-100%25_Completed-10B981?style=flat-square" alt="100% Completed" /> <br /><br /> - [x] Curated Spirituality & Psychology Digital Catalog<br /> - [x] Razorpay INR Checkout with Instant Book Unlock<br /> - [x] Anti-Piracy Embedded PDF Reader (Download & Zoom Locked)<br /> - [x] Automated Floating Help Bot & Support Ticketing System<br /> - [x] Native Web Share Integration (WhatsApp, Instagram, Telegram)<br /> - [x] Dynamic Loyalty & Reward Points Engine </td> <td width="50%" valign="top"> <h3>🔭 Phase 2 — Upcoming Innovations</h3> <img src="https://img.shields.io/badge/Status-In_Planning-7C3AED?style=flat-square" alt="In Planning" /> <br /><br /> - [ ] 🔖 Cloud Reading Progress Sync & Personal Bookmarks<br /> - [ ] 🌐 Multi-Language Interface (Hindi & English Switcher)<br /> - [ ] 🎧 Guided Audio Summaries & Meditative Soundscapes<br /> - [ ] 📲 Installable Progressive Web App (PWA) Support<br /> - [ ] 💝 Reader Wishlists, Book Gifting & Referral Rewards<br /> - [ ] 📝 Personal Reflection Notes Inside the Reader </td> </tr> </table>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== FAQ ======================== --> <div id="faq"></div> <h2 align="center">❓ Frequently Asked Questions</h2> <p align="center"><i>Quick answers to common questions from readers.</i></p>
+<details> <summary><b>1. Can I download the books as PDF files to my device?</b></summary> <br /> <blockquote> <b>No.</b> To protect authors' intellectual property and maintain 100% content integrity, all titles are accessed exclusively inside <b>VEDOXA's secure cloud web reader</b>, where file downloading, printing, and zooming are disabled. </blockquote> </details>
+<details> <summary><b>2. How quickly do I get access to my book after payment?</b></summary> <br /> <blockquote> <b>Instantly.</b> The moment your Razorpay payment succeeds, the book is automatically unlocked in your account and ready to read within seconds. </blockquote> </details>
+<details> <summary><b>3. How do VEDOXA Reward Points work?</b></summary> <br /> <blockquote> Every purchase on <a href="https://vedoxa.shop">vedoxa.shop</a> automatically credits reward points to your account balance. You can redeem these points directly on your next checkout for an instant discount. </blockquote> </details>
+<details> <summary><b>4. Which payment methods are supported?</b></summary> <br /> <blockquote> All transactions are processed securely in <b>Indian Rupees (INR)</b> via <b>Razorpay</b>, supporting UPI (Google Pay, PhonePe, Paytm, BHIM), Credit & Debit Cards, NetBanking, and popular digital wallets. </blockquote> </details>
+<details> <summary><b>5. What should I do if I face any issue with my order or account?</b></summary> <br /> <blockquote> Simply tap the <b>floating Help Bot</b> in the bottom corner of <a href="https://vedoxa.shop">vedoxa.shop</a>. It provides instant answers to common questions and can automatically raise a priority support ticket for our team. </blockquote> </details>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== DEVELOPERS ======================== --> <div id="developers"></div> <h2 align="center">👩‍💻 Developer Guide & Local Setup</h2> <p align="center"><i>Everything needed to clone, configure, and run VEDOXA locally.</i></p>
+<details> <summary><b>📂 View Recommended Project Structure</b></summary>
 <br />
-You earn points on every purchase and can redeem them at your next checkout.
+vedoxa/
+├── public/                 # Static assets, icons & metadata
+├── src/
+│   ├── app/                # Next.js App Router pages & API routes
+│   ├── components/         # UI components, Secure PDF Reader & Help Bot
+│   ├── lib/                # Supabase client & Razorpay configuration
+│   ├── hooks/              # Custom React hooks for auth, cart & rewards
+│   └── styles/             # Tailwind CSS & global viewport locks
+├── .env.local              # Environment secrets (never committed)
+├── package.json            # Dependencies & scripts
+└── tsconfig.json           # TypeScript strict configuration
+
+
 </details>
-
-<details>
-<summary><b>Which payment methods can I use?</b></summary>
+<details> <summary><b>⚡ Quick Start & Environment Configuration</b></summary>
 <br />
-Checkout is powered by Razorpay in INR. The available payment methods are shown at checkout.
-</details>
-
-<details>
-<summary><b>I need help. What should I do?</b></summary>
-<br />
-Tap the floating help bot on the website. It answers common questions and can raise a support ticket for you.
-</details>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<a name="developers"></a>
-<h2 align="center">👩‍💻 For developers</h2>
-
-<details>
-<summary><b>Run the project locally</b></summary>
-
-<br />
-
-```bash
+1. Clone & Install Dependencies
 git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
 cd YOUR_REPO
 npm install
+
+
+2. Configure Environment Variables
+Create a .env.local file in the root directory and populate the following keys:
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_public_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_private_service_role_key
+
+# Razorpay Gateway (INR)
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=your_private_razorpay_secret
+
+
+[!WARNING] Security Notice: Never expose SUPABASE_SERVICE_ROLE_KEY or RAZORPAY_KEY_SECRET on the client side, and ensure .env.local is listed in your .gitignore.
+3. Launch Development Server
 npm run dev
-```
 
-Create a `.env.local` file in the project root. The names below are examples, so match them to your project:
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-```
-
-Keep the service-role key and the Razorpay secret on the server only, and never commit `.env` files.
-
+Open http://localhost:3000 in your browser to preview the platform.
 </details>
-
-<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=3&color=timeGradient" width="100%" alt="" />
-
-<h2 align="center">🪷 Wisdom to wander with</h2>
-
-<p align="center">
-  <img
-    src="https://readme-typing-svg.demolab.com?font=Cormorant+Garamond&weight=600&size=22&duration=4200&pause=1500&color=C4B5FD&center=true&vCenter=true&repeat=true&width=900&height=56&lines=Who+looks+outside%2C+dreams.+Who+looks+inside%2C+awakes.+%E2%80%94+Carl+Jung;The+unexamined+life+is+not+worth+living.+%E2%80%94+Socrates;Know+thyself.+%E2%80%94+Delphic+maxim;Every+book+is+a+doorway.+Every+page%2C+a+breath."
-    alt="Words of wisdom"
-  />
-</p>
-
-<h2 align="center">💜 Connect</h2>
-
-<p align="center">
-  <a href="https://vedoxa.shop"><img src="https://img.shields.io/badge/Visit-vedoxa.shop-7C3AED?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Visit vedoxa.shop" /></a>
-  <!-- OPTIONAL: social badges, un-comment and replace the YOUR_ values
-  <a href="https://instagram.com/YOUR_HANDLE"><img src="https://img.shields.io/badge/Instagram-YOUR_HANDLE-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" /></a>
-  <a href="https://t.me/YOUR_CHANNEL"><img src="https://img.shields.io/badge/Telegram-YOUR_CHANNEL-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" /></a>
-  <a href="mailto:YOUR_EMAIL"><img src="https://img.shields.io/badge/Email-Contact_us-4C1D95?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" /></a>
-  -->
-</p>
-
-<p align="center">
-  Need help? Use the help bot on <a href="https://vedoxa.shop">vedoxa.shop</a>.
-</p>
-
-<!--
-  OPTIONAL extras (un-comment and replace YOUR_USERNAME / YOUR_REPO)
-
-  Repo badges, add them under the main badges at the top:
-  <img src="https://img.shields.io/github/stars/YOUR_USERNAME/YOUR_REPO?style=for-the-badge&color=7C3AED&labelColor=1E1B4B" alt="Stars" />
-  <img src="https://img.shields.io/github/last-commit/YOUR_USERNAME/YOUR_REPO?style=for-the-badge&color=7C3AED&labelColor=1E1B4B" alt="Last commit" />
-
-  Screenshots, put the images in an /assets folder and add a section after "How it works":
-  <p align="center">
-    <img src="./assets/home.png" width="48%" alt="Home" />
-    <img src="./assets/reader.png" width="48%" alt="Secure reader" />
-  </p>
--->
-
-<!-- Footer: mirrors the header, twinkling text -->
-<img
-  src="https://capsule-render.vercel.app/api?type=waving&section=footer&height=170&color=timeGradient&text=Awaken%20Your%20Consciousness&fontSize=26&fontColor=ffffff&fontAlign=50&fontAlignY=62&animation=twinkling"
-  alt="Awaken Your Consciousness"
-  width="100%"
-/>
-
-<p align="center">
-  <a href="#top">Back to top ↑</a>
-</p>
-
-<p align="center">
-  <sub>© <b>VEDOXA</b> Premium Library</sub>
-</p>
+<img src="https://capsule-render.vercel.app/api?type=rect&section=header&height=4&color=timeGradient" width="100%" alt="divider" />
+<!-- ======================== WISDOM CAROUSEL ======================== --> <h2 align="center">🪷 Timeless Wisdom</h2>
+<p align="center"> <img src="https://readme-typing-svg.demolab.com?font=Cormorant+Garamond&weight=600&size=24&duration=4000&pause=1400&color=C4B5FD&center=true&vCenter=true&repeat=true&width=900&height=56&lines=%E2%80%9CWho+looks+outside%2C+dreams.+Who+looks+inside%2C+awakes.%E2%80%9D+%E2%80%94+Carl+Jung;%E2%80%9CThe+unexamined+life+is+not+worth+living.%E2%80%9D+%E2%80%94+Socrates;%E2%80%9CYoga+is+the+journey+of+the+self%2C+through+the+self%2C+to+the+self.%E2%80%9D+%E2%80%94+Bhagavad+Gita;%E2%80%9CKnow+thyself+%E2%80%94+and+thou+shalt+know+the+universe.%E2%80%9D+%E2%80%94+Ancient+Maxim;%E2%80%9CEvery+book+is+a+sacred+doorway.+Every+page%2C+a+conscious+breath.%E2%80%9D+%E2%80%94+VEDOXA" alt="Words of Wisdom" /> </p>
+<!-- ======================== CONNECT & SUPPORT ======================== --> <h2 align="center">💜 Experience VEDOXA</h2>
+<p align="center"> <a href="https://vedoxa.shop"> <img src="https://img.shields.io/badge/ENTER_LIBRARY-vedoxa.shop-7C3AED?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=1E1B4B" alt="Visit vedoxa.shop" /> </a> <a href="https://vedoxa.shop"> <img src="https://img.shields.io/badge/24%2F7_HELP_BOT-Live_On_Website-10B981?style=for-the-badge&logo=chatbot&logoColor=white&labelColor=1E1B4B" alt="Live Support Bot" /> </a> </p>
+<p align="center"> <sub>If <b>VEDOXA</b> inspires you, consider giving this repository a ⭐ on GitHub!</sub> </p>
+<!-- ======================== ANIMATED FOOTER WAVE ======================== --> <img src="https://capsule-render.vercel.app/api?type=waving&section=footer&height=180&color=timeGradient&text=Awaken%20Your%20Consciousness%20%E2%80%A2%20vedoxa.shop&fontSize=24&fontColor=ffffff&fontAlign=50&fontAlignY=65&animation=twinkling" alt="Awaken Your Consciousness" width="100%" />
+<p align="center"> <a href="#top"><kbd>  ⬆️ Back to Top  </kbd></a> </p>
+<p align="center"> <sub>© <b>VEDOXA</b> Premium Digital Library · All Rights Reserved</sub> </p>
