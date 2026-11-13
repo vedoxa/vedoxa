@@ -15,6 +15,62 @@ import BlogManager from "../../components/admin/BlogManager";
 import SeoTools from "../../components/admin/SeoTools";
 import SalesInsights from "../../components/admin/SalesInsights";
 
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const HINDI_MAP = {
+  अ: "a", आ: "aa", इ: "i", ई: "ee", उ: "u", ऊ: "oo", ऋ: "ri", ए: "e", ऐ: "ai", ओ: "o", औ: "au", अं: "an", अः: "ah",
+  क: "k", ख: "kh", ग: "g", घ: "gh", ङ: "n", च: "ch", छ: "chh", ज: "j", झ: "jh", ञ: "n",
+  ट: "t", ठ: "th", ड: "d", ढ: "dh", ण: "n", त: "t", थ: "th", द: "d", ध: "dh", न: "n",
+  प: "p", फ: "ph", ब: "b", भ: "bh", म: "m", य: "y", र: "r", ल: "l", व: "v", श: "sh", ष: "sh", स: "s", ह: "h",
+  क्ष: "ksh", त्र: "tr", ज्ञ: "gya", श्र: "shr", ड़: "d", ढ़: "dh", क़: "q", ख़: "kh", ग़: "gh", ज़: "z", फ़: "f",
+  "ा": "a", "ि": "i", "ी": "ee", "ु": "u", "ू": "oo", "ृ": "ri", "े": "e", "ै": "ai", "ो": "o", "ौ": "au",
+  "ं": "n", "ँ": "n", "ः": "h", "्": "", "़": "",
+  "०": "0", "१": "1", "२": "2", "३": "3", "४": "4", "५": "5", "६": "6", "७": "7", "८": "8", "९": "9",
+};
+
+function transliterateToRoman(input) {
+  const str = String(input || "");
+  if (!/[\u0900-\u097F]/.test(str)) return str;
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    const next = str[i + 1] || "";
+    if (HINDI_MAP[ch + next] !== undefined) { out += HINDI_MAP[ch + next]; i++; continue; }
+    if (HINDI_MAP[ch] !== undefined) {
+      const val = HINDI_MAP[ch];
+      const isConsonant = ch >= "क" && ch <= "ह";
+      const nextIsVowelSign = next >= "ा" && next <= "्";
+      const nextIsSpaceOrEnd = !next || /[\s.,!?:;'"()\-–—/]/.test(next);
+      out += isConsonant && !nextIsVowelSign && !nextIsSpaceOrEnd ? val + "a" : val;
+    } else { out += ch; }
+  }
+  return out;
+}
+
+function slugifyBookTitle(text) {
+  const roman = transliterateToRoman(text);
+  return String(roman || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 65)
+    .replace(/-+$/, "");
+}
+
+function isRandomBookId(val) {
+  if (!val) return true;
+  const v = String(val).trim();
+  return /^(book|post|article)-[a-f0-9]{6,}$/i.test(v) || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v);
+}
+
+function getBookSlug(b) {
+  if (!b) return "";
+  const raw = b.slug ? String(b.slug).trim() : "";
+  if (raw && !isRandomBookId(raw) && SLUG_RE.test(raw)) return raw;
+  const fromTitle = slugifyBookTitle(b.title);
+  if (fromTitle && SLUG_RE.test(fromTitle)) return fromTitle;
+  return raw || String(b.id || "");
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy-url.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key";
 const lookerStudioUrl = process.env.NEXT_PUBLIC_LOOKER_STUDIO_URL || "";
@@ -51,6 +107,8 @@ export default function PremiumAdminDashboard() {
   // BOOK MANAGEMENT
   const [books, setBooks] = useState([]);
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("VEDOXA");
   const [pages, setPages] = useState("");
@@ -58,6 +116,7 @@ export default function PremiumAdminDashboard() {
   const [tags, setTags] = useState("");
   const [basePrice, setBasePrice] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const hasSyncedBookSlugsRef = useRef(false);
   
   // STATS CONTROL
   const [bookViews, setBookViews] = useState(0);
@@ -177,6 +236,53 @@ export default function PremiumAdminDashboard() {
       fetchBookReviews(books[0].id);
     }
   }, [books]);
+
+  // Automatic Background Slug Sync for Old Books (Runs Once on Load)
+  useEffect(() => {
+    if (!isAuthenticated || !books || books.length === 0 || hasSyncedBookSlugsRef.current) return;
+    hasSyncedBookSlugsRef.current = true;
+
+    const syncMissingBookSlugs = async () => {
+      const usedSlugs = new Set(
+        books
+          .filter(b => b.slug && !isRandomBookId(b.slug) && SLUG_RE.test(String(b.slug).trim()))
+          .map(b => String(b.slug).trim())
+      );
+
+      const booksNeedingSlug = books.filter(b => !b.slug || isRandomBookId(b.slug));
+      if (booksNeedingSlug.length === 0) return;
+
+      const updatedMap = {};
+      for (const b of booksNeedingSlug) {
+        let baseSlug = slugifyBookTitle(b.title);
+        if (!baseSlug) continue;
+        let finalSlug = baseSlug;
+        if (usedSlugs.has(finalSlug)) {
+          const suffix = String(b.id || "").replace(/[^a-z0-9]/gi, "").slice(-3).toLowerCase() || Date.now().toString(36).slice(-3);
+          finalSlug = `baseSlug-{suffix}`;
+        }
+        usedSlugs.add(finalSlug);
+
+        try {
+          const { error } = await supabase
+            .from('books')
+            .update({ slug: finalSlug })
+            .eq('id', b.id);
+          if (!error) {
+            updatedMap[b.id] = finalSlug;
+          }
+        } catch (err) {
+          console.log("Background slug sync skipped for book:", b.id, err);
+        }
+      }
+
+      if (Object.keys(updatedMap).length > 0) {
+        setBooks(prev => prev.map(b => updatedMap[b.id] ? { ...b, slug: updatedMap[b.id] } : b));
+      }
+    };
+
+    syncMissingBookSlugs();
+  }, [books, isAuthenticated]);
 
   // Helper for custom Royal Confirmation Dialog
   const askConfirmation = (title, message, onConfirmCallback) => {
@@ -351,7 +457,7 @@ if (adminErr || isAdminOk !== true) {
     try {
       if (coverFile) {
         setUploadStatus("🖼️ Uploading Cover Image...");
-        coverFileName = `${Date.now()}-cover-${Math.random().toString(36).substring(2)}.${coverFile.name.split('.').pop()}`;
+        coverFileName = `Date.now()-cover-{Math.random().toString(36).substring(2)}.${coverFile.name.split('.').pop()}`;
         const { error: coverError } = await supabase.storage
           .from('books-covers')
           .upload(coverFileName, coverFile);
@@ -371,9 +477,18 @@ if (adminErr || isAdminOk !== true) {
 
       setUploadStatus("✅ Saving details...");
 
+      let finalCleanSlug = slugifyBookTitle(slug && !isRandomBookId(slug) ? slug : title) || slugifyBookTitle(title);
+      const duplicateExists = books.some(
+        b => String(b.id) !== String(editingBookId || "") && (b.slug === finalCleanSlug || getBookSlug(b) === finalCleanSlug)
+      );
+      if (duplicateExists && finalCleanSlug) {
+        finalCleanSlug = `${finalCleanSlug}-${Date.now().toString(36).slice(-3)}`;
+      }
+
       const finalPrice = basePrice - (basePrice * discount / 100);
       const bookData = {
         title,
+        slug: finalCleanSlug,
         description,
         author,
         pages: pages ? Number(pages) : null,
@@ -393,11 +508,31 @@ if (adminErr || isAdminOk !== true) {
 
       let dbError;
       if (editingBookId) {
-        const { error } = await supabase.from('books').update(bookData).eq('id', editingBookId);
+        let { error } = await supabase.from('books').update(bookData).eq('id', editingBookId);
+        if (error && error.code === '23505') {
+          const retrySlug = `${finalCleanSlug}-${Date.now().toString(36).slice(-3)}`;
+          const retryRes = await supabase.from('books').update({ ...bookData, slug: retrySlug }).eq('id', editingBookId);
+          error = retryRes.error;
+        }
+        if (error) {
+          const { slug: _omitSlug, ...fallbackData } = bookData;
+          const fallbackRes = await supabase.from('books').update(fallbackData).eq('id', editingBookId);
+          error = fallbackRes.error;
+        }
         dbError = error;
       } else {
         bookData.created_at = new Date().toISOString();
-        const { error } = await supabase.from('books').insert([bookData]);
+        let { error } = await supabase.from('books').insert([bookData]);
+        if (error && error.code === '23505') {
+          const retrySlug = `${finalCleanSlug}-${Date.now().toString(36).slice(-3)}`;
+          const retryRes = await supabase.from('books').insert([{ ...bookData, slug: retrySlug }]);
+          error = retryRes.error;
+        }
+        if (error) {
+          const { slug: _omitSlug, ...fallbackData } = bookData;
+          const fallbackRes = await supabase.from('books').insert([fallbackData]);
+          error = fallbackRes.error;
+        }
         dbError = error;
       }
 
@@ -493,6 +628,9 @@ if (adminErr || isAdminOk !== true) {
 
   const handleEditBookClick = (book) => {
     setTitle(book.title || "");
+    const existingCleanSlug = book.slug && !isRandomBookId(book.slug) ? String(book.slug).trim() : "";
+    setSlug(existingCleanSlug || slugifyBookTitle(book.title || ""));
+    setSlugManuallyEdited(Boolean(existingCleanSlug));
     setDescription(book.description || "");
     setAuthor(book.author || "VEDOXA");
     setPages(book.pages || "");
@@ -510,6 +648,8 @@ if (adminErr || isAdminOk !== true) {
 
   const resetBookForm = () => {
     setTitle("");
+    setSlug("");
+    setSlugManuallyEdited(false);
     setDescription("");
     setAuthor("VEDOXA");
     setPages("");
@@ -863,7 +1003,8 @@ if (adminErr || isAdminOk !== true) {
   // ==========================================
   const filteredBooks = books.filter(b =>
     b.title?.toLowerCase().includes(bookSearch.toLowerCase()) ||
-    b.author?.toLowerCase().includes(bookSearch.toLowerCase())
+    b.author?.toLowerCase().includes(bookSearch.toLowerCase()) ||
+    getBookSlug(b)?.toLowerCase().includes(bookSearch.toLowerCase())
   );
 
   const filteredDiscounts = discounts.filter(d =>
@@ -1403,18 +1544,30 @@ if (adminErr || isAdminOk !== true) {
                       <button onClick={() => setActiveTab("books")} className="text-[11px] text-amber-400 hover:underline">View All</button>
                     </div>
                     <div className="space-y-2.5">
-                      {books.slice(0, 4).map(book => (
-                        <div key={book.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#131A29] border border-slate-800/70">
-                          <div className="min-w-0 pr-2">
-                            <p className="text-xs font-bold text-white truncate">{book.title}</p>
-                            <p className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                              <span>👁️ {book.views || 0}</span>
-                              <span>❤️ {book.likes || 0}</span>
-                            </p>
+                      {books.slice(0, 4).map(book => {
+                        const cleanSlug = getBookSlug(book);
+                        return (
+                          <div key={book.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#131A29] border border-slate-800/70">
+                            <div className="min-w-0 pr-2">
+                              <a
+                                href={`/book/${cleanSlug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-white hover:text-amber-300 truncate block transition"
+                                title={`/book/${cleanSlug}`}
+                              >
+                                {book.title}
+                              </a>
+                              <p className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                <span>👁️ {book.views || 0}</span>
+                                <span>❤️ {book.likes || 0}</span>
+                                <span className="text-[10px] text-slate-500 truncate">/book/{cleanSlug}</span>
+                              </p>
+                            </div>
+                            <span className="text-xs font-black text-emerald-400 shrink-0">₹{book.final_price || book.base_price}</span>
                           </div>
-                          <span className="text-xs font-black text-emerald-400 shrink-0">₹{book.final_price || book.base_price}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                       {books.length === 0 && (
                         <p className="text-xs text-slate-500 text-center py-4">No books published yet.</p>
                       )}
@@ -1731,14 +1884,14 @@ if (adminErr || isAdminOk !== true) {
                   <h2 className="text-xl font-black text-white flex items-center gap-2">
                     <BookOpen className="text-amber-400" size={20} /> Royal Book Vault
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Manage digital editions, pricing, PDFs, and social proof.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Manage digital editions, pricing, SEO slugs, PDFs, and social proof.</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
                     <input
                       type="text"
-                      placeholder="Search books..."
+                      placeholder="Search books or slugs..."
                       value={bookSearch}
                       onChange={(e) => setBookSearch(e.target.value)}
                       className="bg-[#141C2B] border border-slate-800 focus:border-amber-400 rounded-xl pl-9 pr-4 py-2 text-xs text-white outline-none"
@@ -1774,12 +1927,58 @@ if (adminErr || isAdminOk !== true) {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">Title *</label>
-                          <input value={title} onChange={(e) => setTitle(e.target.value)} type="text" className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
+                          <input
+                            value={title}
+                            onChange={(e) => {
+                              const nextTitle = e.target.value;
+                              setTitle(nextTitle);
+                              if (!slugManuallyEdited) {
+                                setSlug(slugifyBookTitle(nextTitle));
+                              }
+                            }}
+                            type="text"
+                            className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none"
+                          />
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">Author</label>
                           <input value={author} onChange={(e) => setAuthor(e.target.value)} type="text" className="w-full bg-[#141C2B] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none" />
                         </div>
+                      </div>
+
+                      {/* SEO Book URL Slug Input Field & Auto-Slug Generator */}
+                      <div className="bg-[#131A29] p-4 rounded-2xl border border-amber-500/25">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-bold text-amber-300 uppercase">
+                            Book URL Slug (`/book/...`)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSlug(slugifyBookTitle(title));
+                              setSlugManuallyEdited(false);
+                            }}
+                            className="text-[11px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+                          >
+                            <Sparkles size={12} /> ✨ Auto Slug
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-400 font-mono shrink-0 hidden sm:inline">https://vedoxa.shop/book/</span>
+                          <input
+                            value={slug}
+                            onChange={(e) => {
+                              setSlug(slugifyBookTitle(e.target.value));
+                              setSlugManuallyEdited(true);
+                            }}
+                            type="text"
+                            placeholder={slugifyBookTitle(title) || "clean-book-title-slug"}
+                            className="w-full bg-[#0B0F19] border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2 text-xs font-mono text-amber-300 outline-none"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1.5">
+                          Live Public URL: <span className="text-emerald-400 font-mono">https://vedoxa.shop/book/{slug || slugifyBookTitle(title) || "book-slug"}</span>
+                        </p>
                       </div>
 
                       <div>
@@ -1937,84 +2136,117 @@ if (adminErr || isAdminOk !== true) {
 
               {/* Books Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredBooks.map(book => (
-                  <div key={book.id} className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/40 rounded-2xl p-5 transition flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start gap-3 mb-3.5">
-                        <div className="flex gap-3.5 min-w-0">
-                          <div className="w-14 h-20 bg-[#141C2B] rounded-xl shrink-0 flex items-center justify-center border border-slate-800 overflow-hidden">
-                            {book.cover_path ? (
-                              <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${supabaseUrl}/storage/v1/object/public/books-covers/${book.cover_path})` }}></div>
-                            ) : (
-                              <BookOpen size={20} className="text-slate-600" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="font-bold text-white text-sm line-clamp-2">{book.title}</h3>
-                            <p className="text-[11px] text-amber-400/90 mt-0.5">by {book.author}</p>
-                            <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-2">
-                              <span>👁️ {book.views || 0}</span>
-                              <span>❤️ {book.likes || 0}</span>
-                              <span>📄 {book.pages || "—"}p</span>
+                {filteredBooks.map(book => {
+                  const cleanBookSlug = getBookSlug(book);
+                  const publicBookPath = `/book/${cleanBookSlug}`;
+                  return (
+                    <div key={book.id} className="bg-[#0E131F] border border-slate-800/90 hover:border-amber-500/40 rounded-2xl p-5 transition flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start gap-3 mb-3.5">
+                          <div className="flex gap-3.5 min-w-0">
+                            <div className="w-14 h-20 bg-[#141C2B] rounded-xl shrink-0 flex items-center justify-center border border-slate-800 overflow-hidden">
+                              {book.cover_path ? (
+                                <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(supabaseUrl/storage/v1/object/public/books-covers/{book.cover_path})` }}></div>
+                              ) : (
+                                <BookOpen size={20} className="text-slate-600" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-white text-sm line-clamp-2">{book.title}</h3>
+                              <p className="text-[11px] text-amber-400/90 mt-0.5">by {book.author}</p>
+                              <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-2">
+                                <span>👁️ {book.views || 0}</span>
+                                <span>❤️ {book.likes || 0}</span>
+                                <span>📄 {book.pages || "—"}p</span>
+                              </div>
                             </div>
                           </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={publicBookPath}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition"
+                              title={`Open ${publicBookPath}`}
+                            >
+                              <ExternalLink size={16} />
+                            </a>
+                            <button
+                              onClick={() => copyToClipboard(`https://vedoxa.shop${publicBookPath}`, "Book Link")}
+                              className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition"
+                              title="Copy Clean Book URL"
+                            >
+                              <Copy size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedReviewBookId(book.id);
+                                fetchBookReviews(book.id);
+                                setActiveTab("reviews");
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
+                              title="Manage Reviews & Stars"
+                            >
+                              <Star size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleEditBookClick(book)}
+                              className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition"
+                              title="Edit Book"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBook(book.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                              title="Delete Book"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="mb-3 flex items-center justify-between gap-2 bg-[#131A29] px-3 py-1.5 rounded-xl border border-slate-800/80">
+                          <span className="text-[11px] font-mono text-slate-400 truncate" title={publicBookPath}>
+                            {publicBookPath}
+                          </span>
                           <button
-                            onClick={() => {
-                              setSelectedReviewBookId(book.id);
-                              fetchBookReviews(book.id);
-                              setActiveTab("reviews");
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
-                            title="Manage Reviews & Stars"
+                            type="button"
+                            onClick={() => copyToClipboard(`https://vedoxa.shop${publicBookPath}`, "Book URL")}
+                            className="text-[10px] font-bold text-amber-300 hover:underline shrink-0"
                           >
-                            <Star size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleEditBookClick(book)}
-                            className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition"
-                            title="Edit Book"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBook(book.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                            title="Delete Book"
-                          >
-                            <Trash2 size={16} />
+                            Copy URL
                           </button>
                         </div>
+
+                        <p className="text-xs text-slate-400 line-clamp-2 mb-4">{book.description || "No description provided."}</p>
                       </div>
 
-                      <p className="text-xs text-slate-400 line-clamp-2 mb-4">{book.description || "No description provided."}</p>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-emerald-400">₹{book.final_price || book.base_price}</span>
-                        {book.discount > 0 && (
-                          <>
-                            <span className="text-xs line-through text-slate-500">₹{book.base_price}</span>
-                            <span className="text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded font-bold">{book.discount}% OFF</span>
-                          </>
-                        )}
+                      <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-black text-emerald-400">₹{book.final_price || book.base_price}</span>
+                          {book.discount > 0 && (
+                            <>
+                              <span className="text-xs line-through text-slate-500">₹{book.base_price}</span>
+                              <span className="text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded font-bold">{book.discount}% OFF</span>
+                            </>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedReviewBookId(book.id);
+                            fetchBookReviews(book.id);
+                            setActiveTab("reviews");
+                          }}
+                          className="text-[11px] font-semibold text-amber-300 hover:underline flex items-center gap-1"
+                        >
+                          <Star size={12} className="fill-amber-400 text-amber-400" /> Add Review
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          setSelectedReviewBookId(book.id);
-                          fetchBookReviews(book.id);
-                          setActiveTab("reviews");
-                        }}
-                        className="text-[11px] font-semibold text-amber-300 hover:underline flex items-center gap-1"
-                      >
-                        <Star size={12} className="fill-amber-400 text-amber-400" /> Add Review
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -2634,4 +2866,4 @@ if (adminErr || isAdminOk !== true) {
       </div>
     </div>
   );
-  }
+}
