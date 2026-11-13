@@ -9,8 +9,10 @@ import ArticleContent, { CopyLinkButton } from '../../../components/blog/Article
 import NativeShareButton from '../../../components/blog/NativeShareButton'
 import { Icon, LogoMark, type IconName } from '../../../components/blog/Icon'
 
-// Keep this equal to your primary domain in Vercel (www or non-www) and to your layout/sitemap.
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vedoxa.shop').replace(/\/+$/, '')
+// FIX 1: Sitemap, layout aur Search Console ke saath 100% same non-www URL rakha gaya hai
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://vedoxa.shop')
+  .replace('://www.vedoxa.shop', '://vedoxa.shop')
+  .replace(/\/+$/, '')
 const SITE_NAME = 'Vedoxa Premium Library'
 
 export const revalidate = 600
@@ -44,7 +46,7 @@ type PostLink = { slug: string; title: string }
 const BOOK_COLS = 'id, slug, title, cover_path, final_price'
 const RELATED_COLS = 'slug, title, description, cover_image, category, published_at'
 
-/* ───────────────────────────── Data helpers ───────────────────────────── */
+/* ───────────────────────────── Data & Slug helpers ───────────────────────────── */
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -61,6 +63,38 @@ type Supa = NonNullable<ReturnType<typeof getSupabase>>
 // PostgREST "or" filter: post is live when it has no publish date or the date has passed
 function liveOr() {
   return `published_at.is.null,published_at.lte.${new Date().toISOString()}`
+}
+
+// FIX 2: Title ko SEO-friendly URL slug mein badalne ka smart helper (Hindi + English support)
+function slugifyText(input?: string | null): string {
+  if (!input) return ''
+  return String(input)
+    .toLowerCase()
+    .trim()
+    .replace(/['"“”‘’`~!@#$%^&*()+=[\]{};:\\|,.<>/?]+/g, ' ')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+// Check karta hai ki slug kahin 'book-2dbcc52d' jaisa random auto-generated ID toh nahi hai
+function isRandomBookId(value?: string | null): boolean {
+  if (!value) return true
+  const v = String(value).trim()
+  return /^book-[a-f0-9]{6,}$/i.test(v) || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v)
+}
+
+// Book ke link ke liye hamesha Book ka clean naam (slug) deta hai
+function getBookSlug(b: Book): string {
+  const rawSlug = b.slug ? String(b.slug).trim() : ''
+  if (rawSlug && !isRandomBookId(rawSlug)) {
+    return rawSlug
+  }
+  const fromTitle = slugifyText(b.title)
+  if (fromTitle) {
+    return fromTitle
+  }
+  return rawSlug || String(b.id)
 }
 
 function bookCoverUrl(coverPath?: string | null) {
@@ -137,10 +171,11 @@ function parseTags(value: unknown): string[] {
 
 function extractBookKeys(content: string): string[] {
   const keys: string[] = []
-  const re = /\/book\/([A-Za-z0-9_-]+)/g
+  const re = /\/book\/([^\s)"']+)/g
   let m: RegExpExecArray | null
   while ((m = re.exec(content || '')) !== null) {
-    if (!keys.includes(m[1])) keys.push(m[1])
+    const cleanKey = safeDecode(m[1]).replace(/\/+$/, '')
+    if (cleanKey && !keys.includes(cleanKey)) keys.push(cleanKey)
   }
   return keys
 }
@@ -163,8 +198,21 @@ const getPost = cache(async (param: string): Promise<Post | null> => {
       .limit(1)
       .maybeSingle()
 
-    if (!error) return (data as Post | null) ?? null
-    lastError = error.message
+    if (!error && data) return data as Post
+    if (!error && !data) {
+      // Fallback: agar URL slug title se bana ho toh title match bhi check karein
+      const { data: allPosts } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('published', true)
+        .or(liveOr())
+        .limit(200)
+      const matched = (allPosts as Post[] | null)?.find(
+        (p) => p.slug === slug || slugifyText(p.title) === slugifyText(slug)
+      )
+      return matched ?? null
+    }
+    if (error) lastError = error.message
   }
 
   throw new Error(`[blog] failed to load post "${param}": ${lastError}`)
@@ -173,15 +221,21 @@ const getPost = cache(async (param: string): Promise<Post | null> => {
 function pickBooks(all: Book[], content: string): Book[] {
   const linked: Book[] = []
   for (const key of extractBookKeys(content)) {
-    const b = all.find((x) => String(x.slug) === key || String(x.id) === key)
+    const b = all.find(
+      (x) =>
+        String(x.slug) === key ||
+        String(x.id) === key ||
+        getBookSlug(x) === key ||
+        slugifyText(x.title) === slugifyText(key)
+    )
     if (b && !linked.includes(b)) linked.push(b)
   }
   const picked = [...linked]
   for (const b of all) {
-    if (picked.length >= 3) break
+    if (picked.length >= 6) break
     if (!picked.includes(b)) picked.push(b)
   }
-  return picked.slice(0, Math.max(3, Math.min(linked.length, 6)))
+  return picked.slice(0, Math.max(3, Math.min(picked.length, 6)))
 }
 
 async function adjacentPost(supabase: Supa, post: Post, dir: 'prev' | 'next'): Promise<PostLink | null> {
@@ -207,7 +261,7 @@ async function loadRelated(supabase: Supa, post: Post): Promise<Post[]> {
       .or(liveOr())
       .neq('slug', post.slug)
       .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(12)
+      .limit(24)
     return (data as Post[] | null) ?? []
   } catch {
     return []
@@ -252,7 +306,8 @@ async function loadExtras(post: Post): Promise<Extras> {
       ]
     }
 
-    return { related: pool.slice(0, 3), books, prev, next }
+    // FIX 4: 3 ki jagah 6 related articles dikhaye jayenge taaki Googlebot ko strong internal linking mile
+    return { related: pool.slice(0, 6), books, prev, next }
   } catch {
     return empty
   }
@@ -268,9 +323,11 @@ export async function generateStaticParams() {
       .eq('published', true)
       .or(liveOr())
       .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(100)
+      .limit(1000)
     if (error || !data) return []
-    return data.map((p: { slug: string }) => ({ slug: p.slug }))
+    return data
+      .filter((p: { slug?: string | null }) => Boolean(p.slug))
+      .map((p: { slug: string }) => ({ slug: p.slug }))
   } catch {
     return []
   }
@@ -362,7 +419,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: post.title,
     description,
-    keywords: tags.length ? tags : undefined,
+    keywords: tags.length ? tags : [post.title, post.category || 'Hindi Books', 'Vedoxa'],
     authors: [author],
     creator: 'Vedoxa',
     publisher: 'Vedoxa',
@@ -371,7 +428,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     robots: {
       index: true,
       follow: true,
-      googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
     openGraph: {
       title: post.title,
@@ -423,11 +486,12 @@ export default async function BlogPostPage({ params }: Props) {
       new Date(post.updated_at).getTime() - new Date(publishedAt).getTime() > 24 * 60 * 60 * 1000
   )
 
+  // FIX 5: Enhanced Schema Markup (BlogPosting + Speakable for AI Overviews + Book Mentions)
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
       {
-        '@type': 'Article',
+        '@type': ['Article', 'BlogPosting'],
         '@id': `${url}#article`,
         url,
         headline: post.title,
@@ -441,8 +505,19 @@ export default async function BlogPostPage({ params }: Props) {
         wordCount: words,
         timeRequired: `PT${readMins}M`,
         articleSection: post.category || undefined,
-        keywords: tags.length ? tags.join(', ') : undefined,
+        keywords: tags.length ? tags.join(', ') : post.title,
         isAccessibleForFree: true,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['h1', '.ac-lead', '.ac-h2'],
+        },
+        mentions: books.length
+          ? books.map((b) => ({
+              '@type': 'Book',
+              name: b.title,
+              url: `${SITE_URL}/book/${encodeURIComponent(getBookSlug(b))}`,
+            }))
+          : undefined,
         isPartOf: { '@type': 'Blog', name: `${SITE_NAME} Blog`, url: `${SITE_URL}/blog` },
         author: { '@type': 'Organization', name: 'Vedoxa', url: SITE_URL },
         publisher: {
@@ -634,16 +709,19 @@ export default async function BlogPostPage({ params }: Props) {
               {books.map((b) => {
                 const c = bookCoverUrl(b.cover_path)
                 const price = formatPrice(b.final_price)
+                const bookSlug = getBookSlug(b)
                 return (
                   <li key={b.id}>
                     <Link
-                      href={`/book/${b.slug || b.id}`}
+                      href={`/book/${encodeURIComponent(bookSlug)}`}
                       className="vx-card block h-full rounded-2xl border border-sky-100 bg-white p-3 hover:border-sky-300"
                     >
                       {c ? (
                         <img
                           src={c}
-                          alt={`${b.title} book cover`}
+                          alt={`${b.title} – Hindi Digital Book Cover`}
+                          width={300}
+                          height={440}
                           className="h-44 w-full rounded-xl bg-sky-50 object-contain p-2"
                           loading="lazy"
                           decoding="async"
@@ -689,13 +767,15 @@ export default async function BlogPostPage({ params }: Props) {
                 return (
                   <li key={r.slug}>
                     <Link
-                      href={`/blog/${r.slug}`}
+                      href={`/blog/${encodeURIComponent(r.slug)}`}
                       className="vx-card flex gap-4 rounded-2xl border border-sky-100 bg-white p-4 hover:border-sky-300"
                     >
                       {rc && (
                         <img
                           src={rc}
-                          alt=""
+                          alt={r.title}
+                          width={112}
+                          height={112}
                           loading="lazy"
                           decoding="async"
                           className="h-24 w-24 shrink-0 rounded-xl object-cover sm:h-28 sm:w-28"
@@ -732,7 +812,7 @@ export default async function BlogPostPage({ params }: Props) {
           <nav aria-label="Previous and next articles" className="vx-noprint mt-12 grid gap-3 sm:grid-cols-2">
             {prev ? (
               <Link
-                href={`/blog/${prev.slug}`}
+                href={`/blog/${encodeURIComponent(prev.slug)}`}
                 className="vx-card rounded-2xl border border-sky-100 bg-white p-4 hover:border-sky-300"
               >
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
@@ -746,7 +826,7 @@ export default async function BlogPostPage({ params }: Props) {
             )}
             {next && (
               <Link
-                href={`/blog/${next.slug}`}
+                href={`/blog/${encodeURIComponent(next.slug)}`}
                 className="vx-card rounded-2xl border border-sky-100 bg-white p-4 hover:border-sky-300 sm:text-right"
               >
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
@@ -773,4 +853,3 @@ export default async function BlogPostPage({ params }: Props) {
     </div>
   )
 }
-
