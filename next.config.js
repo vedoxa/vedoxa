@@ -1,6 +1,7 @@
+javascript
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 1. Build errors ignore karne ke liye (Aapki existing settings)
+  // 1. Vercel ko strict ESLint aur TypeScript warnings ignore karne ko bolega
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,7 +9,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // 2. SEO & Duplicate URL Prevention (/about aur /about/ ko ek hi maanega)
+  // 2. SEO & Duplicate URL Prevention
   trailingSlash: false,
   poweredByHeader: false,
   compress: true,
@@ -19,29 +20,15 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**', // Sabhi external book covers aur blog images allow karega
+        hostname: '**',
       },
     ],
   },
 
-  // 4. Redirect Error Fix (www.vedoxa.shop ko seedha vedoxa.shop par bhejega)
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'www.vedoxa.shop',
-          },
-        ],
-        destination: 'https://vedoxa.shop/:path*',
-        permanent: true,
-      },
-    ]
-  },
+  // NOTE: Domain redirect (www vs non-www) Vercel Dashboard se handle hota hai,
+  // isliye yahan redirects() nahi lagana hai warna infinite loop banta hai.
 
-  // 5. Security & SEO Headers (Google Trust Score badhane ke liye)
+  // 4. Security & SEO Headers
   async headers() {
     return [
       {
