@@ -48,7 +48,8 @@ function Cover({ item, priority = false }: { item: BlogItem; priority?: boolean 
     return (
       <img
         src={item.cover}
-        alt=""
+        // FIX 1: Khali alt="" ki jagah blog ka title diya gaya hai taaki Google Images mein rank ho
+        alt={item.title || 'Vedoxa Blog Cover'}
         width={1280}
         height={720}
         loading={priority ? 'eager' : 'lazy'}
@@ -125,6 +126,7 @@ export default function BlogList({ items, failed = false }: { items: BlogItem[];
   const featured = showFeatured ? filtered[0] : null
   const rest = showFeatured ? filtered.slice(1) : filtered
   const shown = rest.slice(0, visible)
+  const hiddenForCrawlers = rest.slice(visible)
   const remaining = rest.length - shown.length
 
   function pickCat(c: string) {
@@ -147,7 +149,7 @@ export default function BlogList({ items, failed = false }: { items: BlogItem[];
   function surprise() {
     if (!items.length) return
     const p = items[Math.floor(Math.random() * items.length)]
-    router.push(`/blog/${p.slug}`)
+    router.push(`/blog/${encodeURIComponent(p.slug)}`)
   }
 
   if (items.length === 0) {
@@ -193,7 +195,7 @@ export default function BlogList({ items, failed = false }: { items: BlogItem[];
           }}
           aria-label="Lekh khojein"
           placeholder="Lekh khojein: mindset, paisa, dhyan…"
-          className="w-full rounded-2xl border border-sky-200 bg-white py-3.5 pl-12 pr-14 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
+          className="w-full rounded-2xl border border-sky-200 bg-white py-3.5 pl-12 pr-14 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus-visible:ring-sky-200"
         />
         {query ? (
           <button
@@ -284,7 +286,7 @@ export default function BlogList({ items, failed = false }: { items: BlogItem[];
       {/* Featured */}
       {featured && (
         <Link
-          href={`/blog/${featured.slug}`}
+          href={`/blog/${encodeURIComponent(featured.slug)}`}
           className={`vx-card group mt-5 block overflow-hidden rounded-3xl border border-sky-100 bg-white ${SHADOW} ${FOCUS}`}
         >
           <div className="relative overflow-hidden">
@@ -322,7 +324,7 @@ export default function BlogList({ items, failed = false }: { items: BlogItem[];
           {shown.map((p) => (
             <li key={p.slug}>
               <Link
-                href={`/blog/${p.slug}`}
+                href={`/blog/${encodeURIComponent(p.slug)}`}
                 className={`vx-card group flex h-full flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white hover:border-sky-300 ${FOCUS}`}
               >
                 <div className="overflow-hidden">
@@ -374,6 +376,19 @@ export default function BlogList({ items, failed = false }: { items: BlogItem[];
             Aur lekh dikhayein ({remaining})
           </button>
         </div>
+      )}
+
+      {/* FIX 2: Googlebot aur search crawlers ke liye bache hue sabhi blogs ke direct links */}
+      {hiddenForCrawlers.length > 0 && (
+        <nav aria-label="More blog articles" className="sr-only">
+          <ul>
+            {hiddenForCrawlers.map((p) => (
+              <li key={p.slug}>
+                <Link href={`/blog/${encodeURIComponent(p.slug)}`}>{p.title}</Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       )}
     </div>
   )
