@@ -1,10 +1,11 @@
 // @ts-nocheck
 /* eslint-disable */
+// Place at: src/components/admin/BlogManager.tsx
 "use client";
 import { useState, useEffect, useMemo, useRef, useCallback, useDeferredValue } from "react";
 
 /* =====================================================================
-   VEDOXA — Blog Manager (Pro)
+   VEDOXA — Blog Manager (Pro + Auto SEO Slug & Book Link Sync)
    Props: supabase, addNotification (optional), books = []
    Images: Supabase Storage bucket "blog-images" (pehle 11-blog-images.sql chalao)
    ===================================================================== */
@@ -17,22 +18,84 @@ const BACKUP_PREFIX = "vedoxa_blog_backup_";
 const VIEW_KEY = "vedoxa_blog_view";
 
 /* Images. Pehle 11-blog-images.sql Supabase SQL editor me chalao (bucket + columns).
-   category / tags chaho to niche true kar do (SQL me columns pehle se ban jate hain). */
+   FIX: SEO ke liye category aur tags ko true kar diya gaya hai (safe DB fallback ke saath). */
 const BUCKET = "blog-images";
 const IMG_FOLDER = "posts";
 const MAX_IMG_MB = 5;
-const FEATURES = { category: false, tags: false, cover_image: true };
+const FEATURES = { category: true, tags: true, cover_image: true };
 
 const pad = (n) => String(n).padStart(2, "0");
 
-/* ------------------------------ helpers ------------------------------ */
+/* ------------------------------ Hindi to Roman & Slug helpers ------------------------------ */
+const HINDI_MAP = {
+  अ: "a", आ: "aa", इ: "i", ई: "ee", उ: "u", ऊ: "oo", ऋ: "ri", ए: "e", ऐ: "ai", ओ: "o", औ: "au", अं: "an", अः: "ah",
+  क: "k", ख: "kh", ग: "g", घ: "gh", ङ: "n",
+  च: "ch", छ: "chh", ज: "j", झ: "jh", ञ: "n",
+  ट: "t", ठ: "th", ड: "d", ढ: "dh", ण: "n",
+  त: "t", थ: "th", द: "d", ध: "dh", न: "n",
+  प: "p", फ: "ph", ब: "b", भ: "bh", म: "m",
+  य: "y", र: "r", ल: "l", व: "v", श: "sh", ष: "sh", स: "s", ह: "h",
+  क्ष: "ksh", त्र: "tr", ज्ञ: "gya", श्र: "shr",
+  ड़: "d", ढ़: "dh", क़: "q", ख़: "kh", ग़: "gh", ज़: "z", फ़: "f",
+  "ा": "a", "ि": "i", "ी": "ee", "ु": "u", "ू": "oo", "ृ": "ri", "े": "e", "ै": "ai", "ो": "o", "ौ": "au",
+  "ं": "n", "ँ": "n", "ः": "h", "्": "", "़": "",
+  "०": "0", "१": "1", "२": "2", "३": "3", "४": "4", "५": "5", "६": "6", "७": "7", "८": "8", "९": "9",
+};
+
+function transliterateToRoman(input) {
+  const str = String(input || "");
+  if (!/[\u0900-\u097F]/.test(str)) return str;
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    const next = str[i + 1] || "";
+    if (HINDI_MAP[ch + next] !== undefined) {
+      out += HINDI_MAP[ch + next];
+      i++;
+      continue;
+    }
+    if (HINDI_MAP[ch] !== undefined) {
+      const val = HINDI_MAP[ch];
+      const isConsonant = ch >= "क" && ch <= "ह";
+      const nextIsVowelSign = next >= "ा" && next <= "्";
+      const nextIsSpaceOrEnd = !next || /[\s.,!?:;'"()\-–—/]/.test(next);
+      if (isConsonant && !nextIsVowelSign && !nextIsSpaceOrEnd) {
+        out += val + "a";
+      } else {
+        out += val;
+      }
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
 function slugify(text) {
-  return String(text || "")
+  const roman = transliterateToRoman(text);
+  return String(roman || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)
     .replace(/-+$/, "");
+}
+
+// Check karta hai ki book/post ka slug kahin 'book-2dbcc52d' jaisa random ID toh nahi hai
+function isRandomId(val) {
+  if (!val) return true;
+  const v = String(val).trim();
+  return /^(book|post|article)-[a-f0-9]{6,}$/i.test(v) || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v);
+}
+
+// Book ke link ke liye hamesha Book ka clean naam (slug) deta hai, random ID nahi
+function getBookSlug(b) {
+  if (!b) return "";
+  const raw = b.slug ? String(b.slug).trim() : "";
+  if (raw && !isRandomId(raw) && SLUG_RE.test(raw)) return raw;
+  const fromTitle = slugify(b.title);
+  if (fromTitle) return fromTitle;
+  return raw || String(b.id || "");
 }
 
 function toLocalInput(iso) {
@@ -652,6 +715,7 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
   const [upBusy, setUpBusy] = useState(false);
   const taRef = useRef(null);
   const baseRef = useRef(snapOf(EMPTY));
+  const syncedBooksRef = useRef(false);
 
   /* ---------- confirm dialog (promise based) ---------- */
   const ask = (opts) => new Promise((resolve) => { dialogRef.current = resolve; setDialog(opts); });
@@ -671,6 +735,18 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
       if (error) throw error;
       setPosts(data || []);
       setLoadError("");
+
+      // NEW: Agar kisi purane blog ka slug khali hai ya random ID hai, toh uske title se auto-save karein
+      if (data && data.length > 0) {
+        for (const p of data) {
+          if (p.title && (!p.slug || isRandomId(p.slug))) {
+            const autoSlug = slugify(p.title);
+            if (autoSlug && SLUG_RE.test(autoSlug)) {
+              supabase.from("posts").update({ slug: autoSlug }).eq("id", p.id).then(() => {});
+            }
+          }
+        }
+      }
     } catch (e) {
       setLoadError((e && e.message) || "Posts load nahi hue");
       if (!silent) setPosts([]);
@@ -680,6 +756,30 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
   }, [supabase]);
 
   useEffect(() => { loadPosts(); }, []);
+
+  // NEW: Jin books me slug khali hai ya 'book-2dbcc52d' jaisa random ID hai, unka naam apne aap DB me save karega
+  useEffect(() => {
+    if (!supabase || !books || !books.length || syncedBooksRef.current) return;
+    syncedBooksRef.current = true;
+    (async () => {
+      for (const b of books) {
+        if (!b || !b.id || !b.title) continue;
+        const currentSlug = b.slug ? String(b.slug).trim() : "";
+        if (!currentSlug || isRandomId(currentSlug)) {
+          const cleanBookSlug = slugify(b.title);
+          if (cleanBookSlug && SLUG_RE.test(cleanBookSlug) && cleanBookSlug !== currentSlug) {
+            try {
+              await supabase.from("books").update({ slug: cleanBookSlug }).eq("id", b.id);
+              b.slug = cleanBookSlug;
+            } catch (err) {
+              // Ignore if column/permission issue
+            }
+          }
+        }
+      }
+    })();
+  }, [supabase, books]);
+
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
@@ -811,7 +911,7 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
     openWith(
       {
         title: p.title || "",
-        slug: p.slug || "",
+        slug: p.slug && !isRandomId(p.slug) ? p.slug : slugify(p.title || ""),
         description: p.description || "",
         content: p.content || "",
         publishAt: statusOf(p, Date.now()) === "scheduled" ? toLocalInput(p.published_at) : "",
@@ -869,10 +969,14 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
     });
   };
 
+  // FIX: Book link me ab random ID ('book-2dbcc52d') ki jagah hamesha Book ka clean naam aayega!
   const insertBookLink = (bookId) => {
     setBookPick("");
     const b = books.find((x) => String(x.id) === String(bookId));
-    if (b) insertAtCursor(`[${b.title}](/book/${b.slug || b.id})`);
+    if (b) {
+      const cleanBookSlug = getBookSlug(b);
+      insertAtCursor(`[${b.title}](/book/${cleanBookSlug})`);
+    }
   };
 
   /* ---------- images ---------- */
@@ -960,16 +1064,27 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
   const save = async (publish, stay = false) => {
     if (saving) return;
     const t = title.trim();
-    const s = slug.trim();
     if (!t) return notify("Title zaroori hai", "error");
+
+    // FIX: Agar slug khali hai ya Hindi me likha gaya hai, toh apne aap Title se clean slug banao
+    let s = slugify(slug.trim() || t);
+    if (!s) s = slugify(t);
+    if (s !== slug) setSlug(s);
+
     if (!SLUG_RE.test(s)) return notify("Slug sirf a-z, 0-9 aur - se bana ho (jaise paise-bachane-ke-tareeke)", "error");
-    if (slugTaken) return notify("Ye slug pehle se kisi aur article me hai. Slug badlo.", "error");
+    if (posts.some((p) => p.slug === s && p.id !== editingId)) {
+      return notify("Ye slug pehle se kisi aur article me hai. Slug badlo.", "error");
+    }
     if (!content.trim()) return notify("Article ka text khali hai", "error");
     if (publish && publishAt && isNaN(new Date(publishAt).getTime())) return notify("Publish date sahi nahi hai", "error");
 
-    const payload = { title: t, slug: s, description: description.trim() || null, content, published: publish };
-    if (FEATURES.category) payload.category = category.trim() || null;
-    if (FEATURES.tags) payload.tags = tags.trim() || null;
+    // FIX: Agar user ne description khali chhoda hai toh SEO ke liye apne aap article se 155 chars ka description banao
+    const finalDesc = description.trim() || autoDescription(content) || null;
+    if (!description.trim() && finalDesc) setDescription(finalDesc);
+
+    const payload = { title: t, slug: s, description: finalDesc, content, published: publish };
+    if (FEATURES.category && (category.trim() || (editingPost && editingPost.category))) payload.category = category.trim() || null;
+    if (FEATURES.tags && (tags.trim() || (editingPost && editingPost.tags))) payload.tags = tags.trim() || null;
     // column tabhi bhejo jab zaroori ho (SQL chalane se pehle bhi baaki save chalta rahe)
     if (FEATURES.cover_image && (cover.trim() || (editingPost && editingPost.cover_image))) payload.cover_image = cover.trim() || null;
 
@@ -981,12 +1096,23 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
 
     setSaving(true);
     try {
-      const res = editingId
+      let res = editingId
         ? await supabase.from("posts").update(payload).eq("id", editingId).select("id")
         : await supabase.from("posts").insert([payload]).select("id");
+
+      // Safe Fallback: Agar DB me category/tags column na ho toh bina unke dobara save karein taaki error na aaye
+      if (res.error && /category|tags|schema cache/i.test(res.error.message || "")) {
+        const safePayload = { ...payload };
+        delete safePayload.category;
+        delete safePayload.tags;
+        res = editingId
+          ? await supabase.from("posts").update(safePayload).eq("id", editingId).select("id")
+          : await supabase.from("posts").insert([safePayload]).select("id");
+      }
+
       if (res.error) {
         if (res.error.code === "23505") notify("Ye slug pehle se kisi aur article me hai. Slug badlo.", "error");
-        else if (/cover_image|category|tags|schema cache/i.test(res.error.message || "")) notify("Naya column nahi mila — pehle 11-blog-images.sql Supabase me chalao. (" + res.error.message + ")", "error");
+        else if (/cover_image|schema cache/i.test(res.error.message || "")) notify("Naya column nahi mila — pehle 11-blog-images.sql Supabase me chalao. (" + res.error.message + ")", "error");
         else notify("Save nahi hua: " + res.error.message, "error");
         return;
       }
@@ -1001,7 +1127,7 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
       await loadPosts(true);
       if (stay && newId) {
         setEditingId(newId);
-        baseRef.current = snapOf(fields);
+        baseRef.current = snapOf({ ...fields, slug: s, description: finalDesc || "" });
         setBackup(null);
         setSavedAt(Date.now());
       } else setEditorOpen(false);
@@ -1067,10 +1193,10 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
   };
 
   const duplicatePost = async (p) => {
-    const copySlug = `${(p.slug || "article").slice(0, 45)}-copy-${Math.random().toString(36).slice(2, 6)}`;
+    const copySlug = `${(p.slug || slugify(p.title) || "article").slice(0, 45)}-copy-${Math.random().toString(36).slice(2, 6)}`;
     const row = { title: `${p.title} (copy)`, slug: copySlug, description: p.description, content: p.content, published: false };
-    if (FEATURES.category) row.category = p.category;
-    if (FEATURES.tags) row.tags = p.tags;
+    if (FEATURES.category && p.category) row.category = p.category;
+    if (FEATURES.tags && p.tags) row.tags = p.tags;
     if (FEATURES.cover_image && p.cover_image) row.cover_image = p.cover_image;
     const { error } = await supabase.from("posts").insert([row]);
     if (error) return notify("Duplicate nahi hua: " + error.message, "error");
@@ -1347,7 +1473,8 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
             {shown.map((p, i) => {
               const st = statusOf(p, now);
               const mt = meta[p.id] || { words: 0, score: 0, total: 6 };
-              const url = `${SITE_URL}/blog/${p.slug}`;
+              const cleanPostSlug = p.slug && !isRandomId(p.slug) ? p.slug : slugify(p.title || "");
+              const url = `${SITE_URL}/blog/${cleanPostSlug}`;
               const checked = selected.includes(p.id);
               const pill = mt.score >= 5 ? "bg-green-500/15 text-green-300 border-green-500/30" : mt.score >= 3 ? "bg-amber-500/15 text-amber-300 border-amber-500/30" : "bg-red-500/15 text-red-300 border-red-500/30";
               return (
@@ -1368,7 +1495,7 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
                         </span>
                       </div>
                       <h3 className="text-lg font-black text-white mt-2 break-words">{p.title}</h3>
-                      <p className="text-xs font-mono text-indigo-300 mt-1 break-all">/blog/{p.slug}</p>
+                      <p className="text-xs font-mono text-indigo-300 mt-1 break-all">/blog/{cleanPostSlug}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                         <span>{mt.words} shabd</span>
                         <span>• ~{Math.max(1, Math.ceil(mt.words / 200))} min</span>
@@ -1389,7 +1516,7 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
                     {st === "published" && <IconBtn title="Site par dekho" href={url}>👁️</IconBtn>}
                     <IconBtn title="Link copy" onClick={() => copyText(url)}>🔗</IconBtn>
                     <IconBtn title="Duplicate" onClick={() => duplicatePost(p)}>📄</IconBtn>
-                    <IconBtn title="Markdown download" onClick={() => download(`${p.slug || "article"}.md`, toMarkdown(p), "text/markdown")}>⬇️</IconBtn>
+                    <IconBtn title="Markdown download" onClick={() => download(`${cleanPostSlug || "article"}.md`, toMarkdown(p), "text/markdown")}>⬇️</IconBtn>
                     <IconBtn title="Delete" danger onClick={() => deletePost(p)} className="ml-auto">🗑️</IconBtn>
                   </div>
                 </div>
@@ -1454,17 +1581,17 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
                       <span className="hidden sm:block pl-4 text-xs text-slate-500 whitespace-nowrap">{SITE_URL.replace("https://", "")}/blog/</span>
                       <input
                         value={slug}
-                        onChange={(e) => { setSlug(e.target.value.toLowerCase()); setSlugTouched(true); }}
+                        onChange={(e) => { setSlug(slugify(e.target.value)); setSlugTouched(true); }}
                         type="text"
                         aria-label="Slug"
                         className="min-w-0 flex-1 bg-transparent px-3 py-3 font-mono text-sm text-white outline-none"
                         placeholder="paise-bachane-ke-tareeke"
                       />
                     </div>
-                    <button type="button" onClick={() => { setSlug(slugify(title) || `article-${Date.now().toString(36)}`); setSlugTouched(true); }} className={toolBtn + " whitespace-nowrap"}>✨ Auto</button>
+                    <button type="button" onClick={() => { setSlug(slugify(title)); setSlugTouched(true); }} className={toolBtn + " whitespace-nowrap"}>✨ Auto</button>
                   </div>
                   <p className={`mt-1 text-xs ${!slug ? "text-slate-500" : slugTaken ? "text-red-400" : SLUG_RE.test(slug) ? "text-green-300" : "text-amber-400"}`}>
-                    {!slug ? "Slug title se apne aap ban jayega" : slugTaken ? "❌ Ye slug kisi aur article me use ho raha hai" : SLUG_RE.test(slug) ? "✅ Slug sahi hai" : "⚠️ Sirf a-z, 0-9 aur - chalega"}
+                    {!slug ? "Slug title se apne aap ban jayega (Hindi title bhi apne aap English/Roman link me badal jayega)" : slugTaken ? "❌ Ye slug kisi aur article me use ho raha hai" : SLUG_RE.test(slug) ? "✅ Slug sahi hai" : "⚠️ Sirf a-z, 0-9 aur - chalega"}
                   </p>
                   {editingPost && editingPost.published && slug !== editingPost.slug && (
                     <p className="mt-1 text-xs text-amber-400">⚠️ Live article ka slug badalne se purana link band ho jayega (Google me ho to bhi).</p>
@@ -1613,8 +1740,8 @@ export default function BlogManager({ supabase, addNotification, books = [] }) {
                 {/* Optional fields */}
                 {(FEATURES.category || FEATURES.tags) && (
                   <div className={card + " space-y-3"}>
-                    {FEATURES.category && <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls + " !py-2 text-sm"} placeholder="📂 Category" />}
-                    {FEATURES.tags && <input value={tags} onChange={(e) => setTags(e.target.value)} className={inputCls + " !py-2 text-sm"} placeholder="🏷️ Tags (comma se alag)" />}
+                    {FEATURES.category && <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls + " !py-2 text-sm"} placeholder="📂 Category (e.g. Mindset, Relationship)" />}
+                    {FEATURES.tags && <input value={tags} onChange={(e) => setTags(e.target.value)} className={inputCls + " !py-2 text-sm"} placeholder="🏷️ Tags (comma se alag: hindi books, mindset)" />}
                   </div>
                 )}
               </aside>
