@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+// Place at: src/components/blog/ArticleContent.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -338,6 +339,20 @@ function stripMd(text: string): string {
     .trim();
 }
 
+// NEW: Heading text se SEO-friendly section ID banane ka helper (Google Jump Links ke liye)
+function makeSectionId(prefix: string, count: number, titleText: string): string {
+  const clean = stripMd(titleText)
+    .toLowerCase()
+    .replace(/['"“”‘’`~!@#$%^&*()+=[\]{};:\\|,.<>/?!🏆🚀🔥✨💓🎯⚡]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48)
+    .replace(/-$/g, "");
+  return clean ? `${prefix}-${count}-${clean}` : `${prefix}-${count}`;
+}
+
 function countWords(text: string): number {
   return String(text || "").trim().split(/\s+/).filter(Boolean).length;
 }
@@ -406,7 +421,7 @@ function renderInline(text: string, keyPrefix = "inl"): ReactNode[] {
         <img
           key={key}
           src={m[2]}
-          alt={m[1] || "Article image"}
+          alt={m[1] || "Vedoxa blog illustration"}
           loading="lazy"
           decoding="async"
           className="ac-inimg"
@@ -675,11 +690,12 @@ export function parseArticleContent(content: string): {
 
   const pushH2 = (h: { num?: string; title: string; subtitle?: string }) => {
     hCount += 1;
-    const id = `section-${hCount}`;
+    const fullText = stripMd(h.subtitle ? `${h.title}: ${h.subtitle}` : h.title);
+    const id = makeSectionId("section", hCount, h.title);
     toc.push({
       id,
       num: h.num,
-      text: stripMd(h.subtitle ? `${h.title}: ${h.subtitle}` : h.title),
+      text: fullText,
     });
     blocks.push({ t: "h2", num: h.num, title: h.title, subtitle: h.subtitle, id });
   };
@@ -722,7 +738,7 @@ export function parseArticleContent(content: string): {
       if (rawTitle) {
         if (hm[1].length >= 3) {
           hCount += 1;
-          blocks.push({ t: "h3", text: rawTitle, id: `sub-${hCount}` });
+          blocks.push({ t: "h3", text: rawTitle, id: makeSectionId("sub", hCount, rawTitle) });
         } else {
           pushH2(matchNumberedHeading(rawTitle) ?? { title: rawTitle });
         }
@@ -793,7 +809,8 @@ export function parseArticleContent(content: string): {
     if (isSmartSubheading(line)) {
       expectChecklistSteps = false;
       hCount += 1;
-      blocks.push({ t: "h3", text: line.replace(/\*\*/g, "").trim(), id: `sub-${hCount}` });
+      const cleanSub = line.replace(/\*\*/g, "").trim();
+      blocks.push({ t: "h3", text: cleanSub, id: makeSectionId("sub", hCount, cleanSub) });
       i++;
       continue;
     }
@@ -1522,7 +1539,7 @@ function renderBlock(b: ParsedBlock, idx: number): ReactNode {
     case "img":
       return (
         <figure key={k} className="ac-tile ac-fig">
-          <img src={b.src} alt={b.alt} loading="lazy" decoding="async" />
+          <img src={b.src} alt={b.alt || "Vedoxa article image"} loading="lazy" decoding="async" />
           {b.alt && <figcaption>{b.alt}</figcaption>}
         </figure>
       );
@@ -1703,15 +1720,19 @@ export default function ArticleContent({
             <button type="button" className="ac-btn ac-btn-sm" onClick={continueReading}>
               Continue reading
             </button>
-            <button type="button" className="ac-ghost" onClick={() => setResume(null)}>
+            <button type="button" onClick="ac-ghost" onClickCapture={() => setResume(null)}>
               Start over
             </button>
           </div>
         </div>
       )}
 
-      {/* Article body */}
-      <div ref={bodyRef} className={`ac-body ac-s${size} flex flex-col gap-6`}>
+      {/* Article body with itemProp="articleBody" for Google SEO & AI */}
+      <div
+        ref={bodyRef}
+        itemProp="articleBody"
+        className={`ac-body ac-s${size} flex flex-col gap-6`}
+      >
         {nodes}
       </div>
 
