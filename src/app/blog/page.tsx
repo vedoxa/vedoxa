@@ -1,23 +1,44 @@
-// Place at: src/app/blog/page.tsx  (rename this file to page.tsx)
+/* eslint-disable @next/next/no-img-element */
+// Place at: src/app/blog/page.tsx
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import BlogList, { type BlogItem } from '../../components/blog/BlogList'
 import { Icon, LogoMark } from '../../components/blog/Icon'
 
-// Sitemap.ts wale SITE_URL ke saath same rakho
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://vedoxa.shop').replace(/\/+$/, '')
+// FIX 1: Sitemap.ts aur layout.tsx wale SITE_URL ke saath 100% same non-www URL
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://vedoxa.shop')
+  .replace('://www.vedoxa.shop', '://vedoxa.shop')
+  .replace(/\/+$/, '')
 const SITE_NAME = 'Vedoxa Premium Library'
 
 // Naya article 10 minute me list me aa jata hai
 export const revalidate = 600
 
 export const metadata: Metadata = {
-  title: 'Blog – Mindset, Spirituality aur Paise par Hindi lekh',
+  title: 'Blog – Mindset, Spirituality, Psychology aur Paise par Hindi Lekh',
   description:
-    'Vedoxa blog: mindset, spirituality, psychology aur paise ki samajh par saral Hindi me lekh.',
+    'Vedoxa blog: mindset, spirituality, relationship, psychology aur paise ki samajh par saral Hindi me practical lekh aur book summaries.',
+  keywords: [
+    'Vedoxa blog',
+    'Hindi blog on mindset',
+    'spirituality articles in Hindi',
+    'psychology facts in Hindi',
+    'Hindi book summaries',
+    'self improvement Hindi',
+  ],
   alternates: { canonical: `${SITE_URL}/blog` },
-  robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-snippet': -1 } },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     title: 'Vedoxa Blog – Hindi me mindset, spirituality aur paise ki baatein',
     description:
@@ -28,13 +49,14 @@ export const metadata: Metadata = {
     locale: 'hi_IN',
   },
   twitter: {
-    card: 'summary',
-    title: 'Vedoxa Blog',
+    card: 'summary_large_image',
+    title: 'Vedoxa Blog – Mindset, Spirituality & Psychology',
     description: 'Mindset, spirituality aur paise ki samajh par saral Hindi me lekh.',
   },
 }
 
 type Row = {
+  id?: string | number
   slug?: string | null
   title?: string | null
   description?: string | null
@@ -46,7 +68,15 @@ type Row = {
   created_at?: string | null
 }
 
-/* ───────────────────────────── Helpers ───────────────────────────── */
+type BookRow = {
+  id: string | number
+  slug?: string | null
+  title: string
+  cover_path?: string | null
+  final_price?: number | string | null
+}
+
+/* ───────────────────────────── Helpers & Auto-Slug ───────────────────────────── */
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -58,12 +88,61 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
+// FIX 2: Title se apne aap clean SEO-friendly slug banane ka function
+function slugifyText(input?: string | null): string {
+  if (!input) return ''
+  return String(input)
+    .toLowerCase()
+    .trim()
+    .replace(/['"“”‘’`~!@#$%^&*()+=[\]{};:\\|,.<>/?]+/g, ' ')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function isRandomId(value?: string | null): boolean {
+  if (!value) return true
+  const v = String(value).trim()
+  return /^(book|post)-[a-f0-9]{6,}$/i.test(v) || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v)
+}
+
+function getPostSlug(r: Row): string {
+  const raw = r.slug ? String(r.slug).trim() : ''
+  if (raw && !isRandomId(raw)) return raw
+  const fromTitle = slugifyText(r.title)
+  return fromTitle || raw || (r.id ? String(r.id) : '')
+}
+
+function getBookSlug(b: BookRow): string {
+  const raw = b.slug ? String(b.slug).trim() : ''
+  if (raw && !isRandomId(raw)) return raw
+  const fromTitle = slugifyText(b.title)
+  return fromTitle || raw || String(b.id)
+}
+
+function bookCoverUrl(coverPath?: string | null) {
+  if (!coverPath) return null
+  if (/^https?:\/\//i.test(coverPath)) return coverPath
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/books-covers/${coverPath}`
+}
+
+function formatPrice(value: unknown) {
+  if (value === null || value === undefined || value === '') return ''
+  const n = Number(value)
+  return Number.isNaN(n) ? `₹${String(value)}` : `₹${n.toLocaleString('en-IN')}`
+}
+
 function formatDate(value?: string | null) {
   if (!value) return ''
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ''
   try {
-    return d.toLocaleDateString('hi-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
+    return d.toLocaleDateString('hi-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Kolkata',
+    })
   } catch {
     return ''
   }
@@ -99,7 +178,10 @@ function parseTags(value: unknown): string[] {
 }
 
 function toItem(r: Row): BlogItem | null {
-  if (!r.slug || !r.title) return null
+  if (!r.title) return null
+  const finalSlug = getPostSlug(r)
+  if (!finalSlug) return null
+
   const body = plainText(r.content || '')
   const tags = parseTags(r.tags)
   const category = (r.category || '').trim() || 'Vedoxa Special'
@@ -109,7 +191,7 @@ function toItem(r: Row): BlogItem | null {
   const words = body ? body.split(' ').length : 0
 
   return {
-    slug: r.slug,
+    slug: finalSlug,
     title: r.title,
     excerpt,
     category,
@@ -134,7 +216,7 @@ async function loadPosts(): Promise<{ rows: Row[]; failed: boolean }> {
       // hide scheduled posts: they would 404 on the article page
       .or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
       .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(200)
+      .limit(500)
 
     if (error) {
       console.error('[blog] failed to load posts:', error.message)
@@ -144,6 +226,22 @@ async function loadPosts(): Promise<{ rows: Row[]; failed: boolean }> {
   } catch (e) {
     console.error('[blog] failed to load posts:', e)
     return { rows: [], failed: true }
+  }
+}
+
+// FIX 3: Books ko bhi crawl aur index karwane ke liye Featured Books loader
+async function loadFeaturedBooks(): Promise<BookRow[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+  try {
+    const { data } = await supabase
+      .from('books')
+      .select('id, slug, title, cover_path, final_price')
+      .order('created_at', { ascending: false })
+      .limit(6)
+    return (data as BookRow[] | null) ?? []
+  } catch {
+    return []
   }
 }
 
@@ -163,10 +261,14 @@ const CRUMB =
 /* ───────────────────────────── Page ───────────────────────────── */
 
 export default async function BlogIndexPage() {
-  const { rows, failed } = await loadPosts()
+  const [{ rows, failed }, featuredBooks] = await Promise.all([
+    loadPosts(),
+    loadFeaturedBooks(),
+  ])
   const items = rows.map(toItem).filter((p): p is BlogItem => p !== null)
   const categoryCount = new Set(items.map((p) => p.category)).size
 
+  // FIX 4: Complete Schema Markup (Sabhi blogs + ItemList taaki Googlebot ek bhi blog na chhode)
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -178,18 +280,24 @@ export default async function BlogIndexPage() {
         description: 'Mindset, spirituality aur paise ki samajh par saral Hindi me lekh.',
         inLanguage: 'hi-IN',
         publisher: { '@type': 'Organization', name: 'Vedoxa', url: SITE_URL },
-        blogPost: rows.slice(0, 20).flatMap((r) =>
-          r.slug && r.title
-            ? [
-                {
-                  '@type': 'BlogPosting',
-                  headline: r.title,
-                  url: `${SITE_URL}/blog/${encodeURIComponent(r.slug)}`,
-                  datePublished: r.published_at || r.created_at || undefined,
-                },
-              ]
-            : []
-        ),
+        blogPost: items.map((item) => ({
+          '@type': 'BlogPosting',
+          headline: item.title,
+          description: item.excerpt,
+          url: `${SITE_URL}/blog/${encodeURIComponent(item.slug)}`,
+          image: item.cover || undefined,
+        })),
+      },
+      {
+        '@type': 'ItemList',
+        name: 'Vedoxa Hindi Blog Articles',
+        numberOfItems: items.length,
+        itemListElement: items.map((item, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          name: item.title,
+          url: `${SITE_URL}/blog/${encodeURIComponent(item.slug)}`,
+        })),
       },
       {
         '@type': 'BreadcrumbList',
@@ -270,6 +378,60 @@ export default async function BlogIndexPage() {
         </header>
 
         <BlogList items={items} failed={failed} />
+
+        {/* FIX 3 UI: Books internal linking section taaki Googlebot har book ko crawl aur index kare */}
+        {featuredBooks.length > 0 && (
+          <section aria-label="Popular Digital Books" className="mt-14 border-t border-sky-100 pt-10">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="vx-display flex items-center gap-2 text-xl font-extrabold text-slate-900 sm:text-2xl">
+                <Icon name="book" size={22} className="text-sky-600" />
+                Vedoxa Library ki Pramukh Kitabein
+              </h2>
+              <Link
+                href="/explore"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-sky-700 hover:text-sky-900"
+              >
+                Sabhi kitabein dekhein
+                <Icon name="arrowRight" size={15} />
+              </Link>
+            </div>
+            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              {featuredBooks.map((b) => {
+                const cover = bookCoverUrl(b.cover_path)
+                const price = formatPrice(b.final_price)
+                const bSlug = getBookSlug(b)
+                return (
+                  <li key={b.id}>
+                    <Link
+                      href={`/book/${encodeURIComponent(bSlug)}`}
+                      className="vx-card flex h-full flex-col rounded-2xl border border-sky-100 bg-white p-3 hover:border-sky-300"
+                    >
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt={`${b.title} – Hindi Digital Book`}
+                          width={220}
+                          height={320}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-36 w-full rounded-xl bg-sky-50 object-contain p-1.5"
+                        />
+                      ) : (
+                        <div className="grid h-36 w-full place-items-center rounded-xl bg-sky-50 text-sky-600" aria-hidden="true">
+                          <Icon name="book" size={32} />
+                        </div>
+                      )}
+                      <p className="mt-2.5 line-clamp-2 text-xs font-bold leading-snug text-slate-900 sm:text-sm">
+                        {b.title}
+                      </p>
+                      {price && <p className="mt-auto pt-1.5 text-xs font-bold text-sky-700">{price}</p>}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
 
         <section
           aria-label="Library"
