@@ -37,7 +37,7 @@ function safeDecode(value: string) {
   }
 }
 
-// FIX 1: Book ke title ko SEO-friendly URL naam (slug) mein badalne ka function
+// NEW: Book ke Title (naam) ko clean SEO-friendly link mein badalne ka function
 function slugifyText(input?: string | null): string {
   if (!input) return ''
   return String(input)
@@ -49,14 +49,14 @@ function slugifyText(input?: string | null): string {
     .replace(/^-|-$/g, '')
 }
 
-// Check karta hai ki slug kahin 'book-2dbcc52d' jaisa random code toh nahi hai
+// NEW: Check karta hai ki slug kahin 'book-2dbcc52d' jaisa random ID toh nahi hai
 function isRandomBookId(value?: string | null): boolean {
   if (!value) return true
   const v = String(value).trim()
   return /^book-[a-f0-9]{6,}$/i.test(v) || UUID_RE.test(v)
 }
 
-// Hamesha book ka clean naam (slug) return karega, random ID nahi
+// NEW: Hamesha book ke naam wala slug deta hai (random number nahi)
 function getBookSlug(book: any): string {
   if (!book) return ''
   const rawSlug = book.slug ? String(book.slug).trim() : ''
@@ -70,7 +70,22 @@ function getBookSlug(book: any): string {
   return rawSlug || String(book.id)
 }
 
-// FIX 2: 3-Step Smart Book Finder (Naam wala URL, purana random ID URL, ya UUID - sabhi par book khulegi)
+// NEW: Agar DB mein book ka slug khali hai ya random ID hai, toh naam ko apne aap DB mein save karne ki koshish karega
+async function ensureBookSlugSaved(supabase: any, book: any): Promise<string> {
+  const cleanSlug = getBookSlug(book)
+  const currentSlug = book.slug ? String(book.slug).trim() : ''
+
+  if (cleanSlug && (!currentSlug || isRandomBookId(currentSlug)) && cleanSlug !== currentSlug) {
+    try {
+      await supabase.from('books').update({ slug: cleanSlug }).eq('id', book.id)
+    } catch {
+      // Agar RLS policy anon update allow na kare toh bina error ke ignore karega
+    }
+  }
+  return cleanSlug
+}
+
+// Ek hi request me generateMetadata aur page dono ko wahi book milti hai (4-Step Smart Search)
 const getBook = cache(async (param: string) => {
   const supabase = getSupabase()
   if (!supabase) return null
@@ -78,19 +93,25 @@ const getBook = cache(async (param: string) => {
   const key = safeDecode(param).trim()
   if (!key) return null
 
-  // Step 1: Direct slug column match
+  // 1. Direct slug match
   const bySlug = await supabase.from('books').select('*').eq('slug', key).maybeSingle()
-  if (bySlug.data) return bySlug.data
-
-  // Step 2: Direct ID match (UUID ya 'book-2dbcc52d' dono ke liye safe)
-  try {
-    const byId = await supabase.from('books').select('*').eq('id', key).maybeSingle()
-    if (byId.data) return byId.data
-  } catch {
-    // Agar id column strict UUID ho aur key text ho toh error ignore karke Step 3 par jaye
+  if (bySlug.data) {
+    await ensureBookSlugSaved(supabase, bySlug.data)
+    return bySlug.data
   }
 
-  // Step 3: Title-based slug match (Jab URL mein book ka naam ho par DB mein slug khali ya random ID ho)
+  // 2. Direct ID match ('book-2dbcc52d' aur UUID dono ke liye kaam karega)
+  try {
+    const byId = await supabase.from('books').select('*').eq('id', key).maybeSingle()
+    if (byId.data) {
+      await ensureBookSlugSaved(supabase, byId.data)
+      return byId.data
+    }
+  } catch {
+    // Ignore type error if id column is strict UUID
+  }
+
+  // 3. Title / Generated Slug match (Jab URL mein book ka naam ho: /book/rich-dad-poor-dad)
   try {
     const { data: allBooks } = await supabase
       .from('books')
@@ -99,24 +120,27 @@ const getBook = cache(async (param: string) => {
       .limit(500)
 
     if (allBooks && allBooks.length > 0) {
-      const normalizedKey = slugifyText(key)
+      const targetSlug = slugifyText(key)
       const matched = allBooks.find(
         (b: any) =>
           String(b.id) === key ||
           String(b.slug) === key ||
           getBookSlug(b) === key ||
-          slugifyText(b.title) === normalizedKey
+          slugifyText(b.title) === targetSlug
       )
-      if (matched) return matched
+      if (matched) {
+        await ensureBookSlugSaved(supabase, matched)
+        return matched
+      }
     }
   } catch (err) {
-    console.error('[book] fallback search error:', err)
+    console.error('[book] fallback lookup error:', err)
   }
 
   return null
 })
 
-// FIX 3: Build time par sabhi books ke naam wale URLs pre-generate karne ke liye
+// NEW: Googlebot ke liye saari books ke naam wale URLs pehle se build karne ke liye
 export async function generateStaticParams() {
   const supabase = getSupabase()
   if (!supabase) return []
@@ -149,16 +173,16 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
     return { title: 'Book not found', robots: { index: false, follow: false } }
   }
 
-  // Canonical URL hamesha book ke clean naam par banega, random ID par nahi
+  // Link me hamesha book ka clean naam aayega
   const cleanSlug = getBookSlug(book)
   const path = `/book/${encodeURIComponent(cleanSlug)}`
   const cover = coverUrl(book.cover_path)
 
   const description = book.description
     ? shorten(book.description, 155)
-    : `${book.title}: Vedoxa par Hindi digital book${book.author ? ` by ${book.author}` : ''}. Price ₹${book.final_price}. Payment ke baad turant padhein.`
+    : `${book.title}: Vedoxa par Hindi digital book. Price ₹${book.final_price}. Payment ke baad turant padhein.`
 
-  const title = `${book.title} – Hindi Digital Book (PDF Summary & Guide)`
+  const title = `${book.title} – Hindi Digital Book`
 
   return {
     title,
@@ -166,10 +190,10 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
     keywords: [
       book.title,
       `${book.title} Hindi book`,
-      `${book.title} PDF in Hindi`,
+      `${book.title} PDF summary`,
       book.author || 'Vedoxa',
       'Hindi digital books',
-      'spirituality and psychology books Hindi',
+      'Vedoxa Premium Library',
     ],
     alternates: { canonical: `${SITE_URL}${path}` },
     robots: {
@@ -189,7 +213,7 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
       url: `${SITE_URL}${path}`,
       siteName: 'Vedoxa Premium Library',
       locale: 'hi_IN',
-      type: 'book',
+      type: 'website',
       ...(cover ? { images: [{ url: cover, alt: `${book.title} book cover` }] } : {}),
     },
     twitter: {
@@ -211,13 +235,13 @@ export default async function BookPage({ params }: any) {
   const path = `/book/${encodeURIComponent(cleanSlug)}`
   const cover = coverUrl(book.cover_path)
 
-  // Baaki books + Related Blogs (internal links Google ko sabhi pages dhoondhne me madad karte hain)
+  // Baaki books + Related Blogs (internal links Google ko sabhi books aur blogs dhoondhne me madad karte hain)
   let others: any[] = []
-  let relatedBlogs: any[] = []
+  let latestPosts: any[] = []
   const supabase = getSupabase()
   if (supabase) {
     try {
-      const [booksRes, blogsRes] = await Promise.all([
+      const [booksRes, postsRes] = await Promise.all([
         supabase
           .from('books')
           .select('id, slug, title, author, cover_path, final_price')
@@ -229,34 +253,31 @@ export default async function BookPage({ params }: any) {
           .select('slug, title, description, category')
           .eq('published', true)
           .order('published_at', { ascending: false })
-          .limit(4),
+          .limit(6),
       ])
       others = booksRes.data ?? []
-      relatedBlogs = blogsRes.data ?? []
+      latestPosts = postsRes.data ?? []
     } catch {
-      // Ignore error so book page still renders safely
+      // Safe fallback
     }
   }
 
-  // FIX 4: Product + Book + BreadcrumbList Schema taaki Google Search me Price aur Stock dikhe
-  const productSchema: any = {
+  const productData: any = {
     '@type': ['Product', 'Book'],
     '@id': `${SITE_URL}${path}#book`,
     name: book.title,
-    headline: book.title,
     description: book.description || `${book.title} – Vedoxa par Hindi digital book.`,
     bookFormat: 'https://schema.org/EBook',
     inLanguage: 'hi-IN',
     brand: { '@type': 'Brand', name: 'Vedoxa' },
-    publisher: { '@type': 'Organization', name: 'Vedoxa', url: SITE_URL },
     url: `${SITE_URL}${path}`,
   }
   if (book.author) {
-    productSchema.author = { '@type': 'Person', name: book.author }
+    productData.author = { '@type': 'Person', name: book.author }
   }
-  if (cover) productSchema.image = cover
+  if (cover) productData.image = cover
   if (book.final_price != null) {
-    productSchema.offers = {
+    productData.offers = {
       '@type': 'Offer',
       price: String(book.final_price),
       priceCurrency: 'INR',
@@ -265,10 +286,10 @@ export default async function BookPage({ params }: any) {
     }
   }
 
-  const jsonLd = {
+  const jsonLd: any = {
     '@context': 'https://schema.org',
     '@graph': [
-      productSchema,
+      productData,
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
@@ -310,7 +331,7 @@ export default async function BookPage({ params }: any) {
             {cover ? (
               <img
                 src={cover}
-                alt={`${book.title} – Hindi Digital Book Cover`}
+                alt={`${book.title} book cover`}
                 width={400}
                 height={560}
                 className="w-full h-auto rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.6)]"
@@ -349,7 +370,7 @@ export default async function BookPage({ params }: any) {
                 Buy or read this book
               </Link>
               <Link
-                href="/explore"
+                href="/"
                 className="inline-flex items-center justify-center rounded-2xl px-6 py-3.5 text-base font-bold border border-white/15 text-gray-200 hover:border-amber-500/50 transition"
               >
                 See all books
@@ -412,33 +433,31 @@ export default async function BookPage({ params }: any) {
           </section>
         )}
 
-        {/* FIX 5: Book page se Blogs ko internal link dene ke liye Related Blogs section */}
-        {relatedBlogs.length > 0 && (
+        {/* NEW: Book page se Blogs ko internal link dene ke liye taaki Googlebot dono ko crawl kare */}
+        {latestPosts.length > 0 && (
           <section className="mt-16 border-t border-white/10 pt-10">
             <div className="flex items-center justify-between gap-4 mb-5">
-              <h2 className="font-serif text-xl font-bold text-white">
-                Vedoxa Blog ke Naye Lekh
-              </h2>
+              <h2 className="font-serif text-xl font-bold text-white">Vedoxa Blog ke Lekh</h2>
               <Link href="/blog" className="text-sm font-bold text-amber-400 hover:underline">
-                Sabhi lekh padhein →
+                Sabhi lekh dekhein →
               </Link>
             </div>
             <ul className="grid sm:grid-cols-2 gap-4">
-              {relatedBlogs.map((post: any) => {
-                const pSlug = post.slug || slugifyText(post.title)
-                if (!pSlug) return null
+              {latestPosts.map((post: any) => {
+                const postSlug = post.slug || slugifyText(post.title)
+                if (!postSlug) return null
                 return (
-                  <li key={pSlug}>
+                  <li key={postSlug}>
                     <Link
-                      href={`/blog/${encodeURIComponent(pSlug)}`}
+                      href={`/blog/${encodeURIComponent(postSlug)}`}
                       className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-amber-500/40 transition-colors h-full"
                     >
                       {post.category && (
                         <span className="text-xs font-bold text-amber-400">{post.category}</span>
                       )}
-                      <h3 className="mt-1 text-base font-bold text-white line-clamp-2">
+                      <p className="mt-1 text-base font-bold text-white line-clamp-2">
                         {post.title}
-                      </h3>
+                      </p>
                       {post.description && (
                         <p className="mt-1.5 text-sm text-gray-400 line-clamp-2">
                           {post.description}
