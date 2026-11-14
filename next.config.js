@@ -1,4 +1,3 @@
-javascript
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 1. Vercel ko strict ESLint aur TypeScript warnings ignore karne ko bolega
