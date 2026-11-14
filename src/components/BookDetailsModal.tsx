@@ -1256,3 +1256,4 @@ export default function BookDetailsModal({
     </>
   );
 }
+
